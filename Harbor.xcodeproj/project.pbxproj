@@ -600,8 +600,8 @@
 				INFOPLIST_KEY_CFBundleDisplayName = Harbor;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
-				INFOPLIST_KEY_NSFaceIDUsageDescription = "Unlock your protected Harbor profiles with Face ID.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Websites can request camera access for calls or capturing photos.";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "Unlock your protected Harbor profiles with Face ID.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Websites can request microphone access for calls or recording audio.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -661,8 +661,8 @@
 				INFOPLIST_KEY_CFBundleDisplayName = Harbor;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
-				INFOPLIST_KEY_NSFaceIDUsageDescription = "Unlock your protected Harbor profiles with Face ID.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Websites can request camera access for calls or capturing photos.";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "Unlock your protected Harbor profiles with Face ID.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Websites can request microphone access for calls or recording audio.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
