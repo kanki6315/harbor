@@ -18,6 +18,12 @@ final class BrowserModel {
     var isClearingData = false
     private let store: BrowserStore
     private var persistTask: Task<Void, Never>?
+    enum BookmarkNameState: Equatable {
+        case generating
+        case suggested(String)
+        case unavailable
+    }
+    private(set) var bookmarkNameStates: [UUID: BookmarkNameState] = [:]
     private var bookmarkNameTasks: [UUID: Task<Void, Never>] = [:]
     private var mediaTask: Task<Void, Never>?
     private var memoryObserver: NSObjectProtocol?
@@ -107,6 +113,7 @@ final class BrowserModel {
         isActive = false
         for task in bookmarkNameTasks.values { task.cancel() }
         bookmarkNameTasks.removeAll()
+        bookmarkNameStates.removeAll()
         persistTask?.cancel()
         dialog?.finish(nil)
         dialog = nil
@@ -235,35 +242,72 @@ final class BrowserModel {
                                     folderID: archive.bookmarkFolders.contains(where: { $0.id == folderID }) ? folderID : nil)
             archive.bookmarks.append(bookmark)
             saveNow()
-            guard !isTesting else { return }
-            bookmarkNameTasks[bookmark.id] = Task { [weak self] in
-                let name = await BookmarkNaming.suggest(title: bookmark.title, url: bookmark.url)
-                guard !Task.isCancelled, let self else { return }
-                self.bookmarkNameTasks[bookmark.id] = nil
-                if let name { self.applySuggestedBookmarkName(name, to: bookmark) }
+            if !isTesting { requestBookmarkName(bookmark) }
+            #if DEBUG
+            if isTesting && ProcessInfo.processInfo.arguments.contains("--bookmark-name-fixture") {
+                requestBookmarkName(bookmark)
             }
+            #endif
         }
     }
 
-    func applySuggestedBookmarkName(_ name: String, to original: Bookmark) {
-        guard isActive, let index = archive.bookmarks.firstIndex(where: { $0.id == original.id && $0.title == original.title }) else { return }
-        let name = BookmarkNaming.normalized(name)
-        guard !name.isEmpty, name.count <= 80 else { return }
-        archive.bookmarks[index].title = name
-        saveNow()
+    @discardableResult
+    func requestBookmarkName(_ bookmark: Bookmark,
+                             generate: ((String, URL) async -> String?)? = nil) -> Task<Void, Never>? {
+        guard isActive, archive.bookmarks.contains(where: { $0.id == bookmark.id }) else { return nil }
+        keepOriginalBookmarkName(bookmark.id)
+        bookmarkNameStates[bookmark.id] = .generating
+        let task = Task { [weak self] in
+            let name: String?
+            if let generate {
+                name = await generate(bookmark.title, bookmark.url)
+            } else {
+                #if DEBUG
+                if self?.isTesting == true && ProcessInfo.processInfo.arguments.contains("--bookmark-name-fixture") {
+                    try? await Task.sleep(for: .seconds(3))
+                    name = "Harbor fixture guide"
+                } else {
+                    name = await BookmarkNaming.suggest(title: bookmark.title, url: bookmark.url)
+                }
+                #else
+                name = await BookmarkNaming.suggest(title: bookmark.title, url: bookmark.url)
+                #endif
+            }
+            guard !Task.isCancelled, let self, self.isActive,
+                  self.archive.bookmarks.contains(where: { $0.id == bookmark.id && $0.title == bookmark.title }) else { return }
+            self.bookmarkNameTasks[bookmark.id] = nil
+            let normalized = name.map(BookmarkNaming.normalized)
+            if let normalized, !normalized.isEmpty, normalized.count <= 80 {
+                self.bookmarkNameStates[bookmark.id] = .suggested(normalized)
+            } else {
+                self.bookmarkNameStates[bookmark.id] = .unavailable
+            }
+        }
+        bookmarkNameTasks[bookmark.id] = task
+        return task
+    }
+
+    func useSuggestedBookmarkName(_ id: UUID) {
+        guard case .suggested(let name) = bookmarkNameStates[id] else { return }
+        renameBookmark(id, to: name)
+    }
+
+    func keepOriginalBookmarkName(_ id: UUID) {
+        bookmarkNameTasks.removeValue(forKey: id)?.cancel()
+        bookmarkNameStates[id] = nil
     }
 
     func renameBookmark(_ id: UUID, to title: String) {
         let title = BookmarkNaming.normalized(title)
         guard isActive, !title.isEmpty,
               let index = archive.bookmarks.firstIndex(where: { $0.id == id }) else { return }
-        bookmarkNameTasks.removeValue(forKey: id)?.cancel()
+        keepOriginalBookmarkName(id)
         archive.bookmarks[index].title = title
         saveNow()
     }
 
     func deleteBookmark(_ id: UUID) {
-        bookmarkNameTasks.removeValue(forKey: id)?.cancel()
+        keepOriginalBookmarkName(id)
         archive.bookmarks.removeAll { $0.id == id }
         saveNow()
     }
