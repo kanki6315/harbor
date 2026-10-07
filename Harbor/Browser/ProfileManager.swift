@@ -1,5 +1,6 @@
 import SwiftUI
 import WebKit
+import LocalAuthentication
 
 @MainActor @Observable
 final class ProfileManager {
@@ -10,12 +11,75 @@ final class ProfileManager {
     let store: ProfileStore
     private var browsers: [UUID: BrowserModel] = [:]
     private let testing: Bool
+    private var unlockedProfileID: UUID?
+    private var authenticationGeneration = 0
+    private var authenticationContext: LAContext?
+    private(set) var isAuthenticating = false
+    private let authenticate: (@MainActor (String) async throws -> Bool)?
+    var isLocked: Bool { currentProfile?.isProtected == true && unlockedProfileID != currentProfile?.id }
+
+    var authenticationLabel: String {
+        let context = LAContext()
+        _ = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: nil)
+        switch context.biometryType {
+        case .faceID: return "Face ID"
+        case .touchID: return "Touch ID"
+        default: return "Device authentication"
+        }
+    }
+
+    private func verifyOwner(reason: String) async -> Bool {
+        guard !isAuthenticating else { return false }
+        isAuthenticating = true
+        let generation = authenticationGeneration
+        defer { isAuthenticating = false; authenticationContext = nil }
+        do {
+            let success: Bool
+            if let authenticate { success = try await authenticate(reason) }
+            else {
+                let context = LAContext()
+                authenticationContext = context
+                success = try await context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason)
+            }
+            guard generation == authenticationGeneration else { return false }
+            if !success { errorMessage = "Authentication was not completed. Try again." }
+            return success
+        } catch {
+            if generation == authenticationGeneration { errorMessage = error.localizedDescription }
+            return false
+        }
+    }
+
+    func unlockSelected() async {
+        guard isLocked, let profile = currentProfile else { return }
+        errorMessage = nil
+        guard await verifyOwner(reason: "Unlock \(profile.name) in Harbor."), currentProfile?.id == profile.id else { return }
+        unlockedProfileID = profile.id
+        activateSelected()
+    }
+
+    @discardableResult func setProtection(_ id: UUID, enabled: Bool) async -> Bool {
+        guard let profile = profiles.first(where: { $0.id == id }) else { return false }
+        if profile.isProtected == enabled { return true }
+        errorMessage = nil
+        guard await verifyOwner(reason: "Change the profile lock for \(profile.name)."),
+              var candidate = registry,
+              let index = candidate.profiles.firstIndex(where: { $0.id == id && !$0.isDeleting }) else { return false }
+        candidate.profiles[index].requiresAuthentication = enabled
+        guard commit(candidate) else { return false }
+        if currentProfile?.id == id {
+            unlockedProfileID = enabled ? id : nil
+            if browser == nil { activateSelected() }
+        }
+        return true
+    }
 
     var profiles: [BrowserProfile] { registry?.availableProfiles ?? [] }
     var pendingDeletions: [BrowserProfile] { registry?.profiles.filter(\.isDeleting) ?? [] }
     var currentProfile: BrowserProfile? { profiles.first { $0.id == registry?.selectedProfileID } }
 
-    init(store: ProfileStore? = nil, now: Date = Date()) {
+    init(store: ProfileStore? = nil, now: Date = Date(), authenticate: (@MainActor (String) async throws -> Bool)? = nil) {
+        self.authenticate = authenticate
         #if DEBUG
         testing = store == nil && ProcessInfo.processInfo.arguments.contains("--uitesting")
         #else
@@ -74,7 +138,7 @@ final class ProfileManager {
     }
 
     private func activateSelected() {
-        guard let profile = currentProfile else { return }
+        guard let profile = currentProfile, !isLocked else { browser = nil; return }
         let model: BrowserModel
         if let existing = browsers[profile.id] { model = existing }
         else {
@@ -96,6 +160,9 @@ final class ProfileManager {
         candidate.selectedProfileID = id
         guard commit(candidate) else { return false }
         browser?.deactivate()
+        authenticationGeneration += 1
+        authenticationContext?.invalidate()
+        unlockedProfileID = nil
         activateSelected()
         return true
     }
@@ -131,6 +198,13 @@ final class ProfileManager {
 
     func enteredBackground(at date: Date = Date()) {
         browser?.saveNow()
+        authenticationGeneration += 1
+        authenticationContext?.invalidate()
+        unlockedProfileID = nil
+        if currentProfile?.isProtected == true {
+            browser?.deactivate()
+            browser = nil
+        }
         guard var candidate = registry, candidate.backgroundedAt == nil else { return }
         candidate.backgroundedAt = date
         _ = commit(candidate)
@@ -148,6 +222,9 @@ final class ProfileManager {
 
     func delete(_ id: UUID) async {
         guard !isDeleting else { return }
+        if profiles.first(where: { $0.id == id })?.isProtected == true {
+            guard await verifyOwner(reason: "Delete this protected profile."), !isDeleting else { return }
+        }
         guard browsers[id]?.isClearingData != true else {
             errorMessage = "Browsing data is still being cleared. Try deleting this profile again when it finishes."
             return

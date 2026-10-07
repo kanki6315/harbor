@@ -69,11 +69,14 @@ final class TabSession: NSObject, Identifiable {
 
     func captureSnapshot() {
         guard !fullscreen, webView.bounds.width > 0, !isLoading else { return }
+        let capturedURL = webView.url
         let config = WKSnapshotConfiguration()
         config.snapshotWidth = 320
         webView.takeSnapshot(with: config) { [weak self] image, _ in
-            guard let self, !self.isDisposed, let image else { return }
+            guard let self, !self.isDisposed, self.webView.url == capturedURL,
+                  self.browser?.isClearingData == false, let image else { return }
             self.snapshot = image
+            self.browser?.savePreview(image, for: self)
         }
     }
 

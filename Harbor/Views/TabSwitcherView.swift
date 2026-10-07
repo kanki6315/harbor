@@ -3,6 +3,7 @@ import SwiftUI
 struct TabSwitcherView: View {
     @Bindable var browser: BrowserModel
     @State private var search = ""
+    @State private var showingReorder = false
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var typeSize
     private var filtered: [TabRecord] {
@@ -14,11 +15,20 @@ struct TabSwitcherView: View {
                 if filtered.isEmpty {
                     ContentUnavailableView.search(text: search)
                 } else {
-                    LazyVGrid(columns: typeSize.isAccessibilitySize ? [GridItem(.flexible())] : [GridItem(.flexible()), GridItem(.flexible())], spacing: 20) {
+                    LazyVGrid(columns: typeSize.isAccessibilitySize ? [GridItem(.flexible(), alignment: .top)] : [GridItem(.flexible(), alignment: .top), GridItem(.flexible(), alignment: .top)], spacing: 20) {
                         ForEach(filtered) { tab in
                             TabCard(tab: tab, session: browser.sessions[tab.id], selected: tab.id == browser.selectedID,
-                                    largeText: typeSize.isAccessibilitySize,
+                                    largeText: typeSize.isAccessibilitySize, previewURL: browser.previewURL(tab.id),
                                     select: { browser.selectTab(tab.id); dismiss() }, close: { browser.closeTab(tab.id) })
+                                .draggable(tab.id.uuidString)
+                                .dropDestination(for: String.self) { items, _ in
+                                    guard items.count == 1, let id = UUID(uuidString: items[0]),
+                                          browser.archive.tabs.contains(where: { $0.id == id }) else { return false }
+                                    browser.moveTab(id, onto: tab.id)
+                                    return true
+                                }
+                                .accessibilityAction(named: "Move earlier") { move(tab, by: -1) }
+                                .accessibilityAction(named: "Move later") { move(tab, by: 1) }
                         }
                     }.padding(16)
                 }
@@ -26,6 +36,23 @@ struct TabSwitcherView: View {
                 .navigationTitle(browser.archive.tabs.count == 1 ? "1 tab" : "\(browser.archive.tabs.count) tabs")
                 .searchable(text: $search, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search all tabs")
                 .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button("Reorder", systemImage: "arrow.up.arrow.down") { showingReorder = true }
+                            .disabled(browser.archive.tabs.count < 2)
+                            .accessibilityIdentifier("reorderTabs")
+                    }
+                    ToolbarItem(placement: .bottomBar) {
+                        Menu {
+                            Button("Unload background tabs", systemImage: "moon") {
+                                Task { await browser.unloadBackgroundTabs() }
+                            }
+                            .disabled(!browser.sessions.keys.contains(where: { $0 != browser.selectedID }))
+                            Text("Keeps the current tab and playing media open. Unloaded pages reload when selected.")
+                        } label: {
+                            Label("Tab options", systemImage: "ellipsis.circle")
+                        }
+                        .accessibilityIdentifier("tabOptions")
+                    }
                     ToolbarItem(placement: .topBarTrailing) { Button("Done") { dismiss() } }
                     ToolbarItem(placement: .bottomBar) {
                         Button("New tab", systemImage: "plus") { browser.newTab(); dismiss() }.accessibilityIdentifier("tabSwitcherNewTab")
@@ -34,7 +61,42 @@ struct TabSwitcherView: View {
                         ToolbarItem(placement: .bottomBar) { Button("Undo close", systemImage: "arrow.uturn.backward") { browser.undoClose() } }
                     }
                 }
-        }.onAppear { Task { await browser.refreshMedia() } }
+        }
+        .sheet(isPresented: $showingReorder) { reorderSheet }
+        .onAppear { Task { await browser.refreshMedia() } }
+    }
+    private func move(_ tab: TabRecord, by offset: Int) {
+        guard let index = browser.archive.tabs.firstIndex(where: { $0.id == tab.id }),
+              browser.archive.tabs.indices.contains(index + offset) else { return }
+        browser.moveTab(tab.id, onto: browser.archive.tabs[index + offset].id)
+    }
+
+    private var reorderSheet: some View {
+        NavigationStack {
+            List {
+                Section {
+                    ForEach(browser.archive.tabs) { tab in
+                        HStack {
+                            Image(systemName: tab.id == browser.selectedID ? "checkmark.circle.fill" : "globe")
+                                .foregroundStyle(tab.id == browser.selectedID ? Color.accentColor : .secondary)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(tab.title).font(.body).lineLimit(2)
+                                Text(tab.url?.host ?? "Start page").font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                        .accessibilityAction(named: "Move earlier") { move(tab, by: -1) }
+                        .accessibilityAction(named: "Move later") { move(tab, by: 1) }
+                    }
+                    .onMove { browser.moveTabs(from: $0, to: $1) }
+                } footer: {
+                    Text("Drag the handles to change tab order. You can also drag previews in the tab grid.")
+                }
+            }
+            .environment(\.editMode, .constant(.active))
+            .navigationTitle("Reorder tabs")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showingReorder = false } } }
+        }
     }
 }
 
@@ -43,6 +105,8 @@ private struct TabCard: View {
     let session: TabSession?
     let selected: Bool
     let largeText: Bool
+    let previewURL: URL
+    @State private var savedPreview: UIImage?
     var select: () -> Void
     var close: () -> Void
     var body: some View {
@@ -50,7 +114,7 @@ private struct TabCard: View {
                                 ZStack(alignment: .topTrailing) {
                                     Button(action: select) {
                                         ZStack {
-                                            if let image = session?.snapshot {
+                                            if let image = session?.snapshot ?? savedPreview {
                                                 Image(uiImage: image).resizable().scaledToFill()
                                             } else {
                                                 Color.harborNavy
@@ -77,6 +141,14 @@ private struct TabCard: View {
                                     }
                                 }
                                 Text(tab.url?.host ?? "Start page").font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                                if tab.url != nil && session == nil {
+                                    Label("Unloaded", systemImage: "moon")
+                                        .font(.caption).foregroundStyle(.secondary)
+                                        .accessibilityLabel("Unloaded. Opens again when selected.")
+                                }
                             }.accessibilityElement(children: .contain)
+                                .task(id: session == nil) {
+                                    savedPreview = UIImage(contentsOfFile: previewURL.path)
+                                }
     }
 }

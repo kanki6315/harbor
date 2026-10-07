@@ -4,6 +4,67 @@ import Network
 @testable import Harbor
 
 @MainActor final class ProfileTests: XCTestCase {
+    func testProtectionPersistsAndLocksOnSwitchBackgroundAndRelaunch() async throws {
+        let manager = ProfileManager(store: store, authenticate: { _ in true })
+        let id = try XCTUnwrap(manager.currentProfile?.id)
+        let enabled = await manager.setProtection(id, enabled: true)
+        XCTAssertTrue(enabled)
+        XCTAssertNotNil(manager.browser)
+        XCTAssertTrue(manager.create(name: "Work", symbol: "briefcase"))
+        let work = try XCTUnwrap(manager.profiles.last?.id)
+        XCTAssertTrue(manager.select(work))
+        XCTAssertTrue(manager.select(id))
+        XCTAssertTrue(manager.isLocked)
+        XCTAssertNil(manager.browser)
+        await manager.unlockSelected()
+        XCTAssertNotNil(manager.browser)
+        manager.enteredBackground()
+        manager.becameActive()
+        XCTAssertTrue(manager.isLocked)
+        XCTAssertNil(manager.browser)
+        let relaunched = ProfileManager(store: store)
+        XCTAssertTrue(relaunched.isLocked)
+        XCTAssertNil(relaunched.browser)
+    }
+
+    func testFailedAuthenticationCannotUnlockDisableOrDelete() async throws {
+        let setup = ProfileManager(store: store, authenticate: { _ in true })
+        let id = try XCTUnwrap(setup.currentProfile?.id)
+        _ = await setup.setProtection(id, enabled: true)
+        XCTAssertTrue(setup.create(name: "Work", symbol: "briefcase"))
+        let manager = ProfileManager(store: store, authenticate: { _ in false })
+        await manager.unlockSelected()
+        XCTAssertNil(manager.browser)
+        let disabled = await manager.setProtection(id, enabled: false)
+        XCTAssertFalse(disabled)
+        await manager.delete(id)
+        XCTAssertTrue(manager.currentProfile?.isProtected == true)
+        XCTAssertEqual(manager.profiles.count, 2)
+    }
+
+    func testBackgroundDuringAuthenticationDiscardsSuccess() async throws {
+        let setup = ProfileManager(store: store, authenticate: { _ in true })
+        let id = try XCTUnwrap(setup.currentProfile?.id)
+        _ = await setup.setProtection(id, enabled: true)
+        var continuation: CheckedContinuation<Bool, Never>?
+        let manager = ProfileManager(store: store, authenticate: { _ in
+            await withCheckedContinuation { continuation = $0 }
+        })
+        let task = Task { await manager.unlockSelected() }
+        while continuation == nil { await Task.yield() }
+        manager.enteredBackground()
+        continuation?.resume(returning: true)
+        await task.value
+        XCTAssertTrue(manager.isLocked)
+        XCTAssertNil(manager.browser)
+    }
+
+    func testOldProfilesDecodeWithoutLock() throws {
+        let id = UUID()
+        let json = "{\"id\":\"\(id)\",\"name\":\"Personal\",\"symbol\":\"house\",\"usesLegacyWebStore\":false,\"isDeleting\":false}"
+        XCTAssertFalse(try JSONDecoder().decode(BrowserProfile.self, from: Data(json.utf8)).isProtected)
+    }
+
     private var root: URL!
     private var store: ProfileStore { ProfileStore(root: root) }
     override func setUp() async throws {
@@ -25,7 +86,8 @@ import Network
         legacy.history = [HistoryEntry(url: URL(string: "https://example.com")!, title: "Original")]
         legacy.bookmarks = [Bookmark(url: URL(string: "https://example.com")!, title: "Saved")]
         legacy.settings.searchEngine = .bing
-        try BrowserStore(fileURL: store.legacyURL).save(legacy)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try JSONEncoder().encode(legacy).write(to: store.legacyURL)
         let registry = try store.loadOrMigrate()
         XCTAssertTrue(registry.profiles[0].usesLegacyWebStore)
         let archive = try store.browserStore(for: registry.selectedProfileID).load()
@@ -38,6 +100,57 @@ import Network
         XCTAssertEqual(second.profiles, registry.profiles)
         XCTAssertTrue(try store.browserStore(for: second.selectedProfileID).load().history.isEmpty)
         XCTAssertFalse(FileManager.default.fileExists(atPath: store.legacyURL.path))
+    }
+
+    func testExistingProfilesMigrateIncludingInactiveProfileAndTimestamp() throws {
+        let personal = BrowserProfile(name: "Personal")
+        let work = BrowserProfile(name: "Work")
+        let timestamp = Date(timeIntervalSince1970: 12345)
+        let registry = ProfileRegistry(profiles: [personal, work], selectedProfileID: personal.id,
+                                       defaultProfileID: personal.id, backgroundedAt: timestamp)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try JSONEncoder().encode(registry).write(to: store.registryURL)
+        for profile in registry.profiles {
+            let browserStore = store.browserStore(for: profile.id)
+            try FileManager.default.createDirectory(at: store.directory(for: profile.id), withIntermediateDirectories: true)
+            var archive = BrowserArchive()
+            archive.history = [HistoryEntry(url: URL(string: "https://private.example")!, title: profile.name)]
+            try JSONEncoder().encode(archive).write(to: browserStore.fileURL)
+        }
+        let migrated = try store.loadOrMigrate()
+        XCTAssertEqual(migrated.backgroundedAt, timestamp)
+        XCTAssertFalse(try String(contentsOf: store.registryURL, encoding: .utf8).contains("backgroundedAt"))
+        for profile in registry.profiles {
+            let browserStore = store.browserStore(for: profile.id)
+            XCTAssertFalse(FileManager.default.fileExists(atPath: browserStore.fileURL.path))
+            XCTAssertEqual(try browserStore.load().history.first?.title, profile.name)
+            XCTAssertEqual(try browserStore.sessionDirectory.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup, true)
+        }
+    }
+
+    func testBackupRestoreKeepsProfilesWithoutBrowsingOrBackgroundState() throws {
+        let manager = ProfileManager(store: store)
+        XCTAssertTrue(manager.create(name: "Work", symbol: "briefcase"))
+        let work = manager.profiles.last!.id
+        XCTAssertTrue(manager.select(work))
+        manager.browser!.archive.bookmarks = [Bookmark(url: URL(string: "https://saved.example")!, title: "Saved")]
+        manager.browser!.recordVisit(url: URL(string: "https://private.example")!, title: "Private")
+        manager.enteredBackground(at: Date(timeIntervalSince1970: 100))
+        let durable = try String(contentsOf: store.registryURL, encoding: .utf8)
+        XCTAssertFalse(durable.contains("backgroundedAt"))
+        XCTAssertEqual(try store.runtimeDirectory.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup, true)
+        try FileManager.default.removeItem(at: store.runtimeDirectory)
+        for profile in manager.profiles {
+            try FileManager.default.removeItem(at: store.browserStore(for: profile.id).sessionDirectory)
+        }
+        let restored = try store.loadOrMigrate()
+        XCTAssertEqual(restored.profiles, manager.profiles)
+        XCTAssertNil(restored.backgroundedAt)
+        let archive = try store.browserStore(for: work).load()
+        XCTAssertEqual(archive.bookmarks.count, 1)
+        XCTAssertTrue(archive.history.isEmpty)
+        XCTAssertNil(archive.tabs.first?.url)
+        manager.browser?.deactivate()
     }
 
     func testCorruptRegistryAndLegacyArchiveAreNotOverwritten() throws {
