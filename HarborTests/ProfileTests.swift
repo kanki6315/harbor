@@ -4,6 +4,69 @@ import Network
 @testable import Harbor
 
 @MainActor final class ProfileTests: XCTestCase {
+    func testIncomingLinkOpensNewTabAndRejectsUnsupportedURLs() throws {
+        let manager = ProfileManager(store: store)
+        let browser = try XCTUnwrap(manager.browser)
+        let original = browser.selectedTab.id
+        let count = browser.archive.tabs.count
+        let url = URL(string: "https://example.invalid/recipe?item=1#steps")!
+        manager.openIncomingURL(url)
+        XCTAssertEqual(browser.archive.tabs.count, count + 1)
+        XCTAssertEqual(browser.selectedTab.url, url)
+        XCTAssertNotEqual(browser.selectedTab.id, original)
+        for value in ["file:///tmp/private", "javascript:alert(1)", "mailto:a@example.com", "https:/missing-host"] {
+            manager.openIncomingURL(URL(string: value)!)
+        }
+        XCTAssertEqual(browser.archive.tabs.count, count + 1)
+        XCTAssertEqual(browser.selectedTab.url, url)
+    }
+
+    func testIncomingLinksWaitForUnlockAndStayInReceivingProfile() async throws {
+        var allowUnlock = true
+        let manager = ProfileManager(store: store, authenticate: { _ in allowUnlock })
+        let personal = try XCTUnwrap(manager.currentProfile?.id)
+        let protected = await manager.setProtection(personal, enabled: true)
+        XCTAssertTrue(protected)
+        let immediate = await manager.setLockAfter(personal, minutes: 0)
+        XCTAssertTrue(immediate)
+        manager.enteredBackground()
+        let urls = [URL(string: "https://example.invalid/one")!, URL(string: "http://example.invalid/two")!]
+        urls.forEach { manager.openIncomingURL($0) }
+        XCTAssertNil(manager.browser)
+        allowUnlock = false
+        await manager.unlockSelected()
+        XCTAssertTrue(manager.isLocked)
+        XCTAssertTrue(manager.create(name: "Work", symbol: "briefcase"))
+        XCTAssertTrue(manager.select(manager.profiles.last!.id))
+        XCTAssertFalse(manager.browser!.archive.tabs.contains { urls.contains($0.url ?? URL(string: "about:blank")!) })
+        XCTAssertTrue(manager.select(personal))
+        allowUnlock = true
+        await manager.unlockSelected()
+        let browser = try XCTUnwrap(manager.browser)
+        XCTAssertEqual(browser.archive.tabs.suffix(2).compactMap(\.url), urls)
+        let count = browser.archive.tabs.count
+        manager.becameActive()
+        await manager.unlockSelected()
+        XCTAssertEqual(browser.archive.tabs.count, count)
+    }
+
+    func testIncomingLinkAppliesExpiredReturnPolicyBeforeOpening() throws {
+        let manager = ProfileManager(store: store)
+        let personal = try XCTUnwrap(manager.currentProfile?.id)
+        XCTAssertTrue(manager.create(name: "Work", symbol: "briefcase"))
+        XCTAssertTrue(manager.select(manager.profiles.last!.id))
+        let work = try XCTUnwrap(manager.browser)
+        let workCount = work.archive.tabs.count
+        manager.configureReturn(defaultID: personal, minutes: 5)
+        let departure = Date()
+        manager.enteredBackground(at: departure)
+        let url = URL(string: "https://example.invalid/return")!
+        manager.openIncomingURL(url, at: departure.addingTimeInterval(301))
+        XCTAssertEqual(manager.currentProfile?.id, personal)
+        XCTAssertEqual(manager.browser?.selectedTab.url, url)
+        XCTAssertEqual(work.archive.tabs.count, workCount)
+    }
+
     func testCreateProtectedProfileAuthenticatesAndPersists() async throws {
         var authenticationCount = 0
         let manager = ProfileManager(store: store, authenticate: { _ in

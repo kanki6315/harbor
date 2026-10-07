@@ -132,7 +132,7 @@ Do not enter personal credentials into an automated fixture. Use an account you 
 
 ## Platform boundaries and next steps
 
-Safari extensions are not automatically available in this embedded browser. Harbor uses the system WKWebView engine; it does not bundle another renderer. No claim is made about eligibility for alternative-engine entitlements or default-browser distribution entitlements.
+Safari extensions are not automatically available in this embedded browser. Harbor uses the system WKWebView engine; it does not bundle another renderer. Harbor registers HTTP/HTTPS URL schemes and opens incoming web links in new tabs after applying profile-return and lock rules. Links received while locked are held in memory for that profile until it is unlocked; switching profiles does not transfer them. Pending links are lost if the app is terminated. Default-browser selection still requires Apple approval and provisioning for the `com.apple.developer.web-browser` entitlement, which is not yet configured. No claim is made about eligibility for alternative-engine entitlements.
 
 Future work: tab groups and iPad layouts; encrypted/private iCloud sync; Face ID; reader mode; custom rule lists; password-manager integration; per-site JavaScript, cookies, autoplay, media permissions and user-agent settings; HTTPS-only mode; downloadable-file management; opt-in background-media policy. These are not inactive controls pretending to be implemented features.
 
