@@ -33,9 +33,9 @@ final class HarborUITests: XCTestCase {
         app.launch()
         let web = app.webViews.firstMatch
         XCTAssertTrue(web.staticTexts["Harbor test page"].waitForExistence(timeout: 20))
-        XCTAssertLessThanOrEqual(web.frame.minY, 1, "Website must extend behind the system status area")
-        XCTAssertGreaterThanOrEqual(web.frame.maxY, app.buttons["tabsButton"].frame.maxY,
-                                    "Website must extend behind the transparent browser controls")
+        XCTAssertGreaterThan(web.frame.minY, 0, "Website controls must stay below the system status area")
+        XCTAssertLessThanOrEqual(web.frame.maxY, app.textFields["addressField"].frame.minY,
+                                 "Website viewport must end above browser controls")
         capture(app, name: "phone-website-glass")
         let instance = web.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Page instance ")).firstMatch.label
         web.buttons["Play video"].tap()
@@ -51,6 +51,71 @@ final class HarborUITests: XCTestCase {
         web.buttons["Pause video"].tap()
         XCTAssertTrue(web.staticTexts["Video paused"].exists)
     }
+    @MainActor func testCollapsibleControlsLeaveFooterReachable() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--uitesting", "--reset", "--fixture"]
+        app.launch()
+        let web = app.webViews.firstMatch
+        let footer = web.buttons["Fixed footer action"]
+        XCTAssertTrue(footer.waitForExistence(timeout: 15))
+        XCTAssertLessThanOrEqual(footer.frame.maxY, app.textFields["addressField"].frame.minY)
+        let expandedHeight = web.frame.height
+        app.buttons["collapseBrowserControls"].tap()
+        let reveal = app.buttons["expandBrowserControls"]
+        XCTAssertTrue(reveal.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.textFields["addressField"].exists)
+        XCTAssertGreaterThan(web.frame.height, expandedHeight + 40)
+        XCTAssertLessThanOrEqual(footer.frame.maxY, reveal.frame.minY)
+        footer.tap()
+        XCTAssertTrue(web.buttons["Footer tapped"].exists)
+        for _ in 0..<5 { web.swipeUp() }
+        let end = web.buttons["Page end action"]
+        XCTAssertTrue(end.isHittable)
+        end.tap()
+        XCTAssertTrue(web.buttons["Page end reached"].exists)
+        capture(app, name: "phone-minimized-footer")
+        reveal.tap()
+        XCTAssertTrue(app.textFields["addressField"].waitForExistence(timeout: 5))
+        XCTAssertLessThanOrEqual(web.buttons["Footer tapped"].frame.maxY, app.textFields["addressField"].frame.minY)
+        capture(app, name: "phone-expanded-footer")
+    }
+
+    @MainActor func testCollapsedControlsInDarkLargeTextAndLandscape() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--uitesting", "--reset", "--fixture",
+                               "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL",
+                               "-AppleInterfaceStyle", "Dark"]
+        app.launch()
+        let footer = app.webViews.buttons["Fixed footer action"]
+        XCTAssertTrue(footer.waitForExistence(timeout: 15))
+        XCTAssertLessThanOrEqual(footer.frame.maxY, app.textFields["addressField"].frame.minY)
+        capture(app, name: "phone-dark-large-expanded")
+        app.buttons["collapseBrowserControls"].tap()
+        let reveal = app.buttons["expandBrowserControls"]
+        XCTAssertTrue(reveal.waitForExistence(timeout: 5))
+        XCTAssertLessThanOrEqual(footer.frame.maxY, reveal.frame.minY)
+        capture(app, name: "phone-dark-large-minimized")
+        XCUIDevice.shared.orientation = .landscapeLeft
+        defer { XCUIDevice.shared.orientation = .portrait }
+        let rotationSettled = NSPredicate { _, _ in
+            app.frame.width > app.frame.height && reveal.frame.minY > 0 &&
+                footer.frame.minY > 0 && footer.frame.maxY <= reveal.frame.minY
+        }
+        expectation(for: rotationSettled, evaluatedWith: app)
+        waitForExpectations(timeout: 5)
+        XCTAssertTrue(reveal.isHittable)
+        XCTAssertLessThanOrEqual(footer.frame.maxY, reveal.frame.minY)
+        capture(app, name: "phone-landscape-minimized")
+        reveal.tap()
+        let address = app.textFields["addressField"]
+        XCTAssertTrue(address.waitForExistence(timeout: 5))
+        XCTAssertLessThanOrEqual(footer.frame.maxY, address.frame.minY)
+        capture(app, name: "phone-landscape-expanded")
+        address.tap()
+        XCTAssertTrue(app.buttons["Go"].exists)
+        XCTAssertFalse(app.buttons["collapseBrowserControls"].exists)
+    }
+
     @MainActor func testPopupAndPublicNavigation() {
         let app = XCUIApplication()
         app.launchArguments = ["--uitesting", "--reset", "--fixture"]
@@ -111,7 +176,7 @@ final class HarborUITests: XCTestCase {
         let play = app.webViews.buttons.matching(NSPredicate(format: "label BEGINSWITH[c] %@", "Play")).firstMatch
         guard play.waitForExistence(timeout: 20) else {
             print("YouTube compatibility observation: " + app.debugDescription)
-            let attachment = XCTAttachment(screenshot: app.screenshot())
+            let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
             attachment.name = "YouTube compatibility response"
             attachment.lifetime = .keepAlways
             add(attachment)
@@ -136,7 +201,7 @@ final class HarborUITests: XCTestCase {
     }
 
     @MainActor private func capture(_ app: XCUIApplication, name: String) {
-        let attachment = XCTAttachment(screenshot: app.screenshot())
+        let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)
