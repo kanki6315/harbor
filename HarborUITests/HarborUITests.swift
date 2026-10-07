@@ -1,6 +1,80 @@
 import XCTest
 
 final class HarborUITests: XCTestCase {
+    @MainActor func testHistorySearchAndClear() {
+        let app = openHistoryFixture()
+        XCTAssertTrue(app.staticTexts["Today"].exists)
+        XCTAssertTrue(app.staticTexts["Yesterday"].exists)
+        capture(app, name: "phone-history-light")
+        let search = app.searchFields["Search history"]
+        search.tap()
+        search.typeText("Acadia")
+        XCTAssertTrue(app.buttons.matching(identifier: "historyVisit").matching(NSPredicate(format: "label BEGINSWITH %@", "Plan your visit — Acadia National Park,")).firstMatch.exists)
+        XCTAssertFalse(app.buttons.matching(identifier: "historyVisit").matching(NSPredicate(format: "label BEGINSWITH %@", "Wikipedia,")).firstMatch.exists)
+        search.typeText("no-match")
+        XCTAssertTrue(app.staticTexts["No matching pages"].exists)
+        capture(app, name: "phone-history-no-results")
+        app.buttons["Clear text"].tap()
+        app.buttons["historySelect"].tap()
+        app.buttons["Select All"].tap()
+        XCTAssertTrue(app.buttons["Delete (6)"].exists)
+        capture(app, name: "phone-history-selection")
+        app.buttons["historySelect"].tap()
+        app.buttons["Clear All"].tap()
+        XCTAssertTrue(app.buttons["Clear history"].waitForExistence(timeout: 3))
+        capture(app, name: "phone-history-clear")
+        app.buttons["Clear history"].tap()
+        XCTAssertTrue(app.staticTexts["No history yet"].exists)
+        XCTAssertFalse(app.buttons["Clear All"].isEnabled)
+        capture(app, name: "phone-history-empty")
+    }
+
+    @MainActor func testHistoryFilteredSelectionAndPersistence() {
+        let app = openHistoryFixture()
+        let search = app.searchFields["Search history"]
+        search.tap()
+        search.typeText("Acadia")
+        // Submit search to dismiss the keyboard while preserving the filter.
+        search.typeText("\n")
+        app.buttons["historySelect"].tap()
+        app.buttons["Select All"].tap()
+        XCTAssertTrue(app.buttons["Delete (2)"].exists)
+        app.buttons["historyDeleteSelected"].tap()
+        app.buttons["Delete selected visits"].tap()
+        XCTAssertTrue(app.staticTexts["No matching pages"].exists)
+        app.terminate()
+        app.launchArguments = ["--uitesting"]
+        app.launch()
+        app.buttons["moreButton"].tap()
+        app.buttons["History"].tap()
+        XCTAssertTrue(app.buttons.matching(identifier: "historyVisit").matching(NSPredicate(format: "label BEGINSWITH %@", "Wikipedia,")).firstMatch.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons.matching(identifier: "historyVisit").matching(NSPredicate(format: "label BEGINSWITH %@", "Plan your visit — Acadia National Park,")).firstMatch.exists)
+        app.buttons.matching(identifier: "historyVisit").matching(NSPredicate(format: "label BEGINSWITH %@", "Human Interface Guidelines,")).firstMatch.tap()
+        XCTAssertTrue(app.navigationBars["History"].waitForNonExistence(timeout: 5))
+    }
+
+    @MainActor func testHistoryAccessibilityText() {
+        let app = openHistoryFixture(extra: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL", "-AppleInterfaceStyle", "Dark"])
+        capture(app, name: "phone-history-accessibility")
+
+    }
+
+    @MainActor private func openHistoryFixture(extra: [String] = []) -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchArguments = ["--uitesting", "--reset", "--history-fixture"]
+        if !extra.contains("-AppleInterfaceStyle") { app.launchArguments += ["-AppleInterfaceStyle", "Light"] }
+        if !extra.contains("-UIPreferredContentSizeCategoryName") {
+            app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryL"]
+        }
+        app.launchArguments += extra
+        app.launch()
+        XCTAssertTrue(app.buttons["moreButton"].waitForExistence(timeout: 15))
+        app.buttons["moreButton"].tap()
+        app.buttons["History"].tap()
+        XCTAssertTrue(app.navigationBars["History"].waitForExistence(timeout: 5))
+        return app
+    }
+
     @MainActor func testTabReorderAndUnloadedPreview() {
         let app = XCUIApplication()
         app.launchArguments = ["--uitesting", "--reset", "--fixture"]

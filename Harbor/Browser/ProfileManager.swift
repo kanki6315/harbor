@@ -100,7 +100,26 @@ final class ProfileManager {
             if testing && ProcessInfo.processInfo.arguments.contains("--reset") {
                 let profile = BrowserProfile(name: "Personal")
                 loaded = ProfileRegistry(profiles: [profile], selectedProfileID: profile.id, defaultProfileID: profile.id)
-                try self.store.browserStore(for: profile.id).save(BrowserArchive())
+                var archive = BrowserArchive()
+                if ProcessInfo.processInfo.arguments.contains("--history-fixture") {
+                    // Synthetic visits live only in the isolated, reset UI-test profile.
+                    let calendar = Calendar.current
+                    let today = calendar.startOfDay(for: now)
+                    let samples: [(String, String, Int)] = [
+                        ("https://developer.apple.com/design/human-interface-guidelines", "Human Interface Guidelines", 0),
+                        ("https://www.nps.gov/acad/planyourvisit/", "Plan your visit — Acadia National Park", 0),
+                        ("https://www.nps.gov/acad/maps.htm", "Maps — Acadia National Park", 0),
+                        ("https://www.wikipedia.org/", "Wikipedia", -1),
+                        ("https://example.com/long-title", "A longer page title that wraps naturally while keeping the website address and visit time readable", -1),
+                        ("https://example.org/untitled", "", -4)
+                    ]
+                    archive.history = samples.enumerated().map { index, sample in
+                        HistoryEntry(url: URL(string: sample.0)!, title: sample.1,
+                                     visitedAt: calendar.date(byAdding: .day, value: sample.2, to: today)!
+                                        .addingTimeInterval(Double(3600 - index * 120)))
+                    }
+                }
+                try self.store.browserStore(for: profile.id).save(archive)
             }
             #endif
             loaded.selectedProfileID = loaded.profileOnReturn(at: now)
