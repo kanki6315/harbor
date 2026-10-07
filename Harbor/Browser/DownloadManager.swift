@@ -12,6 +12,13 @@ final class DownloadManager: NSObject, WKDownloadDelegate {
     var errorMessage: String?
     private(set) var activeCount = 0
     private var downloads: [ObjectIdentifier: (WKDownload, URL?)] = [:]
+    func clearTemporaryFiles() {
+        for (download, _) in downloads.values { download.delegate = nil; download.cancel { _ in } }
+        downloads.removeAll()
+        activeCount = 0
+        completed = nil
+        try? FileManager.default.removeItem(at: FileManager.default.temporaryDirectory.appending(path: "HarborDownloads"))
+    }
     func accept(_ download: WKDownload) {
         downloads[ObjectIdentifier(download)] = (download, nil)
         activeCount = downloads.count

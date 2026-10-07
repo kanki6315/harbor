@@ -35,12 +35,13 @@ final class BrowserModel {
     init(store: BrowserStore = BrowserStore()) {
         #if DEBUG
         let testing = ProcessInfo.processInfo.arguments.contains("--uitesting")
-        #else
-        let testing = false
-        #endif
         if testing {
             self.store = BrowserStore(fileURL: FileManager.default.temporaryDirectory.appending(path: "HarborUITests/browser.json"))
         } else { self.store = store }
+        #else
+        let testing = false
+        self.store = store
+        #endif
         do { archive = try self.store.load() }
         catch {
             archive = BrowserArchive()
@@ -72,7 +73,7 @@ final class BrowserModel {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(4))
                 guard !Task.isCancelled else { break }
-                await self?.refreshMedia()
+                await self?.trimSessions()
             }
         }
     }
@@ -208,7 +209,7 @@ final class BrowserModel {
         for session in candidates where sessions.count > limit {
             // Native media state is sampled, not a claim about every embedded player.
             guard session.id != selectedID, session.mediaState != .playing, !session.fullscreen,
-                  !session.isLoading else { continue }
+                  (!session.isLoading || memoryPressure) else { continue }
             sessions.removeValue(forKey: session.id)?.dispose()
         }
         if memoryPressure { for session in sessions.values { session.snapshot = nil } }
@@ -229,6 +230,12 @@ final class BrowserModel {
                 let domain = $0.displayName.lowercased()
                 return domain == site || site.hasSuffix("." + domain)
             }
+            let domains = matching.map { $0.displayName.lowercased() }
+            let related = sessions.values.filter { session in
+                guard let host = ContentBlocker.siteKey(session.webView.url) else { return false }
+                return domains.contains { host == $0 || host.hasSuffix("." + $0) }
+            }
+            for session in related { sessions.removeValue(forKey: session.id)?.dispose() }
             await dataStore.removeData(ofTypes: types, for: matching)
             let cookies = await dataStore.httpCookieStore.allCookies()
             for cookie in cookies {
@@ -241,6 +248,8 @@ final class BrowserModel {
             archive.tabs = [TabRecord()]
             archive.selectedTabID = archive.tabs[0].id
             lastClosed = nil
+            persistenceAvailable = true
+            downloads.clearTemporaryFiles()
         }
         saveNow()
     }
@@ -251,6 +260,7 @@ final class BrowserModel {
         sessions[id]?.dispose()
         sessions[id] = session
         if let index = archive.tabs.firstIndex(where: { $0.id == id }) { archive.tabs[index].url = url }
+        blocker.apply(to: session.webView, url: url, settings: archive.settings)
         session.webView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
     }
     #endif

@@ -8,19 +8,34 @@ struct StartPage: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
+                if typeSize.isAccessibilitySize {
+                    VStack(alignment: .leading, spacing: 20) {
+                        HStack(spacing: 16) {
+                            HarborMark().frame(width: 60, height: 60)
+                            Text("Harbor").font(.custom("InterVariable", size: 34, relativeTo: .largeTitle).bold()).foregroundStyle(.white)
+                        }
+                        Button(action: showPrivacy) {
+                            Label(browser.protectionStatus, systemImage: "shield.lefthalf.filled")
+                                .font(.body).fixedSize(horizontal: false, vertical: true)
+                                .padding(16).frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                        }.buttonStyle(.plain).foregroundStyle(.primary)
+                            .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 18))
+                    }.padding(24).padding(.bottom, 16).frame(maxWidth: .infinity, alignment: .leading).background(Color.harborNavy)
+                } else {
                 ZStack(alignment: .top) {
                     HorizonArtwork()
                     VStack(spacing: 4) {
                         HarborMark().frame(width: 94, height: 94)
-                        Text("Harbor").font(.largeTitle.weight(.bold)).foregroundStyle(.white)
+                        Text("Harbor").font(.custom("InterVariable", size: 34, relativeTo: .largeTitle).bold()).foregroundStyle(.white)
                         Text("An open place to return to.").font(.subheadline).foregroundStyle(.white)
                         Spacer(minLength: 70)
                         Button(action: showPrivacy) {
                             Label(browser.protectionStatus, systemImage: "shield.lefthalf.filled")
                                 .font(.subheadline.weight(.medium)).padding(.horizontal, 18).frame(minHeight: 44)
-                        }.buttonStyle(.plain).foregroundStyle(.white).harborGlass()
+                        }.buttonStyle(.plain).foregroundStyle(.primary).harborGlass()
                     }.padding(.top, 16).padding(.bottom, 26)
-                }.frame(height: typeSize.isAccessibilitySize ? 350 : 350)
+                }.frame(height: 350)
+                }
                 VStack(alignment: .leading, spacing: 26) {
                     if let recent = browser.archive.history.first {
                         VStack(alignment: .leading, spacing: 12) {

@@ -96,23 +96,23 @@ struct BrowserView: View {
             }
             HStack(spacing: 0) {
                 Button { editingAddress = false; sheet = .privacy } label: {
-                    Image(systemName: "shield.lefthalf.filled").frame(width: 44, height: 48)
+                    Image(systemName: "shield.lefthalf.filled").dynamicTypeSize(...DynamicTypeSize.xxxLarge).frame(width: 44, height: 48)
                 }.accessibilityLabel(browser.protectionStatus)
-                TextField("Search or enter address", text: $address)
+                TextField(typeSize.isAccessibilitySize ? "Address" : "Search or enter address", text: $address)
                     .textInputAutocapitalization(.never).autocorrectionDisabled()
                     .keyboardType(.webSearch).submitLabel(.go)
                     .focused($editingAddress).onSubmit(submit)
                     .accessibilityIdentifier("addressField")
                     .frame(minHeight: 48)
                 if editingAddress {
-                    Button(action: submit) { Image(systemName: "arrow.right.circle.fill").frame(width: 44, height: 48) }
+                    Button(action: submit) { Image(systemName: "arrow.right.circle.fill").dynamicTypeSize(...DynamicTypeSize.xxxLarge).frame(width: 44, height: 48) }
                         .accessibilityLabel("Go")
                 } else if browser.selectedTab.url != nil {
                     Button {
                         if browser.activeSession?.isLoading == true { browser.activeSession?.webView.stopLoading() }
                         else { browser.reload() }
                     } label: {
-                        Image(systemName: browser.activeSession?.isLoading == true ? "xmark" : "arrow.clockwise").frame(width: 44, height: 48)
+                        Image(systemName: browser.activeSession?.isLoading == true ? "xmark" : "arrow.clockwise").dynamicTypeSize(...DynamicTypeSize.xxxLarge).frame(width: 44, height: 48)
                     }.accessibilityLabel(browser.activeSession?.isLoading == true ? "Stop loading" : "Reload")
                 }
             }.padding(.horizontal, 4).harborGlass()
@@ -127,7 +127,7 @@ struct BrowserView: View {
                         ZStack {
                             Image(systemName: "square.on.square").font(.title3)
                             Text("\(browser.archive.tabs.count)").font(.caption2.bold()).offset(y: 2)
-                        }.frame(maxWidth: .infinity, minHeight: 48)
+                        }.dynamicTypeSize(...DynamicTypeSize.xxxLarge).frame(maxWidth: .infinity, minHeight: 48)
                     }.accessibilityLabel("Tabs, \(browser.archive.tabs.count) open").accessibilityIdentifier("tabsButton")
                     Menu {
                         if let url = browser.selectedTab.url {
@@ -145,15 +145,16 @@ struct BrowserView: View {
                         if browser.downloads.activeCount > 0 { Text("Downloading \(browser.downloads.activeCount) file(s)…") }
                         Button("Settings", systemImage: "gearshape") { sheet = .settings }
                     } label: {
-                        Image(systemName: "ellipsis").frame(maxWidth: .infinity, minHeight: 48)
+                        Image(systemName: "ellipsis").dynamicTypeSize(...DynamicTypeSize.xxxLarge).frame(maxWidth: .infinity, minHeight: 48)
                     }.accessibilityLabel("More").accessibilityIdentifier("moreButton")
                 }.harborGlass()
             }
         }
         .padding(.horizontal, typeSize.isAccessibilitySize ? 8 : 16).padding(.top, 8).padding(.bottom, 5)
+        .background(typeSize.isAccessibilitySize ? Color(uiColor: .systemBackground) : .clear)
     }
     private func action(_ name: String, symbol: String, perform: @escaping () -> Void) -> some View {
-        Button(action: perform) { Image(systemName: symbol).frame(maxWidth: .infinity, minHeight: 48) }.accessibilityLabel(name)
+        Button(action: perform) { Image(systemName: symbol).dynamicTypeSize(...DynamicTypeSize.xxxLarge).frame(maxWidth: .infinity, minHeight: 48) }.accessibilityLabel(name)
     }
     private func submit() { browser.navigate(address); editingAddress = false }
     private func syncAddress() { address = browser.selectedTab.url?.absoluteString ?? "" }

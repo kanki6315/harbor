@@ -55,9 +55,9 @@ Every normal WKWebView uses `WKWebsiteDataStore.default()`. Cookies, local stora
 
 Harbor saves tab IDs, URLs, titles, recency and the selected tab, plus settings, history, bookmarks and site exceptions. Changes are coalesced for 250 ms and flushed when the scene becomes inactive. Relaunch restores the selected tab; other tabs load lazily when selected. Back/forward lists, DOM state, scroll position, unsaved forms, in-memory JavaScript and media position are not serialized.
 
-The normal target is five resident web views. Recent views are preferred; the selected view, loading pages, full-screen views and views reported as playing media are protected from ordinary eviction. Memory warnings tighten the target to one and discard previews, while retaining those protected views. This is a soft target: several active players or loading pages may exceed it. iOS can still terminate content processes under pressure. Harbor offers reload after process termination instead of pretending the page survived.
+The normal target is five resident web views. Recent views are preferred; the selected view, loading pages, full-screen views and views reported as playing media are protected from ordinary eviction. Memory warnings tighten the target to one and discard previews; inactive loading views may then be released, but selected, playing and full-screen views remain protected. This is a soft target: several active players or loading pages may exceed it. iOS can still terminate content processes under pressure. Harbor offers reload after process termination instead of pretending the page survived.
 
-Resident views remain attached under the selected page and are hidden from interaction/accessibility when inactive. The tab switcher is a sheet, so opening it does not intentionally stop media. Native `requestMediaPlaybackState()` is sampled every four seconds and before eviction. That is a coarse observation, not a guaranteed description of every remote player. Closing a tab explicitly pauses its media. There is also Pause media in the More menu when playback is reported.
+Resident views remain attached under the selected page and are hidden from interaction/accessibility when inactive. The tab switcher is a sheet, so opening it does not intentionally stop media. Native `requestMediaPlaybackState()` is sampled every four seconds and before eviction. The periodic check also trims idle views after loading finishes. That is a coarse observation, not a guaranteed description of every remote player. Closing a tab explicitly pauses its media. There is also Pause media in the More menu when playback is reported.
 
 ## Privacy model
 
@@ -75,7 +75,7 @@ Harbor is **not an anonymity tool or a private/incognito browser**. Browsing met
 
 ## Website data and security
 
-Per-site clearing asks WebKit for domain records and removes matching cookies/storage. WebKit may report registrable domains, so related subdomains can also be affected; exact-origin deletion is not guaranteed. Pages affected by deletion are stopped and require an explicit reload. All-site clearing closes tabs and removes history, cookies, cache and website storage; bookmarks, settings and exceptions remain.
+Per-site clearing asks WebKit for domain records and removes matching cookies/storage. WebKit may report registrable domains, so related subdomains can also be affected; exact-origin deletion is not guaranteed. Pages affected by deletion are stopped and require an explicit reload. All-site clearing closes tabs and removes history, cookies, cache and website storage; bookmarks, settings and exceptions remain. Temporary downloads are removed and active downloads are cancelled.
 
 TLS validation, App Transport Security and the standard user agent are unchanged. There is no trust-challenge bypass, arbitrary-load exception, DRM workaround, injected remote script or universal third-party cookie override. Plain HTTP sites may be restricted by platform transport policy. Unknown schemes from automatic redirects or subframes are not launched. Supported user-activated external links go through iOS after confirmation; unavailable handlers produce an error.
 

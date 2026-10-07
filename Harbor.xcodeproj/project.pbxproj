@@ -10,6 +10,7 @@
 		0796C8C586D263695809DD28 /* WebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A9583BF6DE5AFB2A4010988 /* WebView.swift */; };
 		082237852438F2DEB6E96199 /* AddressResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = D96B2CB93607920BE719D8AB /* AddressResolver.swift */; };
 		09BAC6D6BFFE06A1AEA66B78 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9001D4A63BE87D7F963C60EA /* SettingsView.swift */; };
+		132DFB10345760E06C6EF0A2 /* Inter-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = AFD32DACEA1436F9062A389A /* Inter-LICENSE.txt */; };
 		220767EBF7B80578BD1B335D /* ContentBlocker.swift in Sources */ = {isa = PBXBuildFile; fileRef = E82A2A3EC830EA9BAFCB2AB0 /* ContentBlocker.swift */; };
 		27D61E0450E6E5112C3E9F4C /* browser-fixture.html in Resources */ = {isa = PBXBuildFile; fileRef = 9052E51CA50FAD43868D4EAF /* browser-fixture.html */; };
 		28591921356F0395860A9CF1 /* TabSwitcherView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE5E7BF30A7A15DF9DA66ADE /* TabSwitcherView.swift */; };
@@ -21,8 +22,10 @@
 		58330D87B9E987C51C75045E /* PrivacyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8E066949A24E6E770CD3D65 /* PrivacyView.swift */; };
 		5F6E92046E672238F0CDEFB8 /* Harbor.icon in Resources */ = {isa = PBXBuildFile; fileRef = 1C02BFC1BBBA23DDCB63F733 /* Harbor.icon */; };
 		6D6A3DD8C44B36DF2A6002BD /* TabSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 184640849705AB4AC6A00104 /* TabSession.swift */; };
+		77D4FC551D829C01E45C7EE4 /* ASSET-PROVENANCE.md in Resources */ = {isa = PBXBuildFile; fileRef = 460B5BEE1267E94874C9C1D1 /* ASSET-PROVENANCE.md */; };
 		8CC8F1E36E6EB8A482C225C9 /* media-fixture.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 45AA0FFDCD1A6FA52AB31421 /* media-fixture.mp4 */; };
 		948DE1C2D45A84F2C96590CA /* BrowserStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1406ACD438D69502DF2477D9 /* BrowserStore.swift */; };
+		9CB7C083AC9180B532A03549 /* InterVariable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 972E653A7AA6FC8D8ACC2D7A /* InterVariable.ttf */; };
 		9D90C803E6DD9A9A2A9FA2EF /* WebKitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02DC065BCECE9277F46E29CA /* WebKitTests.swift */; };
 		A841BD0DA056BC35DC174995 /* BrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0928CBCE6B2B8CF9A1C8E101 /* BrowserView.swift */; };
 		B6D68FBA64C5330947E1DC3B /* CoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AADA16BCB66DBB857A8CFA9C /* CoreTests.swift */; };
@@ -60,6 +63,7 @@
 		184640849705AB4AC6A00104 /* TabSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabSession.swift; sourceTree = "<group>"; };
 		1C02BFC1BBBA23DDCB63F733 /* Harbor.icon */ = {isa = PBXFileReference; lastKnownFileType = wrapper.icon; path = Harbor.icon; sourceTree = "<group>"; };
 		45AA0FFDCD1A6FA52AB31421 /* media-fixture.mp4 */ = {isa = PBXFileReference; path = "media-fixture.mp4"; sourceTree = "<group>"; };
+		460B5BEE1267E94874C9C1D1 /* ASSET-PROVENANCE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "ASSET-PROVENANCE.md"; sourceTree = "<group>"; };
 		5F28B32FF2AAAC119B3AE99C /* BrowserModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserModel.swift; sourceTree = "<group>"; };
 		5FDF236211F428FA2F29F1EB /* LibraryViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryViews.swift; sourceTree = "<group>"; };
 		65AF98241E93DEBF36C42323 /* BrowserModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserModels.swift; sourceTree = "<group>"; };
@@ -69,10 +73,12 @@
 		9001D4A63BE87D7F963C60EA /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		9052E51CA50FAD43868D4EAF /* browser-fixture.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "browser-fixture.html"; sourceTree = "<group>"; };
 		90F8F5491D94CDA15AACB8B9 /* StartPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartPage.swift; sourceTree = "<group>"; };
+		972E653A7AA6FC8D8ACC2D7A /* InterVariable.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = InterVariable.ttf; sourceTree = "<group>"; };
 		99DA7063445906ED225ACC58 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A1A24B8FB5625E4BF69363D8 /* HarborApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HarborApp.swift; sourceTree = "<group>"; };
 		A8E066949A24E6E770CD3D65 /* PrivacyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyView.swift; sourceTree = "<group>"; };
 		AADA16BCB66DBB857A8CFA9C /* CoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreTests.swift; sourceTree = "<group>"; };
+		AFD32DACEA1436F9062A389A /* Inter-LICENSE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Inter-LICENSE.txt"; sourceTree = "<group>"; };
 		B2CB1919CD74BF56527D5C66 /* TrackingParameterCleaner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackingParameterCleaner.swift; sourceTree = "<group>"; };
 		BA5EB16A6B2005AF2D2AC17B /* HarborUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = HarborUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C7972E793D4F5BE6AF54E941 /* HarborTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = HarborTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -218,7 +224,10 @@
 		FC114163C5EAD254CEF4EE41 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				460B5BEE1267E94874C9C1D1 /* ASSET-PROVENANCE.md */,
 				9052E51CA50FAD43868D4EAF /* browser-fixture.html */,
+				AFD32DACEA1436F9062A389A /* Inter-LICENSE.txt */,
+				972E653A7AA6FC8D8ACC2D7A /* InterVariable.ttf */,
 				45AA0FFDCD1A6FA52AB31421 /* media-fixture.mp4 */,
 				76EDDF40AF0F4C9AAFE65857 /* tracker-rules.json */,
 			);
@@ -332,8 +341,11 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				77D4FC551D829C01E45C7EE4 /* ASSET-PROVENANCE.md in Resources */,
 				F0E0DF0F9F4AA7B71CBF19E9 /* Assets.xcassets in Resources */,
 				5F6E92046E672238F0CDEFB8 /* Harbor.icon in Resources */,
+				132DFB10345760E06C6EF0A2 /* Inter-LICENSE.txt in Resources */,
+				9CB7C083AC9180B532A03549 /* InterVariable.ttf in Resources */,
 				27D61E0450E6E5112C3E9F4C /* browser-fixture.html in Resources */,
 				8CC8F1E36E6EB8A482C225C9 /* media-fixture.mp4 in Resources */,
 				E7B3228F79201E1FB567453A /* tracker-rules.json in Resources */,
@@ -575,7 +587,7 @@
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Websites can request microphone access for calls or recording audio.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -634,7 +646,7 @@
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Websites can request microphone access for calls or recording audio.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

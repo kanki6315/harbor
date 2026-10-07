@@ -23,12 +23,12 @@ struct TabSwitcherView: View {
                     }.padding(16)
                 }
             }.background(Color(uiColor: .systemGroupedBackground))
-                .navigationTitle("\(browser.archive.tabs.count) tabs")
-                .searchable(text: $search, prompt: "Search all tabs")
+                .navigationTitle(browser.archive.tabs.count == 1 ? "1 tab" : "\(browser.archive.tabs.count) tabs")
+                .searchable(text: $search, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search all tabs")
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) { Button("Done") { dismiss() } }
                     ToolbarItem(placement: .bottomBar) {
-                        Button("New tab", systemImage: "plus") { browser.newTab(); dismiss() }
+                        Button("New tab", systemImage: "plus") { browser.newTab(); dismiss() }.accessibilityIdentifier("tabSwitcherNewTab")
                     }
                     if browser.lastClosed != nil {
                         ToolbarItem(placement: .bottomBar) { Button("Undo close", systemImage: "arrow.uturn.backward") { browser.undoClose() } }
