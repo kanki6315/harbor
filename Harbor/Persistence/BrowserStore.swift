@@ -12,6 +12,7 @@ struct BrowserStore {
     private struct Preferences: Codable {
         var version = 1
         var bookmarks: [Bookmark]
+        var bookmarkFolders: [BookmarkFolder]?
         var settings: BrowserSettings
     }
     private struct Session: Codable {
@@ -36,6 +37,7 @@ struct BrowserStore {
         if FileManager.default.fileExists(atPath: durableURL.path) {
             let preferences = try JSONDecoder().decode(Preferences.self, from: Data(contentsOf: durableURL))
             guard preferences.version == 1 else { throw CocoaError(.coderReadCorrupt) }
+            archive.bookmarkFolders = preferences.bookmarkFolders ?? []
             archive.bookmarks = preferences.bookmarks
             archive.settings = preferences.settings
         }
@@ -76,7 +78,7 @@ struct BrowserStore {
         let encoder = JSONEncoder()
         try encoder.encode(Session(tabs: archive.tabs, selectedTabID: archive.selectedTabID, history: archive.history))
             .write(to: sessionURL, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
-        try encoder.encode(Preferences(bookmarks: archive.bookmarks, settings: archive.settings))
+        try encoder.encode(Preferences(bookmarks: archive.bookmarks, bookmarkFolders: archive.bookmarkFolders, settings: archive.settings))
             .write(to: durableURL, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
         // Never delete the source until both destination files have been committed.
         if FileManager.default.fileExists(atPath: fileURL.path) { try FileManager.default.removeItem(at: fileURL) }

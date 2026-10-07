@@ -23,7 +23,7 @@ xcodebuild -project Harbor.xcodeproj -scheme Harbor \
 - Combined address/search entry, HTTPS for entered domains, DuckDuckGo by default, Google and Bing options.
 - Back/forward gestures and buttons, reload/stop, sharing, and popup-created tabs.
 - New, close, switch, search and restore tabs; undo the most recent close; in-memory page previews.
-- Local history with search and deletion, bookmarks, recent pages and favorites on the start page.
+- Local history with search and deletion, bookmarks, recent pages and favorites on the start page. New bookmarks receive concise on-device name suggestions through Apple Foundation Models when available; otherwise they keep the page title. Create named folders, save directly into a folder, and swipe or long-press bookmarks to rename or move them. Search includes bookmark names, addresses and folder names. Deleting a folder moves its bookmarks to Unfiled. Folders are currently one level deep and stay within their profile. Naming uses only the title, hostname and URL path, with no cloud service or extra page fetch.
 - Bundled WebKit tracker rules, tracking-parameter cleaning, and persistent per-host blocking exceptions.
 - Per-site data removal and explicit all-site browsing-data clearing.
 - WebKit audio/video, native full screen, and configured support for PiP and AirPlay where permitted.
