@@ -21,6 +21,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.arjunakankipati.harbor
         GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
         INFOPLIST_KEY_CFBundleDisplayName: Harbor
         INFOPLIST_KEY_NSCameraUsageDescription: Websites can request camera access for calls or capturing photos.
         INFOPLIST_KEY_NSMicrophoneUsageDescription: Websites can request microphone access for calls or recording audio.

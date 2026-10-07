@@ -582,6 +582,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Harbor;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Websites can request camera access for calls or capturing photos.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Websites can request microphone access for calls or recording audio.";
@@ -641,6 +642,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Harbor;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Websites can request camera access for calls or capturing photos.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Websites can request microphone access for calls or recording audio.";
