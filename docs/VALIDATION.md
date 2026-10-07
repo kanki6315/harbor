@@ -105,6 +105,12 @@ Final iOS 27 verification passed all 18 core/WebKit tests and the profile-manage
 
 The independent native finish review returned **ship** for the five supplied profile captures and relevant source, with no material fixes. Scope: standard light iPhone 18 Pro/iOS 27, largest accessibility text in dark mode iPhone 17 Pro/iOS 26.5, profile management/creation and the return settings editor. Dark lower return settings, physical hardware, full VoiceOver traversal and motion quality were not visually certified. The documentation check confirmed the extension preserves incumbent native component conventions and design tokens; pre-existing design-sidecar drift was not repaired.
 
+## Storage and backup policy — October 7, 2026
+
+All 22 HarborTests passed on iPhone 17 Pro / iOS 26.5 Simulator after splitting backup-eligible preferences from excluded browsing sessions. New coverage verifies legacy archive migration, interrupted second-write recovery, exclusion resource values, restoration without session/background files, and migration of inactive profiles and legacy background timestamps. Existing profile isolation, inactivity return, WebKit and download tests also passed. Result: `/tmp/harbor-backup-policy/Logs/Test/Test-Harbor-2026.10.07_16-59-39--0400.xcresult`.
+
+Backup restoration was simulated by removing the excluded directories; no actual iCloud backup/restore or physical-device validation was performed. WebKit-owned storage remains unchanged. Old backups are not modified. Preferences and session files are individually atomic, not a cross-file transaction.
+
 ## Tab ordering and saved previews — 2026-10-07
 
 - Simulator build passed. Six CoreTests passed, covering ordering/selection/archive persistence, preview round-trip and profile isolation, pruning, and releasing a background session while retaining its record/preview and removing that preview during data clearing.
@@ -113,3 +119,7 @@ The independent native finish review returned **ship** for the five supplied pro
 - Initial UI attempts exposed test selector ambiguity and an iOS 26.5 simulator interruption. Corrected selectors and explicit media pause passed on iOS 27. No full-suite, physical-device, VoiceOver gesture, long-session performance or grid drag autoscroll verification is claimed.
 - Previews are the last successful local capture, not offline pages or saved form/navigation state. Unloaded pages reload on selection; pages without a successful capture retain the placeholder.
 - Independent Impeccable finish review: **ship** for this tab refinement, based on the four final phone captures, incumbent design and relevant source. No material fixes requested; this is a scoped simulator review.
+
+### 0.1.5 integration verification
+
+After integrating main's Face ID profile locks and saved tab previews, all 29 HarborTests passed on iPhone 17 Pro / iOS 26.5 Simulator. Version 0.1.5 is set in both project.yml and the Xcode project. Result: `/tmp/harbor-backup-policy/Logs/Test/Test-Harbor-2026.10.07_17-01-47--0400.xcresult`. This was a simulator test build, not an archive or TestFlight upload.

@@ -1,23 +1,85 @@
 import Foundation
 import UIKit
 
-/// A versioned, atomic snapshot. Cookies and website storage belong exclusively to WebKit.
+/// Durable preferences are backed up; browsing sessions remain local to this device.
 struct BrowserStore {
+    /// The original mixed archive, retained only until migration succeeds.
     let fileURL: URL
+    var durableURL: URL { fileURL.deletingLastPathComponent().appending(path: "preferences.json") }
+    var sessionDirectory: URL { fileURL.deletingLastPathComponent().appending(path: "DeviceOnly") }
+    var sessionURL: URL { sessionDirectory.appending(path: "session.json") }
+
+    private struct Preferences: Codable {
+        var version = 1
+        var bookmarks: [Bookmark]
+        var settings: BrowserSettings
+    }
+    private struct Session: Codable {
+        var version = 1
+        var tabs: [TabRecord]
+        var selectedTabID: UUID?
+        var history: [HistoryEntry]
+    }
+
     init(fileURL: URL? = nil) {
         self.fileURL = fileURL ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appending(path: "Harbor/browser.json")
     }
     func load() throws -> BrowserArchive {
-        guard FileManager.default.fileExists(atPath: fileURL.path) else { return BrowserArchive() }
-        let archive = try JSONDecoder().decode(BrowserArchive.self, from: Data(contentsOf: fileURL))
+        if FileManager.default.fileExists(atPath: fileURL.path) {
+            // The original remains authoritative after an interrupted migration.
+            let archive = try Self.readLegacy(fileURL)
+            try save(archive)
+            return archive
+        }
+        var archive = BrowserArchive()
+        if FileManager.default.fileExists(atPath: durableURL.path) {
+            let preferences = try JSONDecoder().decode(Preferences.self, from: Data(contentsOf: durableURL))
+            guard preferences.version == 1 else { throw CocoaError(.coderReadCorrupt) }
+            archive.bookmarks = preferences.bookmarks
+            archive.settings = preferences.settings
+        }
+        if FileManager.default.fileExists(atPath: sessionDirectory.path) {
+            try Self.prepareDeviceOnlyDirectory(sessionDirectory)
+        }
+        if FileManager.default.fileExists(atPath: sessionURL.path) {
+            let session = try JSONDecoder().decode(Session.self, from: Data(contentsOf: sessionURL))
+            guard session.version == 1 else { throw CocoaError(.coderReadCorrupt) }
+            archive.tabs = session.tabs
+            archive.selectedTabID = session.selectedTabID
+            archive.history = session.history
+        }
+        return archive
+    }
+    static func readLegacy(_ url: URL) throws -> BrowserArchive {
+        // Protect even an unreadable legacy archive while keeping it recoverable.
+        try excludeFromBackup(url)
+        let archive = try JSONDecoder().decode(BrowserArchive.self, from: Data(contentsOf: url))
         guard archive.version == 1 else { throw CocoaError(.coderReadCorrupt) }
         return archive
     }
+    static func prepareDeviceOnlyDirectory(_ directory: URL) throws {
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try excludeFromBackup(directory)
+    }
+    static func excludeFromBackup(_ resource: URL) throws {
+        var url = resource
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        try url.setResourceValues(values)
+        guard try url.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup == true else {
+            throw CocoaError(.fileWriteUnknown)
+        }
+    }
     func save(_ archive: BrowserArchive) throws {
-        try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-        let data = try JSONEncoder().encode(archive)
-        try data.write(to: fileURL, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+        try Self.prepareDeviceOnlyDirectory(sessionDirectory)
+        let encoder = JSONEncoder()
+        try encoder.encode(Session(tabs: archive.tabs, selectedTabID: archive.selectedTabID, history: archive.history))
+            .write(to: sessionURL, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+        try encoder.encode(Preferences(bookmarks: archive.bookmarks, settings: archive.settings))
+            .write(to: durableURL, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+        // Never delete the source until both destination files have been committed.
+        if FileManager.default.fileExists(atPath: fileURL.path) { try FileManager.default.removeItem(at: fileURL) }
     }
 }
 
