@@ -11,19 +11,28 @@ struct BrowserView: View {
     @State private var address = ""
     @State private var sheet: BrowserSheet?
     @State private var share: ShareItem?
+    @State private var chromeHeight: CGFloat = 117
     @FocusState private var editingAddress: Bool
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
+        GeometryReader { geometry in
+            content(in: geometry)
+        }
+    }
+
+    private func content(in geometry: GeometryProxy) -> some View {
         ZStack {
             Color(uiColor: .systemBackground)
             // Resident views stay attached to preserve WebKit's media and native full-screen UI.
             ForEach(browser.archive.tabs) { tab in
                 if let session = browser.sessions[tab.id] {
-                    WebView(webView: session.webView)
+                    WebView(webView: session.webView,
+                            contentInsets: UIEdgeInsets(top: geometry.safeAreaInsets.top, left: 0,
+                                bottom: geometry.safeAreaInsets.bottom + (browser.activeSession?.fullscreen == true ? 0 : chromeHeight), right: 0))
                         // Keep the page beneath the system status area and floating glass controls.
-                        // WebKit's automatic scroll insets keep page controls reachable above the bar.
+                        // Explicit scroll insets keep controls reachable while the page draws behind glass.
                         .ignoresSafeArea(.container, edges: .vertical)
                         .opacity(tab.id == browser.selectedID ? 1 : 0)
                         .allowsHitTesting(tab.id == browser.selectedID)
@@ -49,7 +58,9 @@ struct BrowserView: View {
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if browser.activeSession?.fullscreen != true { chrome }
+            if browser.activeSession?.fullscreen != true {
+                chrome.onGeometryChange(for: CGFloat.self) { $0.size.height } action: { chromeHeight = $0 }
+            }
         }
         .onChange(of: browser.selectedID) { _, _ in editingAddress = false; syncAddress() }
         .onChange(of: browser.selectedTab.url) { _, _ in if !editingAddress { syncAddress() } }

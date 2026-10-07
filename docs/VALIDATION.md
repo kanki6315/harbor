@@ -62,3 +62,9 @@ The contrast reviewer confirmed the address prompt and first-run supporting copy
 After the user requested transparent chrome and a centered tab count, two focused UI tests passed (video across tab switching and native audio/fullscreen), including assertions that the website frame extends behind both the status area and bottom controls. A third focused test passed start-page navigation, tabs, restoration and settings after the start-page extension. Native screenshots confirm content beneath the glass capsules and the centered count; the reviewer accepted these requested changes with no material visual issue. Reduce Transparency intentionally retains the accessible opaque capsule fallback.
 
 Final focused result bundles: `Test-Harbor-2026.10.07_00-26-58--0400.xcresult` and `Test-Harbor-2026.10.07_00-28-13--0400.xcresult`, under `/tmp/harbor-build/Logs/Test/`.
+
+## Release recovery verification
+
+The release attempt on the iPhone 17 simulator failed before test execution while launching the app and UI test runner. The terminal was force-closed, leaving its result bundle incomplete. Local `.release.env` now selects the previously working iPhone 18 Pro by UDID.
+
+A fresh full run exposed covered web controls in the HLS and popup tests after the transparent-chrome change. The browser now measures chrome height and applies explicit WebKit scroll insets; tests scroll targets above the native controls and assert their reachability before tapping. The subsequent full run passed 12 tests with the existing YouTube compatibility skip and no failures. Website geometry still extends beneath the status area and glass bars. No archive or upload was performed during this recovery.

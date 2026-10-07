@@ -57,6 +57,7 @@ final class HarborUITests: XCTestCase {
         app.launch()
         let popup = app.webViews.links["Open popup tab"]
         XCTAssertTrue(popup.waitForExistence(timeout: 15))
+        revealAboveChrome(popup, in: app)
         popup.tap()
         XCTAssertTrue(app.webViews.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "This domain is for use in documentation")).firstMatch.waitForExistence(timeout: 20))
         app.buttons["tabsButton"].tap()
@@ -94,6 +95,7 @@ final class HarborUITests: XCTestCase {
         app.launch()
         let play = app.webViews.buttons["Play Apple HLS sample"]
         XCTAssertTrue(play.waitForExistence(timeout: 15))
+        revealAboveChrome(play, in: app)
         play.tap()
         XCTAssertTrue(app.webViews.staticTexts["HLS playing"].waitForExistence(timeout: 25))
     }
@@ -121,6 +123,16 @@ final class HarborUITests: XCTestCase {
             print("YouTube playback observation: " + app.debugDescription)
             throw XCTSkip("WebKit did not report playing media after the YouTube play action; physical-device verification remains required.")
         }
+    }
+
+    @MainActor private func revealAboveChrome(_ element: XCUIElement, in app: XCUIApplication) {
+        // XCTest can consider a web element hittable even when native glass overlaps it.
+        for _ in 0..<4 {
+            if element.frame.maxY < app.textFields["addressField"].frame.minY - 8 { break }
+            app.webViews.firstMatch.swipeUp()
+        }
+        XCTAssertLessThan(element.frame.maxY, app.textFields["addressField"].frame.minY,
+                          "Page controls must scroll above the browser chrome")
     }
 
     @MainActor private func capture(_ app: XCUIApplication, name: String) {
