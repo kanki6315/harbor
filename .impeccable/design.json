@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-07T21:45:29.203896+00:00",
+  "generatedAt": "2026-10-07T21:46:57.054040+00:00",
   "title": "Design System: Harbor",
   "extensions": {
     "colorMeta": {
@@ -142,6 +142,13 @@
       "description": "Documentation-only HTML approximation of the native prominent capsule button. SwiftUI owns tint, disabled appearance, Dynamic Type and progress rendering; validate these on iOS. The secondary Switch profile action opens the native Profiles sheet.",
       "html": "<div class=\"ds-unlock-actions\"><button class=\"ds-unlock\">Unlock with Face ID</button><button class=\"ds-switch\">Switch profile</button></div>",
       "css": ".ds-unlock-actions{display:grid;gap:12px;font:17px system-ui}.ds-unlock-actions button{font:inherit;min-height:44px;padding:8px 20px;border:0;cursor:pointer}.ds-unlock{border-radius:999px;background:Highlight;color:HighlightText}.ds-switch{background:transparent;color:LinkText}.ds-unlock-actions button:hover:not(:disabled){filter:brightness(.96)}.ds-unlock-actions button:focus-visible{outline:2px solid Highlight;outline-offset:3px}.ds-unlock-actions button:active:not(:disabled){opacity:.7}.ds-unlock-actions button:disabled{opacity:.5;cursor:default}"
+    },
+    {
+      "name": "Top browser controls",
+      "kind": "nav",
+      "description": "Documentation-only native control approximation. Contextual Page actions floats at the leading edge; History and Settings float at the trailing edge. The outer surround is transparent over content, without a reserved row. Hidden when scrolling, editing the address or viewing fullscreen media.",
+      "html": "<nav class=\"ds-top\" aria-label=\"Browser utilities\"><button>Page actions</button><span></span><button>History</button><button>Settings</button></nav>",
+      "css": ".ds-top{display:flex;gap:8px;color:CanvasText}.ds-top span{flex:1}.ds-top button{min-width:48px;min-height:48px;border:0;border-radius:99px;background:ButtonFace;color:ButtonText;font:14px system-ui}.ds-top button:hover{opacity:.8}.ds-top button:active{opacity:.6}.ds-top button:focus-visible{outline:2px solid Highlight;outline-offset:2px}"
     }
   ],
   "narrative": {
