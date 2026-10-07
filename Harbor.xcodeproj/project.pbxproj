@@ -301,15 +301,15 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					2808BCF99DF40CC4C8E70735 = {
-						DevelopmentTeam = "";
+						DevelopmentTeam = TDBAHN96B3;
 						ProvisioningStyle = Automatic;
 					};
 					55C0EA4DEB3080BF9407B82A = {
-						DevelopmentTeam = "";
+						DevelopmentTeam = TDBAHN96B3;
 						ProvisioningStyle = Automatic;
 					};
 					FF177966E5C977FB7B1BE27A = {
-						DevelopmentTeam = "";
+						DevelopmentTeam = TDBAHN96B3;
 						ProvisioningStyle = Automatic;
 						TestTargetID = 2808BCF99DF40CC4C8E70735;
 					};
@@ -449,7 +449,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = TDBAHN96B3;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -533,7 +533,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = TDBAHN96B3;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -592,7 +592,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.arjunakankipati.harbor;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -651,7 +651,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.arjunakankipati.harbor;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";

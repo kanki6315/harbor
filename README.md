@@ -6,7 +6,7 @@ A small, persistent iPhone browser built with SwiftUI and Apple’s WKWebView. H
 
 1. Open `Harbor.xcodeproj` in **Xcode 27.0** (iOS 27 SDK). The deployment target is iOS 26.0; the initial device family is iPhone.
 2. Choose the **Harbor** scheme and an iPhone simulator, then Run.
-3. For a physical iPhone, select your development team in Signing & Capabilities. The bundle ID is **`com.arjunakankipati.harbor`**. No signing team or credentials are committed.
+3. For a physical iPhone, select your development team in Signing & Capabilities. The bundle ID is **`com.arjunakankipati.harbor`**. The project includes the development team ID; signing credentials remain local.
 4. Build and test with Product → Test. No package installation is needed.
 
 The existing `assets/HarborIcon/Harbor.icon` is the app’s Icon Composer source. It is referenced directly by the Xcode project; the pre-existing PNG previews are not substituted for it.
@@ -131,3 +131,9 @@ Future work: tab groups and iPad layouts; encrypted/private iCloud sync; profile
 - [Picture in Picture configuration and related media preferences](https://developer.apple.com/documentation/webkit/wkwebviewconfiguration/allowspictureinpicturemediaplayback).
 - [Persistent website data store](https://developer.apple.com/documentation/webkit/wkwebsitedatastore/default()).
 - [Native Liquid Glass](https://developer.apple.com/documentation/technologyoverviews/adopting-liquid-glass).
+
+## Release 0.1.0
+
+The initial Harbor release includes persistent tabs and website storage, tracker blocking, per-site exceptions, history, bookmarks, native media playback, and the Horizon interface. See [validation notes](docs/VALIDATION.md) for tested behavior and remaining device checks.
+
+To archive and upload to TestFlight, configure the git-ignored `.release.env` using `.release.env.example`, then run `./release.sh` from a clean checkout. The script regenerates the Xcode project, runs tests, archives, uploads, and creates a build-specific Git tag after a successful upload. Use `./release.sh --no-upload` to export locally. The local `v0.1.0` tag identifies the source release; TestFlight availability requires a successful upload and App Store Connect processing.
