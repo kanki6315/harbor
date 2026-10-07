@@ -39,12 +39,12 @@ components:
 
 **Creative North Star: "Horizon"**
 
-Harbor combines a calm maritime identity with native iOS behavior. Deep blue water, reflected warm sunlight and the supplied Harbor mark establish the start page; semantic content surfaces and native Liquid Glass keep everyday browsing clear. Collections remains a reference for future organization, not a second identity or an implemented groups feature.
+Harbor combines a calm maritime identity with native iOS behavior. Deep blue water, reflected warm sunlight and the supplied Harbor mark establish the start page and locked profile screen; semantic content surfaces and native Liquid Glass keep everyday browsing clear. Collections remains a reference for future organization, not a second identity or an implemented groups feature.
 
-This is the implemented SwiftUI system, extracted from `Harbor/Views/HarborTheme.swift`, `StartPage.swift`, `BrowserView.swift` and `TabSwitcherView.swift`. The [identity board](design/brand/harbor-identity.png) remains brand authority. The Xcode project references `assets/HarborIcon/Harbor.icon` directly; the in-app mark draws the supplied SVG path geometry in a resolution-independent Canvas. Generated comp marks never replace the supplied identity. Surface behavior belongs in [the browser brief](design/BROWSER-SURFACE.md).
+This is the implemented SwiftUI system, extracted from `Harbor/Views/HarborTheme.swift`, `StartPage.swift`, `BrowserView.swift`, `TabSwitcherView.swift`, `LibraryViews.swift` and `ProfilesView.swift`. The [identity board](design/brand/harbor-identity.png) remains brand authority. The Xcode project references `assets/HarborIcon/Harbor.icon` directly; the in-app mark draws the supplied SVG path geometry in a resolution-independent Canvas. Generated comp marks never replace the supplied identity. Surface behavior belongs in [the browser brief](design/BROWSER-SURFACE.md).
 
 **Key Characteristics:**
-- Still Horizon artwork at the start of browsing.
+- Still Horizon artwork at the start of browsing and while a profile is locked.
 - Native semantic content and glass controls.
 - Inter branding with system functional typography.
 - Honest personal content and accessible reflow.
@@ -63,7 +63,7 @@ Wave and Sun support water, sky and reflected sunlight. Sun is never a security 
 
 ### Neutral
 
-Functional UI uses `Color.primary`, `.secondary`, and UIKit `systemBackground`, `systemGroupedBackground`, `secondarySystemBackground` and `tertiarySystemGroupedBackground`. These are native adaptive roles, not fixed CSS colors. The address prompt and first-run supporting body use primary at 72% opacity after contrast review. White is used for brand lettering and labels on navy imagery. Mist and Slate remain supplied identity-board colors, but are not extracted as reusable implementation tokens because these SwiftUI surfaces use semantic backgrounds instead.
+Functional UI uses `Color.primary`, `.secondary`, and UIKit `systemBackground`, `systemGroupedBackground`, `secondarySystemBackground` and `tertiarySystemGroupedBackground`. These are native adaptive roles, not fixed CSS colors. The address prompt, first-run supporting body and locked-profile explanation use primary at 72% opacity. White is used for brand lettering and labels on navy imagery. Mist and Slate remain supplied identity-board colors, but are not extracted as reusable implementation tokens because these SwiftUI surfaces use semantic backgrounds instead.
 
 **The Semantic Content Rule.** Use native adaptive colors for readable functional content; keep the scenery palette in Harbor-owned artwork and deliberate brand moments.
 
@@ -73,7 +73,7 @@ Functional UI uses `Color.primary`, `.secondary`, and UIKit `systemBackground`, 
 **Body Font:** Native system typography through SwiftUI text styles.
 **Icons:** SF Symbols, with accessible labels for icon-only actions.
 
-The functional hierarchy uses `.title2.bold()` for the first-run heading; `.title3.bold()` for start-page sections; `.headline` for resume titles; `.body` for explanatory text; `.subheadline` for domains, protection labels and tab titles; `.caption` for small metadata; and a compact 12pt bold rounded system face with monospaced digits for the visible tab count. Native navigation titles, forms and lists retain their platform typography. Do not freeze these roles into fixed point-size tokens.
+The functional hierarchy uses `.title2.bold()` for first-run and locked-profile headings; `.title3.bold()` for start-page sections; `.headline` for resume titles; `.body` for explanatory text; `.subheadline` for domains, protection labels and tab titles; `.caption` for small metadata; and a compact 12pt bold rounded system face with monospaced digits for the visible tab count. Native navigation titles, forms and lists retain their platform typography. Do not freeze these roles into fixed point-size tokens.
 
 **The Brand Type Rule.** Reserve Inter for Harbor branding; use Dynamic Type system styles for working controls and content. Toolbar symbols are capped at `.xxxLarge` while text and accessible names remain available.
 
@@ -82,6 +82,8 @@ The functional hierarchy uses `.title2.bold()` for the first-run heading; `.titl
 The browser content occupies a ZStack with native glass controls floating over the page at the bottom. Website views respect the top safe area and extend behind the bottom controls and home-indicator area. A measured bottom scroll inset follows the controls and bottom safe area so ordinary page-end content can scroll above them; fixed CSS footers can still overlap the overlay. The outer control surround is transparent. Start-page scrolling is unclipped beneath the controls, and its background extends through the vertical safe areas. Reduce Transparency supplies opaque capsule backgrounds without adding a solid outer bar. Horizontal chrome insets change from 16pt to 8pt at accessibility Dynamic Type sizes. Button hit areas are at least 44pt, with browser actions and address controls 48pt high. Native media fullscreen hides the browser controls and removes their scroll inset.
 
 The standard start page uses a 350pt artwork region. Its content panel overlaps the artwork by 16pt, uses the page inset token and section spacing, and scrolls. At accessibility sizes the scenery is replaced with a navy brand header and a wrapping protection control; useful content stays below in the scroll view. The mark changes from 94pt to 60pt.
+
+The locked profile screen repeats the start page’s artwork height, mark sizes, overlapping panel and scroll structure. At accessibility sizes it uses the compact navy wordmark header. Profile names, explanatory text, authentication labels and errors wrap vertically; actions remain in the scroll view.
 
 Tab search uses a native navigation drawer. The tab grid uses two columns normally and one column at accessibility sizes, 20pt vertical spacing and 16pt outer padding. Previews reduce from 205pt to 130pt tall at accessibility sizes, leaving readable title/domain information beneath. This is the actual single-column card reflow, not a separate list-row implementation. iPad remains future adaptation.
 
@@ -93,17 +95,25 @@ Tab search uses a native navigation drawer. The tab grid uses two columns normal
 
 ## Shapes
 
-Content cards and previews share the content radius; the start-page panel rounds only its top corners using the start-panel radius. Capsules belong to floating controls and circles to tab-close affordances. Selected tab previews have a 4pt accent stroke plus a checkmark, so selection is not communicated by color alone. The arch, sun and reflections define the brand mark, not custom button shapes.
+Content cards and previews share the content radius; the start-page and locked-profile panels round only their top corners using the start-panel radius. Capsules belong to floating controls and the native prominent unlock button and circles to tab-close affordances. Selected tab previews have a 4pt accent stroke plus a checkmark, so selection is not communicated by color alone. The arch, sun and reflections define the brand mark, not custom button shapes.
 
 ## Components
 
 ### Browser controls
 
-The address capsule combines a shield button, current-profile shortcut, native TextField and contextual Go or reload/stop action. The second capsule contains Back, Forward, New tab, tab count and Bookmarks. Floating top controls with a transparent outer surround place Share, History and Settings in that order at the trailing edge and contextual Page actions at the leading edge. Both capsules start expanded. Scrolling down a website minimizes them into a small centered glass URL pill that shows the site host, truncates long text in the middle and retains a minimum 44pt touch target. The top controls overlay content within the top safe area and collapse with the bottom controls without resizing the website. Tapping the pill restores all controls; switching tabs also restores the expanded controls. Address editing expands the address row and hides the top and bottom action rows. Loading progress overlays the address capsule without changing its height. The tab count is centered inside a 27pt rounded outline (5pt corner radius, 1.8pt stroke), with horizontal text padding and a 0.5 minimum scale factor for larger counts; its accessibility label reads the full count. Disabled navigation uses native disabled state. Share appears when the current tab has a URL. Page actions appears only for available download/media actions. Bookmarks provides a labeled action to save or remove the current page. Settings links to profile management; the address-bar profile shortcut remains available for quick switching. System sheets and UIActivityViewController handle modal tasks and sharing.
+The address capsule combines a shield button, current-profile shortcut, native TextField and contextual Go or reload/stop action. The second capsule contains Back, Forward, New tab, tab count and Bookmarks. Floating top controls with a transparent outer surround place Share, History and Settings in that order at the trailing edge and contextual Page actions at the leading edge. Both capsules start expanded. Scrolling down a website minimizes them into a small centered glass URL pill that shows the current profile symbol and site host, truncates long text in the middle and retains a minimum 44pt touch target. The top controls overlay content within the top safe area and collapse with the bottom controls without resizing the website. Tapping the pill restores all controls; switching tabs also restores the expanded controls. Address editing expands the address row and hides the top and bottom action rows. Loading progress overlays the address capsule without changing its height. The tab count is centered inside a 27pt rounded outline (5pt corner radius, 1.8pt stroke), with horizontal text padding and a 0.5 minimum scale factor for larger counts; its accessibility label reads the full count. Disabled navigation uses native disabled state. Share appears when the current tab has a URL. Page actions appears only for available download/media actions. Bookmarks provides a labeled action to save or remove the current page. Settings links to profile management; the address-bar profile shortcut remains available for quick switching. System sheets and UIActivityViewController handle modal tasks and sharing.
 
 ### Start-page content
 
 A resume card shows the most recent real history entry. The honest first-run alternative is “Where to next?” with a search action. Favorites show up to six real bookmarks; recently visited shows up to four further history entries. These sections do not create demonstration data. Titles/domains have deliberate line limits; cards use semantic grouped backgrounds and plain button interaction.
+
+### Locked profile
+
+Keep the lock experience in the same visual world as the start page: shared `HorizonArtwork`, supplied `HarborMark`, Inter wordmark and tagline above the adaptive grouped content panel. The profile name appears with a lock symbol and a heading accessibility trait. The explanatory body stays on a stable semantic surface.
+
+The primary action uses native `.borderedProminent` styling with a capsule border shape and a full-width label with a minimum 44pt height. Its label names the available authentication method. A native progress indicator appears during authentication and both unlock and switch-profile actions disable until it finishes. Switch profile is the secondary text action and opens the native Profiles sheet. Authentication errors appear below the actions with an exclamation symbol and wrapping body text.
+
+The actual profile lock state selects this screen in place of the browser and its presented sheets. An inactive but unlocked scene retains its browser preview; backgrounding a protected profile locks it. The lock screen exposes no tab previews or browsing content.
 
 ### Tab cards
 
@@ -111,13 +121,14 @@ Use actual captured snapshots when present, otherwise a navy placeholder with th
 
 ### Library, settings and privacy
 
-History and bookmarks use native searchable Lists, swipe deletion and ContentUnavailableView empty states. Settings and Privacy use native Forms, sections, toggles, pickers and confirmation dialogs. Destructive data clearing describes its effects. Per-site protection changes offer an explicit reload, and never show an invented blocked-request count.
+History and bookmarks use native searchable Lists, swipe deletion and ContentUnavailableView empty states. History uses inset grouped day sections, medium-weight body titles, secondary domain/time metadata and native selection controls. At accessibility sizes, titles wrap without a line limit and domain/time metadata stacks vertically. Search stays visible alongside the toolbar; selection supports deleting chosen visits, while Clear All uses a separate confirmation. Empty history and no search matches have distinct messages. Settings and Privacy use native Forms, sections, toggles, pickers and confirmation dialogs. Destructive data clearing describes its effects. Per-site protection changes offer an explicit reload, and never show an invented blocked-request count.
 
 ## Do's and Don'ts
 
 - Do preserve the Harbor mark and supplied palette.
 - Do keep glass in the control/navigation layer and content legible beneath it.
 - Do make selection and protection states understandable without color alone.
+- Do keep locked profiles visually consistent with Harbor while withholding browsing content.
 - Do support light mode, dark mode, Dynamic Type and accessibility appearance settings.
 - Do keep privacy language factual: tracker blocking does not mean incognito or complete anonymity.
 - Don't copy generated sample sites, favorites or counts into real user data.

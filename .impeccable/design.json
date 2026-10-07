@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-07T22:00:25.124347+00:00",
+  "generatedAt": "2026-10-07T22:07:07.561091+00:00",
   "title": "Design System: Harbor",
   "extensions": {
     "colorMeta": {
@@ -74,19 +74,19 @@
     "shadows": [],
     "motion": [
       {
-        "name": "browser-collapse",
-        "value": "SwiftUI smooth(duration: 0.24, extraBounce: 0)",
-        "purpose": "Collapse expanded browser controls into the compact URL pill."
+        "name": "browser-controls-collapse",
+        "value": "Animation.smooth(duration: 0.24, extraBounce: 0)",
+        "purpose": "Collapse browser chrome to the URL pill; shared native glass identity, action-row opacity and 12pt vertical offset."
       },
       {
-        "name": "browser-expand",
-        "value": "SwiftUI smooth(duration: 0.32, extraBounce: 0)",
-        "purpose": "Restore browser controls."
+        "name": "browser-controls-expand",
+        "value": "Animation.smooth(duration: 0.32, extraBounce: 0)",
+        "purpose": "Restore the address capsule and browser actions."
       },
       {
-        "name": "reduce-motion",
-        "value": "SwiftUI easeOut(duration: 0.12)",
-        "purpose": "Opacity transitions without glass morphing or offset."
+        "name": "browser-controls-reduced-motion",
+        "value": "Animation.easeOut(duration: 0.12)",
+        "purpose": "Opacity transition without shared-glass morph or action-row offset when Reduce Motion is enabled."
       }
     ],
     "breakpoints": [
@@ -137,6 +137,13 @@
       "css": ".ds-nav{display:flex;border-radius:99px;background:ButtonFace;padding:0 8px}.ds-nav button{min-height:48px;border:0;background:transparent;color:ButtonText;padding:0 10px;font:14px system-ui}.ds-nav button:hover{opacity:.8}.ds-nav button:focus-visible{outline:2px solid Highlight;border-radius:99px}.ds-nav button:active{opacity:.6} .ds-nav .ds-tab-count{display:grid;place-items:center;width:27px;height:27px;border:1.8px solid currentColor;border-radius:5px;font:700 12px system-ui;font-variant-numeric:tabular-nums}"
     },
     {
+      "name": "Profile unlock action",
+      "kind": "button",
+      "description": "Documentation-only HTML approximation of the native prominent capsule button. SwiftUI owns tint, disabled appearance, Dynamic Type and progress rendering; validate these on iOS. The secondary Switch profile action opens the native Profiles sheet.",
+      "html": "<div class=\"ds-unlock-actions\"><button class=\"ds-unlock\">Unlock with Face ID</button><button class=\"ds-switch\">Switch profile</button></div>",
+      "css": ".ds-unlock-actions{display:grid;gap:12px;font:17px system-ui}.ds-unlock-actions button{font:inherit;min-height:44px;padding:8px 20px;border:0;cursor:pointer}.ds-unlock{border-radius:999px;background:Highlight;color:HighlightText}.ds-switch{background:transparent;color:LinkText}.ds-unlock-actions button:hover:not(:disabled){filter:brightness(.96)}.ds-unlock-actions button:focus-visible{outline:2px solid Highlight;outline-offset:3px}.ds-unlock-actions button:active:not(:disabled){opacity:.7}.ds-unlock-actions button:disabled{opacity:.5;cursor:default}"
+    },
+    {
       "name": "Top browser controls",
       "kind": "nav",
       "description": "Documentation-only native control approximation. Page actions floats at the leading edge only for media/download actions; Share, History and Settings float at the trailing edge. Share appears for a page with a URL. The outer surround is transparent over content, without a reserved row. Hidden when scrolling, editing the address or viewing fullscreen media.",
@@ -146,9 +153,9 @@
   ],
   "narrative": {
     "northStar": "Horizon",
-    "overview": "Harbor combines a calm maritime identity with native iOS behavior. Deep blue water, reflected warm sunlight and the supplied Harbor mark establish the start page; semantic content surfaces and native Liquid Glass keep everyday browsing clear. Collections remains a reference for future organization, not a second identity or an implemented groups feature.\n\nThis is the implemented SwiftUI system, extracted from `Harbor/Views/HarborTheme.swift`, `StartPage.swift`, `BrowserView.swift` and `TabSwitcherView.swift`. The [identity board](design/brand/harbor-identity.png) remains brand authority. The Xcode project references `assets/HarborIcon/Harbor.icon` directly; the in-app mark draws the supplied SVG path geometry in a resolution-independent Canvas. Generated comp marks never replace the supplied identity. Surface behavior belongs in [the browser brief](design/BROWSER-SURFACE.md).",
+    "overview": "Harbor combines a calm maritime identity with native iOS behavior. Deep blue water, reflected warm sunlight and the supplied Harbor mark establish the start page and locked profile screen; semantic content surfaces and native Liquid Glass keep everyday browsing clear. Collections remains a reference for future organization, not a second identity or an implemented groups feature.\n\nThis is the implemented SwiftUI system, extracted from `Harbor/Views/HarborTheme.swift`, `StartPage.swift`, `BrowserView.swift`, `TabSwitcherView.swift`, `LibraryViews.swift` and `ProfilesView.swift`. The [identity board](design/brand/harbor-identity.png) remains brand authority. The Xcode project references `assets/HarborIcon/Harbor.icon` directly; the in-app mark draws the supplied SVG path geometry in a resolution-independent Canvas. Generated comp marks never replace the supplied identity. Surface behavior belongs in [the browser brief](design/BROWSER-SURFACE.md).",
     "keyCharacteristics": [
-      "Still Horizon artwork at the start of browsing.",
+      "Still Horizon artwork at the start of browsing and while a profile is locked.",
       "Native semantic content and glass controls.",
       "Inter branding with system functional typography.",
       "Honest personal content and accessible reflow."
@@ -174,6 +181,7 @@
       "Do preserve the Harbor mark and supplied palette.",
       "Do keep glass in the control/navigation layer and content legible beneath it.",
       "Do make selection and protection states understandable without color alone.",
+      "Do keep locked profiles visually consistent with Harbor while withholding browsing content.",
       "Do support light mode, dark mode, Dynamic Type and accessibility appearance settings.",
       "Do keep privacy language factual: tracker blocking does not mean incognito or complete anonymity."
     ],

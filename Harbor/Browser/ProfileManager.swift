@@ -98,7 +98,10 @@ final class ProfileManager {
             var loaded = try self.store.loadOrMigrate()
             #if DEBUG
             if testing && ProcessInfo.processInfo.arguments.contains("--reset") {
-                let profile = BrowserProfile(name: "Personal")
+                var profile = BrowserProfile(name: "Personal")
+                if ProcessInfo.processInfo.arguments.contains("--locked-profile-fixture") {
+                    profile.requiresAuthentication = true
+                }
                 loaded = ProfileRegistry(profiles: [profile], selectedProfileID: profile.id, defaultProfileID: profile.id)
                 var archive = BrowserArchive()
                 if ProcessInfo.processInfo.arguments.contains("--history-fixture") {

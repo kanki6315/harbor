@@ -193,17 +193,84 @@ struct LockedProfileView: View {
     @Bindable var profiles: ProfileManager
     @State private var showingProfiles = false
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
-        ContentUnavailableView {
-            Label(profiles.currentProfile?.name ?? "Profile locked", systemImage: "lock.fill")
-        } description: {
-            Text(profiles.errorMessage ?? "Unlock this profile to access its tabs and browsing data.")
-        } actions: {
-            Button("Unlock with \(profiles.authenticationLabel)") {
-                Task { await profiles.unlockSelected() }
-            }.buttonStyle(.borderedProminent).disabled(profiles.isAuthenticating)
-            Button("Switch profile") { showingProfiles = true }.disabled(profiles.isAuthenticating)
+        ScrollView {
+            VStack(spacing: 0) {
+                if typeSize.isAccessibilitySize {
+                    HStack(spacing: 16) {
+                        HarborMark().frame(width: 60, height: 60)
+                        wordmark
+                    }
+                    .padding(24).padding(.bottom, 16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.harborNavy)
+                } else {
+                    ZStack(alignment: .top) {
+                        HorizonArtwork()
+                        VStack(spacing: 4) {
+                            HarborMark().frame(width: 94, height: 94)
+                            wordmark
+                            Text("An open place to return to.")
+                                .font(.subheadline).foregroundStyle(.white)
+                        }.padding(.top, 16)
+                    }.frame(height: 350)
+                }
+
+                VStack(alignment: .leading, spacing: 26) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label(profiles.currentProfile?.name ?? "Profile locked", systemImage: "lock.fill")
+                            .font(.title2.bold())
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityAddTraits(.isHeader)
+                        Text("Unlock this profile to access its tabs and browsing data.")
+                            .font(.body).foregroundStyle(Color.primary.opacity(0.72))
+                    }
+                    VStack(spacing: 12) {
+                        Button {
+                            Task { await profiles.unlockSelected() }
+                        } label: {
+                            HStack(spacing: 12) {
+                                if profiles.isAuthenticating { ProgressView().tint(.white) }
+                                Text("Unlock with \(profiles.authenticationLabel)")
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                        }
+                        .buttonStyle(.borderedProminent).buttonBorderShape(.capsule)
+                        .disabled(profiles.isAuthenticating)
+                        .accessibilityIdentifier("unlockProfile")
+
+                        Button("Switch profile") { showingProfiles = true }
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .disabled(profiles.isAuthenticating)
+                    }
+                    if let error = profiles.errorMessage {
+                        Label(error, systemImage: "exclamationmark.circle")
+                            .font(.body).foregroundStyle(.primary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .padding(24).frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(uiColor: .systemGroupedBackground), in: UnevenRoundedRectangle(topLeadingRadius: 26, topTrailingRadius: 26))
+                .padding(.top, -16)
+            }
         }
+        .scrollClipDisabled()
+        .background {
+            VStack(spacing: 0) {
+                Color.harborNavy.frame(height: 350)
+                Color(uiColor: .systemGroupedBackground)
+            }.ignoresSafeArea(.container, edges: .vertical)
+        }
+        .accessibilityIdentifier("lockedProfile")
         .sheet(isPresented: $showingProfiles) { ProfilesView(profiles: profiles) }
+    }
+
+    private var wordmark: some View {
+        Text("Harbor")
+            .font(.custom("InterVariable", size: 34, relativeTo: .largeTitle).bold())
+            .foregroundStyle(.white)
     }
 }
