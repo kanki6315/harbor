@@ -22,6 +22,9 @@ struct BrowserView: View {
             ForEach(browser.archive.tabs) { tab in
                 if let session = browser.sessions[tab.id] {
                     WebView(webView: session.webView)
+                        // Keep the page beneath the system status area and floating glass controls.
+                        // WebKit's automatic scroll insets keep page controls reachable above the bar.
+                        .ignoresSafeArea(.container, edges: .vertical)
                         .opacity(tab.id == browser.selectedID ? 1 : 0)
                         .allowsHitTesting(tab.id == browser.selectedID)
                         .accessibilityHidden(tab.id != browser.selectedID)
@@ -98,7 +101,9 @@ struct BrowserView: View {
                 Button { editingAddress = false; sheet = .privacy } label: {
                     Image(systemName: "shield.lefthalf.filled").dynamicTypeSize(...DynamicTypeSize.xxxLarge).frame(width: 44, height: 48)
                 }.accessibilityLabel(browser.protectionStatus)
-                TextField(typeSize.isAccessibilitySize ? "Address" : "Search or enter address", text: $address)
+                TextField("Search or enter address", text: $address,
+                          prompt: Text(typeSize.isAccessibilitySize ? "Address" : "Search or enter address")
+                            .foregroundStyle(Color.primary.opacity(0.72)))
                     .textInputAutocapitalization(.never).autocorrectionDisabled()
                     .keyboardType(.webSearch).submitLabel(.go)
                     .focused($editingAddress).onSubmit(submit)
@@ -125,9 +130,13 @@ struct BrowserView: View {
                     action("New tab", symbol: "plus") { browser.newTab(); editingAddress = true }
                     Button { browser.activeSession?.captureSnapshot(); sheet = .tabs } label: {
                         ZStack {
-                            Image(systemName: "square.on.square").font(.title3)
-                            Text("\(browser.archive.tabs.count)").font(.caption2.bold()).offset(y: 2)
-                        }.dynamicTypeSize(...DynamicTypeSize.xxxLarge).frame(maxWidth: .infinity, minHeight: 48)
+                            RoundedRectangle(cornerRadius: 5).strokeBorder(lineWidth: 1.8)
+                            Text("\(browser.archive.tabs.count)")
+                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                                .monospacedDigit().lineLimit(1).minimumScaleFactor(0.5)
+                                .padding(.horizontal, 3)
+                        }.frame(width: 27, height: 27)
+                            .frame(maxWidth: .infinity, minHeight: 48)
                     }.accessibilityLabel("Tabs, \(browser.archive.tabs.count) open").accessibilityIdentifier("tabsButton")
                     Menu {
                         if let url = browser.selectedTab.url {
@@ -151,7 +160,6 @@ struct BrowserView: View {
             }
         }
         .padding(.horizontal, typeSize.isAccessibilitySize ? 8 : 16).padding(.top, 8).padding(.bottom, 5)
-        .background(typeSize.isAccessibilitySize ? Color(uiColor: .systemBackground) : .clear)
     }
     private func action(_ name: String, symbol: String, perform: @escaping () -> Void) -> some View {
         Button(action: perform) { Image(systemName: symbol).dynamicTypeSize(...DynamicTypeSize.xxxLarge).frame(maxWidth: .infinity, minHeight: 48) }.accessibilityLabel(name)

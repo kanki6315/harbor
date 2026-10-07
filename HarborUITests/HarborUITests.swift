@@ -33,6 +33,10 @@ final class HarborUITests: XCTestCase {
         app.launch()
         let web = app.webViews.firstMatch
         XCTAssertTrue(web.staticTexts["Harbor test page"].waitForExistence(timeout: 20))
+        XCTAssertLessThanOrEqual(web.frame.minY, 1, "Website must extend behind the system status area")
+        XCTAssertGreaterThanOrEqual(web.frame.maxY, app.buttons["tabsButton"].frame.maxY,
+                                    "Website must extend behind the transparent browser controls")
+        capture(app, name: "phone-website-glass")
         let instance = web.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Page instance ")).firstMatch.label
         web.buttons["Play video"].tap()
         XCTAssertTrue(web.staticTexts["Video playing"].waitForExistence(timeout: 5))

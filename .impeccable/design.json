@@ -1,0 +1,164 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-07T04:27:29.292792+00:00",
+  "title": "Design System: Harbor",
+  "extensions": {
+    "colorMeta": {
+      "harbor-navy": {
+        "role": "primary",
+        "displayName": "Harbor Navy",
+        "tonalRamp": [
+          "oklch(15% 0.04 255)",
+          "oklch(26% 0.04 255)",
+          "oklch(38% 0.04 255)",
+          "oklch(49% 0.04 255)",
+          "oklch(61% 0.04 255)",
+          "oklch(72% 0.04 255)",
+          "oklch(84% 0.04 255)",
+          "oklch(95% 0.04 255)"
+        ],
+        "note": "Synthesized panel ramp; not additional native implementation tokens."
+      },
+      "harbor-blue": {
+        "role": "primary",
+        "displayName": "Harbor Blue",
+        "tonalRamp": [
+          "oklch(15% 0.12 250)",
+          "oklch(26% 0.12 250)",
+          "oklch(38% 0.12 250)",
+          "oklch(49% 0.12 250)",
+          "oklch(61% 0.12 250)",
+          "oklch(72% 0.12 250)",
+          "oklch(84% 0.12 250)",
+          "oklch(95% 0.12 250)"
+        ],
+        "note": "Synthesized panel ramp; not additional native implementation tokens."
+      },
+      "harbor-wave": {
+        "role": "secondary",
+        "displayName": "Wave",
+        "tonalRamp": [
+          "oklch(15% 0.07 235)",
+          "oklch(26% 0.07 235)",
+          "oklch(38% 0.07 235)",
+          "oklch(49% 0.07 235)",
+          "oklch(61% 0.07 235)",
+          "oklch(72% 0.07 235)",
+          "oklch(84% 0.07 235)",
+          "oklch(95% 0.07 235)"
+        ],
+        "note": "Synthesized panel ramp; not additional native implementation tokens."
+      },
+      "harbor-sun": {
+        "role": "secondary",
+        "displayName": "Sun",
+        "tonalRamp": [
+          "oklch(15% 0.07 80)",
+          "oklch(26% 0.07 80)",
+          "oklch(38% 0.07 80)",
+          "oklch(49% 0.07 80)",
+          "oklch(61% 0.07 80)",
+          "oklch(72% 0.07 80)",
+          "oklch(84% 0.07 80)",
+          "oklch(95% 0.07 80)"
+        ],
+        "note": "Synthesized panel ramp; not additional native implementation tokens."
+      }
+    },
+    "typographyMeta": {
+      "brand": {
+        "displayName": "Harbor wordmark",
+        "purpose": "Bundled InterVariable, Dynamic Type relative to largeTitle; functional typography uses native SwiftUI roles."
+      }
+    },
+    "shadows": [],
+    "motion": [],
+    "breakpoints": [
+      {
+        "name": "accessibility-reflow",
+        "value": "DynamicTypeSize.isAccessibilitySize"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Address capsule",
+      "kind": "input",
+      "description": "Documentation-only HTML approximation of native SwiftUI structure; native semantic colors, SF Symbols, Dynamic Type and Liquid Glass must be evaluated in iOS. Example labels are not production user data.",
+      "html": "<label class=\"ds-address\">Search or enter address<input aria-label=\"Search or enter address\" placeholder=\"Search or enter address\"></label>",
+      "css": ".ds-address{display:block;font:14px system-ui;color:CanvasText}.ds-address input{display:block;border:1px solid GrayText;border-radius:99px;padding:0 18px;min-height:48px;background:Canvas;color:CanvasText;font:16px system-ui}.ds-address input::placeholder{color:CanvasText;opacity:.72}.ds-address input:focus-visible{outline:2px solid Highlight;outline-offset:3px}",
+      "refersTo": "address-field"
+    },
+    {
+      "name": "Toolbar action",
+      "kind": "button",
+      "description": "Documentation-only HTML approximation of native SwiftUI structure; native semantic colors, SF Symbols, Dynamic Type and Liquid Glass must be evaluated in iOS. Example labels are not production user data.",
+      "html": "<button class=\"ds-action\" aria-label=\"New tab\">New tab</button>",
+      "css": ".ds-action{min-height:48px;padding:0 16px;border:0;border-radius:99px;background:ButtonFace;color:ButtonText;font:16px system-ui}.ds-action:hover{filter:brightness(.96)}.ds-action:focus-visible{outline:2px solid Highlight;outline-offset:3px}.ds-action:active{opacity:.7}",
+      "refersTo": "toolbar-action"
+    },
+    {
+      "name": "Resume card",
+      "kind": "card",
+      "description": "Documentation-only HTML approximation of native SwiftUI structure; native semantic colors, SF Symbols, Dynamic Type and Liquid Glass must be evaluated in iOS. Example labels are not production user data.",
+      "html": "<button class=\"ds-resume\"><strong>Page title</strong><span>example.com</span></button>",
+      "css": ".ds-resume{padding:18px;border:0;border-radius:18px;background:ButtonFace;color:ButtonText;text-align:left;font:16px system-ui}.ds-resume span{display:block;margin-top:5px;font-size:14px}.ds-resume:hover{filter:brightness(.96)}.ds-resume:focus-visible{outline:2px solid Highlight;outline-offset:3px}.ds-resume:active{opacity:.7}",
+      "refersTo": "resume-card"
+    },
+    {
+      "name": "Selected tab preview",
+      "kind": "card",
+      "description": "Documentation-only HTML approximation of native SwiftUI structure; native semantic colors, SF Symbols, Dynamic Type and Liquid Glass must be evaluated in iOS. Example labels are not production user data.",
+      "html": "<button class=\"ds-tab\" aria-label=\"Selected tab: Harbor\"><span>Harbor</span><strong>Selected \u00b7 Harbor</strong><small>Start page</small></button>",
+      "css": ".ds-tab{border:0;background:Canvas;color:CanvasText;font:14px system-ui;text-align:left}.ds-tab span{display:grid;place-items:center;width:170px;height:205px;border:4px solid Highlight;border-radius:18px;background:#0D2747;color:white;font-weight:600}.ds-tab strong,.ds-tab small{display:block;margin-top:8px}.ds-tab:hover{opacity:.92}.ds-tab:focus-visible{outline:2px solid Highlight;outline-offset:3px}.ds-tab:active{opacity:.7}",
+      "refersTo": "tab-preview"
+    },
+    {
+      "name": "Browser action row",
+      "kind": "nav",
+      "description": "Documentation-only HTML approximation of native SwiftUI structure; native semantic colors, SF Symbols, Dynamic Type and Liquid Glass must be evaluated in iOS. Example labels are not production user data. Native outer chrome is transparent over website content; capsule materials remain system-rendered.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Browser\"><button>Back</button><button>Forward</button><button>New tab</button><button aria-label=\"Tabs, 1 open\"><span class=\"ds-tab-count\">1</span></button><button>More</button></nav>",
+      "css": ".ds-nav{display:flex;border-radius:99px;background:ButtonFace;padding:0 8px}.ds-nav button{min-height:48px;border:0;background:transparent;color:ButtonText;padding:0 10px;font:14px system-ui}.ds-nav button:hover{opacity:.8}.ds-nav button:focus-visible{outline:2px solid Highlight;border-radius:99px}.ds-nav button:active{opacity:.6} .ds-nav .ds-tab-count{display:grid;place-items:center;width:27px;height:27px;border:1.8px solid currentColor;border-radius:5px;font:700 12px system-ui;font-variant-numeric:tabular-nums}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Horizon",
+    "overview": "Harbor combines a calm maritime identity with native iOS behavior. Deep blue water, reflected warm sunlight and the supplied Harbor mark establish the start page; semantic content surfaces and native Liquid Glass keep everyday browsing clear. Collections remains a reference for future organization, not a second identity or an implemented groups feature.\n\nThis is the implemented SwiftUI system, extracted from `Harbor/Views/HarborTheme.swift`, `StartPage.swift`, `BrowserView.swift` and `TabSwitcherView.swift`. The [identity board](design/brand/harbor-identity.png) remains brand authority. The Xcode project references `assets/HarborIcon/Harbor.icon` directly; the in-app mark draws the supplied SVG path geometry in a resolution-independent Canvas. Generated comp marks never replace the supplied identity. Surface behavior belongs in [the browser brief](design/BROWSER-SURFACE.md).",
+    "keyCharacteristics": [
+      "Still Horizon artwork at the start of browsing.",
+      "Native semantic content and glass controls.",
+      "Inter branding with system functional typography.",
+      "Honest personal content and accessible reflow."
+    ],
+    "rules": [
+      {
+        "name": "The Semantic Content Rule",
+        "body": "Use native adaptive colors for readable functional content; keep the scenery palette in Harbor-owned artwork and deliberate brand moments.",
+        "section": "colors"
+      },
+      {
+        "name": "The Brand Type Rule",
+        "body": "Reserve Inter for Harbor branding; use Dynamic Type system styles for working controls and content. Toolbar symbols are capped at `.xxxLarge` while text and accessible names remain available.",
+        "section": "typography"
+      },
+      {
+        "name": "The Native Material Rule",
+        "body": "Keep glass in the control layer and content on stable semantic surfaces. Do not replace native material behavior with fixed blur/shadow recipes. Horizon artwork is still; there is no ambient animation to disable.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do preserve the Harbor mark and supplied palette.",
+      "Do keep glass in the control/navigation layer and content legible beneath it.",
+      "Do make selection and protection states understandable without color alone.",
+      "Do support light mode, dark mode, Dynamic Type and accessibility appearance settings.",
+      "Do keep privacy language factual: tracker blocking does not mean incognito or complete anonymity."
+    ],
+    "donts": [
+      "Don't copy generated sample sites, favorites or counts into real user data.",
+      "Don't add inactive group controls before groups exist.",
+      "Don't carry mockup microphone icons into scope without an explicit voice-input decision.",
+      "Don't invent fixed blur, shadow or layout tokens from an illustration."
+    ]
+  }
+}

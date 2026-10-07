@@ -1,64 +1,117 @@
 ---
 name: Harbor
-description: A calm, persistent iOS browser with Harbor identity and native Liquid Glass controls.
+description: A calm, persistent native iOS browser with Horizon artwork and Liquid Glass controls.
+colors:
+  harbor-navy: "#0D2747"
+  harbor-blue: "#2F8CE6"
+  harbor-wave: "#7CC3F3"
+  harbor-sun: "#FFDFA6"
+typography:
+  brand:
+    fontFamily: "InterVariable"
+    fontSize: "34pt"
+    fontWeight: 700
+rounded:
+  content: "18pt"
+  start-panel: "26pt"
+spacing:
+  compact: "8pt"
+  section-label: "12pt"
+  inset: "16pt"
+  card: "18pt"
+  page: "24pt"
+  section: "26pt"
+components:
+  resume-card:
+    rounded: "{rounded.content}"
+    padding: "{spacing.card}"
+  address-field:
+    height: "48pt"
+  toolbar-action:
+    height: "48pt"
+  tab-preview:
+    rounded: "{rounded.content}"
 ---
 
-<!-- SEED: established with the user before implementation; re-run /impeccable document once there's code to capture the actual tokens and components. -->
-
-# Harbor design system
+# Design System: Harbor
 
 ## Overview
 
-Harbor combines a calm maritime identity with native iOS behavior. The selected visual reference is the Horizon concept: deep blue water, reflected warm sunlight, a clear Harbor mark, and readable content beneath floating Liquid Glass controls. Collections supplies the planned organization model for larger tab sessions. The detailed screen sequence belongs in [the browser surface brief](design/BROWSER-SURFACE.md).
+**Creative North Star: "Horizon"**
 
-This is a pre-implementation design commitment, not a record of shipped components. The user requested that the direction be saved before writing app code. Exact measurements, accessible color variants and native material rendering remain to be verified during implementation.
+Harbor combines a calm maritime identity with native iOS behavior. Deep blue water, reflected warm sunlight and the supplied Harbor mark establish the start page; semantic content surfaces and native Liquid Glass keep everyday browsing clear. Collections remains a reference for future organization, not a second identity or an implemented groups feature.
 
-Brand authority is [the supplied identity board](design/brand/harbor-identity.png). Use the existing artwork in `assets/HarborIcon/` for the mark; generated concept logos do not replace those assets. Icon Composer source is `assets/HarborIcon/Harbor.icon/`, with separate arch, sun and water SVG layers and light/default and dark previews.
+This is the implemented SwiftUI system, extracted from `Harbor/Views/HarborTheme.swift`, `StartPage.swift`, `BrowserView.swift` and `TabSwitcherView.swift`. The [identity board](design/brand/harbor-identity.png) remains brand authority. The Xcode project references `assets/HarborIcon/Harbor.icon` directly; the in-app mark draws the supplied SVG path geometry in a resolution-independent Canvas. Generated comp marks never replace the supplied identity. Surface behavior belongs in [the browser brief](design/BROWSER-SURFACE.md).
+
+**Key Characteristics:**
+- Still Horizon artwork at the start of browsing.
+- Native semantic content and glass controls.
+- Inter branding with system functional typography.
+- Honest personal content and accessible reflow.
 
 ## Colors
 
-The supplied brand palette is authoritative:
+The implemented reusable brand colors in the frontmatter come from `HarborTheme.swift`. Harbor Navy anchors artwork and placeholder previews; Harbor Blue and Wave provide sea and reflection color; Harbor Sun supplies the small warm artwork accent. Functional tint uses the native accent color; the page-loading progress indicator specifically uses Harbor Blue.
 
-| Color | Value | Role |
-| --- | --- | --- |
-| Harbor Navy | #0D2747 | Brand foundation, dark branded backgrounds, strong text on light surfaces |
-| Harbor Blue | #2F8CE6 | Brand action and selection accent; adapt accessible foreground variants as needed |
-| Wave | #7CC3F3 | Water highlights and supporting brand artwork |
-| Mist | #E8F0F8 | Light app-owned surfaces |
-| Sun | #FFDFA6 | Small warm artwork accent, not security status |
-| Slate | #1E293B | Supporting dark surfaces and neutral brand text |
+### Primary
 
-These are brand primitives, not a promise that every pairing passes text contrast. Use native semantic label, background and separator colors for functional UI, with tested brand tint variants. Adapt to both appearances and Increase Contrast. Do not use low-contrast blue or Sun for small text on light backgrounds.
+Harbor Navy and Harbor Blue define the maritime artwork. Website content retains its own colors.
 
-Website colors belong to the website. Branded artwork and palettes apply to Harbor-owned surfaces, never injected into arbitrary pages.
+### Secondary
+
+Wave and Sun support water, sky and reflected sunlight. Sun is never a security status.
+
+### Neutral
+
+Functional UI uses `Color.primary`, `.secondary`, and UIKit `systemBackground`, `systemGroupedBackground`, `secondarySystemBackground` and `tertiarySystemGroupedBackground`. These are native adaptive roles, not fixed CSS colors. The address prompt and first-run supporting body use primary at 72% opacity after contrast review. White is used for brand lettering and labels on navy imagery. Mist and Slate remain supplied identity-board colors, but are not extracted as reusable implementation tokens because these SwiftUI surfaces use semantic backgrounds instead.
+
+**The Semantic Content Rule.** Use native adaptive colors for readable functional content; keep the scenery palette in Harbor-owned artwork and deliberate brand moments.
 
 ## Typography
 
-Inter is the supplied brand face for the Harbor wordmark and intentional brand moments. Use native system typography for navigation, page titles, fields, list rows and settings. SF Symbols supplies interface icons.
+**Display Font:** InterVariable, bundled and registered by `HarborApp`, bold and scaled relative to `.largeTitle` for the Harbor wordmark.
+**Body Font:** Native system typography through SwiftUI text styles.
+**Icons:** SF Symbols, with accessible labels for icon-only actions.
 
-Use Dynamic Type text styles rather than fixed point sizes. Preserve a clear hierarchy between page title, domain and supplementary metadata. Long titles wrap or truncate deliberately; full information remains accessible. Exact size and weight tokens are unresolved until native implementation. Do not treat lettering in generated comps as font metrics.
+The functional hierarchy uses `.title2.bold()` for the first-run heading; `.title3.bold()` for start-page sections; `.headline` for resume titles; `.body` for explanatory text; `.subheadline` for domains, protection labels and tab titles; `.caption` for small metadata; and a compact 12pt bold rounded system face with monospaced digits for the visible tab count. Native navigation titles, forms and lists retain their platform typography. Do not freeze these roles into fixed point-size tokens.
+
+**The Brand Type Rule.** Reserve Inter for Harbor branding; use Dynamic Type system styles for working controls and content. Toolbar symbols are capped at `.xxxLarge` while text and accessible names remain available.
 
 ## Layout
 
-Prioritize content, thumb-reachable browsing controls and efficient retrieval from 40+ tabs. Preserve iOS safe areas and native navigation, sheet dismissal and back gestures. Provide at least 44pt hit areas for controls.
+The browser content occupies a ZStack with a bottom safe-area inset for controls. The chrome has an address capsule followed by an action capsule; the action row disappears while editing. Horizontal chrome insets change from 16pt to 8pt at accessibility Dynamic Type sizes. Start-page scrolling is unclipped beneath the chrome, with its background extended through the vertical safe areas. Website views extend beneath the vertical container safe areas; their native scroll inset behavior preserves content reachability. The outer chrome background is transparent, including at accessibility sizes, so website content can show behind the native glass capsules. Reduce Transparency still supplies opaque capsule backgrounds. Button hit areas are at least 44pt, with browser actions and address controls 48pt high.
 
-Separate dense collections from open branded moments. Large background artwork is appropriate on the start page, not a mandatory header for history, settings or every sheet. Content can scroll beneath floating navigation, with native edge treatment preserving legibility.
+The standard start page uses a 350pt artwork region. Its content panel overlaps the artwork by 16pt, uses the page inset token and section spacing, and scrolls. At accessibility sizes the scenery is replaced with a navy brand header and a wrapping protection control; useful content stays below in the scroll view. The mark changes from 94pt to 60pt.
 
-At accessibility text sizes, collapse preview grids to readable rows. Reduce or scroll decorative start-page space before compressing useful content. iPhone is the initial target; future iPad layouts require a separate adaptation. Spacing, radii and breakpoints are not fixed by the concept image.
+Tab search uses a native navigation drawer. The tab grid uses two columns normally and one column at accessibility sizes, 20pt vertical spacing and 16pt outer padding. Previews reduce from 205pt to 130pt tall at accessibility sizes, leaving readable title/domain information beneath. This is the actual single-column card reflow, not a separate list-row implementation. iPad remains future adaptation.
 
 ## Elevation & Depth
 
-Use Apple's native Liquid Glass for floating controls and navigation. Let the system provide refraction, highlights, adaptive contrast and material behavior. Standard content surfaces, preview images and list rows stay visually stable and readable.
+`HarborGlass` applies native `.glassEffect(.regular, in: .capsule)` to floating address/action controls and the standard start-page protection button. Reduce Transparency switches that modifier to an opaque `secondarySystemBackground` capsule. Tab close buttons use native regular material in a circle. Native sheets, menus and navigation own their transitions; no custom shadow or animation timing scale exists.
 
-Avoid nested glass layers and decorative blur on every card. Respect Reduce Transparency and Increase Contrast with appropriately opaque, legible system treatments. Use native motion for navigation and sheets; selected previews may transition into browsing without elaborate choreography. Reduce Motion receives a restrained transition.
-
-Reference: [Apple — Adopting Liquid Glass](https://developer.apple.com/documentation/technologyoverviews/adopting-liquid-glass).
+**The Native Material Rule.** Keep glass in the control layer and content on stable semantic surfaces. Do not replace native material behavior with fixed blur/shadow recipes. Horizon artwork is still; there is no ambient animation to disable.
 
 ## Shapes
 
-The arch, sun and horizontal water reflections define the brand mark. They are not custom shapes for buttons or navigation. Functional controls use native capsules, circles and rounded surfaces where appropriate. Preview containers use consistent gentle corners; exact radii remain implementation decisions.
+Content cards and previews share the content radius; the start-page panel rounds only its top corners using the start-panel radius. Capsules belong to floating controls and circles to tab-close affordances. Selected tab previews have a 4pt accent stroke plus a checkmark, so selection is not communicated by color alone. The arch, sun and reflections define the brand mark, not custom button shapes.
 
-Horizon imagery is a start-page asset, not a screen-sized raster containing interface text or controls. Produce it separately from the comp when implementation begins. Use existing vector logo sources rather than tracing generated mockup pixels.
+## Components
+
+### Browser controls
+
+The address capsule combines a shield button, native TextField and contextual Go or reload/stop action. The second capsule contains Back, Forward, New tab, tab count and More. The tab count is centered inside a 27pt rounded outline (5pt corner radius, 1.8pt stroke), with horizontal text padding and a 0.5 minimum scale factor for larger counts; its accessibility label reads the full count. Disabled navigation uses native disabled state. More holds sharing, bookmarks, history, available download/media actions and settings. System sheets and UIActivityViewController handle modal tasks and sharing.
+
+### Start-page content
+
+A resume card shows the most recent real history entry. The honest first-run alternative is “Where to next?” with a search action. Favorites show up to six real bookmarks; recently visited shows up to four further history entries. These sections do not create demonstration data. Titles/domains have deliberate line limits; cards use semantic grouped backgrounds and plain button interaction.
+
+### Tab cards
+
+Use actual captured snapshots when present, otherwise a navy placeholder with the Harbor mark for a start page or a globe/domain for a website. Separate close and open targets preserve intent. Selected state combines border and checkmark; playing media adds a labeled speaker symbol. Closing exposes native toolbar Undo close.
+
+### Library, settings and privacy
+
+History and bookmarks use native searchable Lists, swipe deletion and ContentUnavailableView empty states. Settings and Privacy use native Forms, sections, toggles, pickers and confirmation dialogs. Destructive data clearing describes its effects. Per-site protection changes offer an explicit reload, and never show an invented blocked-request count.
 
 ## Do's and Don'ts
 
@@ -71,4 +124,3 @@ Horizon imagery is a start-page asset, not a screen-sized raster containing inte
 - Don't add inactive group controls before groups exist.
 - Don't carry mockup microphone icons into scope without an explicit voice-input decision.
 - Don't invent fixed blur, shadow or layout tokens from an illustration.
-- Don't start app implementation as part of this documentation task.

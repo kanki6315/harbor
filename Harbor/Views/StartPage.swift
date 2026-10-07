@@ -57,7 +57,7 @@ struct StartPage: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Where to next?").font(.title2.bold())
                             Text("Search, visit a website, or pick up where you left off. Your tabs will be here when you return.")
-                                .font(.body).foregroundStyle(.secondary)
+                                .font(.body).foregroundStyle(Color.primary.opacity(0.72))
                             Button("Search or enter address", systemImage: "magnifyingglass", action: focusAddress)
                                 .padding(.top, 4).frame(minHeight: 44)
                         }
@@ -94,6 +94,14 @@ struct StartPage: View {
                     .background(Color(uiColor: .systemGroupedBackground), in: UnevenRoundedRectangle(topLeadingRadius: 26, topTrailingRadius: 26))
                     .padding(.top, -16)
             }
-        }.background(Color(uiColor: .systemGroupedBackground)).accessibilityIdentifier("startPage")
+        }
+        .scrollClipDisabled()
+        .background {
+            VStack(spacing: 0) {
+                Color.harborNavy.frame(height: 350)
+                Color(uiColor: .systemGroupedBackground)
+            }.ignoresSafeArea(.container, edges: .vertical)
+        }
+        .accessibilityIdentifier("startPage")
     }
 }
