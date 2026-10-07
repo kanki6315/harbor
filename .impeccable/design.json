@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-07T22:07:07.561091+00:00",
+  "generatedAt": "2026-10-07T22:50:25.711290+00:00",
   "title": "Design System: Harbor",
   "extensions": {
     "colorMeta": {
@@ -125,7 +125,7 @@
       "name": "Selected tab preview",
       "kind": "card",
       "description": "Documentation-only HTML approximation of native SwiftUI structure; native semantic colors, SF Symbols, Dynamic Type and Liquid Glass must be evaluated in iOS. Example labels are not production user data.",
-      "html": "<button class=\"ds-tab\" aria-label=\"Selected tab: Harbor\"><span>Harbor</span><strong>Selected \u00b7 Harbor</strong><small>Start page</small></button>",
+      "html": "<button class=\"ds-tab\" aria-label=\"Selected tab: Harbor\"><span>Harbor</span><strong>Selected · Harbor</strong><small>Start page</small></button>",
       "css": ".ds-tab{border:0;background:Canvas;color:CanvasText;font:14px system-ui;text-align:left}.ds-tab span{display:grid;place-items:center;width:170px;height:205px;border:4px solid Highlight;border-radius:18px;background:#0D2747;color:white;font-weight:600}.ds-tab strong,.ds-tab small{display:block;margin-top:8px}.ds-tab:hover{opacity:.92}.ds-tab:focus-visible{outline:2px solid Highlight;outline-offset:3px}.ds-tab:active{opacity:.7}",
       "refersTo": "tab-preview"
     },
@@ -149,6 +149,13 @@
       "description": "Documentation-only native control approximation. Page actions floats at the leading edge only for media/download actions; Share, History and Settings float at the trailing edge. Share appears for a page with a URL. The outer surround is transparent over content, without a reserved row. Hidden when scrolling, editing the address or viewing fullscreen media.",
       "html": "<nav class=\"ds-top\" aria-label=\"Browser utilities\"><button>Page actions</button><span></span><button>Share</button><button>History</button><button>Settings</button></nav>",
       "css": ".ds-top{display:flex;gap:8px;color:CanvasText}.ds-top span{flex:1}.ds-top button{min-width:48px;min-height:48px;border:0;border-radius:99px;background:ButtonFace;color:ButtonText;font:14px system-ui}.ds-top button:hover{opacity:.8}.ds-top button:active{opacity:.6}.ds-top button:focus-visible{outline:2px solid Highlight;outline-offset:2px}"
+    },
+    {
+      "name": "Bookmark name suggestion",
+      "kind": "custom",
+      "description": "Documentation-only HTML approximation of the native inline suggestion. SwiftUI uses subheadline text, a 10pt vertical stack, 4pt vertical padding and borderless actions with a 44pt minimum height. Generating shows progress; unavailable keeps the name unchanged and offers Dismiss. Use name requires explicit acceptance; in the rename form it fills the draft until Save. Example content is not production user data. Validate semantic colors and Dynamic Type on iOS.",
+      "html": "<div class=\"ds-suggestion\"><span>Suggested name: Example bookmark</span><button>Use name</button><button>Keep original</button></div>",
+      "css": ".ds-suggestion{display:flex;flex-direction:column;gap:10px;padding:4px 0;color:CanvasText;font:15px system-ui}.ds-suggestion button{min-height:44px;text-align:left;border:0;padding:0;background:transparent;color:LinkText;font:inherit}.ds-suggestion button:hover{opacity:.8}.ds-suggestion button:active{opacity:.6}.ds-suggestion button:focus-visible{outline:2px solid Highlight;outline-offset:2px}"
     }
   ],
   "narrative": {
