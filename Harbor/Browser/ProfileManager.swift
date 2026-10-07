@@ -183,11 +183,26 @@ final class ProfileManager {
         return true
     }
 
+    @discardableResult func create(name: String, symbol: String, requiresAuthentication: Bool) async -> Bool {
+        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return false }
+        errorMessage = nil
+        if requiresAuthentication {
+            guard await verifyOwner(reason: "Protect \(name) in Harbor.") else { return false }
+        }
+        return createProfile(name: name, symbol: symbol, requiresAuthentication: requiresAuthentication)
+    }
+
     @discardableResult func create(name: String, symbol: String) -> Bool {
+        createProfile(name: name, symbol: symbol, requiresAuthentication: false)
+    }
+
+    private func createProfile(name: String, symbol: String, requiresAuthentication: Bool) -> Bool {
         guard var candidate = registry else { return false }
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { return false }
-        let profile = BrowserProfile(name: String(name.prefix(60)), symbol: symbol)
+        var profile = BrowserProfile(name: String(name.prefix(60)), symbol: symbol)
+        profile.requiresAuthentication = requiresAuthentication
         do { try store.browserStore(for: profile.id).save(BrowserArchive()) }
         catch { errorMessage = "Profile could not be created. \(error.localizedDescription)"; return false }
         candidate.profiles.append(profile)

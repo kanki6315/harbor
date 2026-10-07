@@ -569,11 +569,10 @@ final class HarborUITests: XCTestCase {
         let enabled = app.switches["returnEnabled"]
         XCTAssertTrue(enabled.waitForExistence(timeout: 5))
         enabled.coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.5)).tap()
-        let minutes = app.textFields["returnMinutes"]
+        let minutes = app.sliders["returnMinutes"]
         if !minutes.waitForExistence(timeout: 5) { print(app.debugDescription) }
         XCTAssertTrue(minutes.exists)
-        minutes.tap()
-        minutes.typeText(XCUIKeyboardKey.delete.rawValue + XCUIKeyboardKey.delete.rawValue + "1")
+        minutes.adjust(toNormalizedSliderPosition: 0)
         app.buttons["saveReturnPolicy"].tap()
         capture(app, name: "phone-profile-timeout")
         app.buttons["Switch to Work"].tap()
@@ -589,7 +588,7 @@ final class HarborUITests: XCTestCase {
         XCTAssertEqual(app.buttons["profilesButton"].label, "Profiles, Work")
         XCUIDevice.shared.press(.home)
         // Exercise the real persisted wall clock and lifecycle without a production debug override.
-        Thread.sleep(forTimeInterval: 61)
+        Thread.sleep(forTimeInterval: 301)
         app.activate()
         XCTAssertTrue(app.buttons["profilesButton"].waitForExistence(timeout: 10))
         XCTAssertEqual(app.buttons["profilesButton"].label, "Profiles, Personal")
@@ -625,12 +624,12 @@ final class HarborUITests: XCTestCase {
         app.buttons["returnAfter"].tap()
         XCTAssertTrue(app.navigationBars["Return after"].waitForExistence(timeout: 5))
         app.switches["returnEnabled"].coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.5)).tap()
-        let minutes = app.textFields["returnMinutes"]
+        let minutes = app.sliders["returnMinutes"]
         XCTAssertTrue(minutes.waitForExistence(timeout: 5))
-        minutes.tap()
-        minutes.typeText(XCUIKeyboardKey.delete.rawValue + XCUIKeyboardKey.delete.rawValue + "0")
-        XCTAssertFalse(app.buttons["saveReturnPolicy"].isEnabled)
-        minutes.typeText(XCUIKeyboardKey.delete.rawValue + "5")
+        minutes.adjust(toNormalizedSliderPosition: 1)
+        XCTAssertEqual(minutes.value as? String, "24 hours")
+        minutes.adjust(toNormalizedSliderPosition: 0)
+        XCTAssertEqual(minutes.value as? String, "5 minutes")
         XCTAssertTrue(app.buttons["saveReturnPolicy"].isEnabled)
         capture(app, name: "phone-profile-return-editor")
         app.buttons["saveReturnPolicy"].tap()
@@ -638,7 +637,7 @@ final class HarborUITests: XCTestCase {
         capture(app, name: "phone-profile-timeout")
         app.buttons["returnAfter"].tap()
         XCTAssertTrue(app.navigationBars["Return after"].waitForExistence(timeout: 5))
-        XCTAssertEqual(app.textFields["returnMinutes"].value as? String, "5")
+        XCTAssertEqual(app.sliders["returnMinutes"].value as? String, "5 minutes")
         app.switches["returnEnabled"].coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.5)).tap()
         app.buttons["saveReturnPolicy"].tap()
         XCTAssertTrue(app.navigationBars["Profiles"].waitForExistence(timeout: 5))

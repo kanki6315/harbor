@@ -4,6 +4,35 @@ import Network
 @testable import Harbor
 
 @MainActor final class ProfileTests: XCTestCase {
+    func testCreateProtectedProfileAuthenticatesAndPersists() async throws {
+        var authenticationCount = 0
+        let manager = ProfileManager(store: store, authenticate: { _ in
+            authenticationCount += 1
+            return true
+        })
+        let created = await manager.create(name: "Private", symbol: "person.crop.circle", requiresAuthentication: true)
+        XCTAssertTrue(created)
+        XCTAssertEqual(authenticationCount, 1)
+        let profile = try XCTUnwrap(manager.profiles.first { $0.name == "Private" })
+        XCTAssertTrue(profile.isProtected)
+        XCTAssertTrue(manager.select(profile.id))
+        XCTAssertTrue(manager.isLocked)
+        let reloaded = ProfileManager(store: store)
+        XCTAssertTrue(reloaded.currentProfile?.isProtected == true)
+        XCTAssertTrue(reloaded.isLocked)
+    }
+
+    func testCancelledAuthenticationDoesNotCreateProfile() async {
+        let manager = ProfileManager(store: store, authenticate: { _ in false })
+        let count = manager.profiles.count
+        let created = await manager.create(name: "Private", symbol: "person.crop.circle", requiresAuthentication: true)
+        XCTAssertFalse(created)
+        XCTAssertEqual(manager.profiles.count, count)
+        let unprotected = await manager.create(name: "Work", symbol: "briefcase", requiresAuthentication: false)
+        XCTAssertTrue(unprotected)
+        XCTAssertFalse(manager.profiles.last?.isProtected ?? true)
+    }
+
     func testProtectionPersistsAndLocksOnSwitchBackgroundAndRelaunch() async throws {
         let manager = ProfileManager(store: store, authenticate: { _ in true })
         let id = try XCTUnwrap(manager.currentProfile?.id)
