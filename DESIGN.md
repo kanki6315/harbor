@@ -87,7 +87,7 @@ Tab search uses a native navigation drawer. The tab grid uses two columns normal
 
 ## Elevation & Depth
 
-`HarborGlass` applies native `.glassEffect(.regular, in: .capsule)` to floating address/action controls and the standard start-page protection button. Reduce Transparency switches that modifier to an opaque `secondarySystemBackground` capsule. Tab close buttons use native regular material in a circle. Native sheets, menus and navigation own their transitions; no custom shadow or animation timing scale exists.
+`HarborGlass` applies native `.glassEffect(.regular, in: .capsule)` to floating address/action controls and the standard start-page protection button. Reduce Transparency switches that modifier to an opaque `secondarySystemBackground` capsule. Tab close buttons use native regular material in a circle. Native sheets, menus and navigation own their transitions; no custom shadow scale exists. Browser controls share a native `GlassEffectContainer` and address glass identity so the expanded address capsule morphs into the compact URL pill. Collapse uses a smooth 240ms transition and expansion 320ms, both with zero extra bounce; the action row fades with a 12pt vertical offset. Reduce Motion uses a 120ms ease-out opacity transition, without the shared-glass morph or action-row offset. These timings belong to this control transition, not a global motion scale.
 
 **The Native Material Rule.** Keep glass in the control layer and content on stable semantic surfaces. Do not replace native material behavior with fixed blur/shadow recipes. Horizon artwork is still; there is no ambient animation to disable.
 
