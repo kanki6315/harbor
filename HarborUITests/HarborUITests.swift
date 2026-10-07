@@ -69,6 +69,60 @@ final class HarborUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Add bookmark"].exists)
     }
 
+    @MainActor func testRenameBookmark() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--uitesting", "--reset", "--fixture"]
+        app.launch()
+        XCTAssertTrue(app.webViews.staticTexts["Harbor test page"].waitForExistence(timeout: 15))
+        app.buttons["bookmarksButton"].tap()
+        app.buttons["bookmarkCurrentPage"].tap()
+        let savedPage = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Local page")).firstMatch
+        XCTAssertTrue(savedPage.waitForExistence(timeout: 5))
+        savedPage.press(forDuration: 1)
+        app.buttons["Rename"].tap()
+        let name = app.alerts.textFields["Name"]
+        XCTAssertTrue(name.waitForExistence(timeout: 5))
+        name.tap()
+        let oldName = name.value as? String ?? ""
+        name.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: oldName.count) + "My saved page")
+        app.alerts.buttons["Save"].tap()
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "My saved page")).firstMatch.waitForExistence(timeout: 5))
+        capture(app, name: "bookmark-renamed")
+        app.buttons["Done"].tap()
+        app.buttons["bookmarksButton"].tap()
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "My saved page")).firstMatch.exists)
+    }
+
+    @MainActor func testBookmarkFolders() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--uitesting", "--reset", "--fixture"]
+        app.launch()
+        XCTAssertTrue(app.webViews.staticTexts["Harbor test page"].waitForExistence(timeout: 15))
+        app.buttons["bookmarksButton"].tap()
+        app.buttons["newBookmarkFolder"].tap()
+        app.alerts.textFields["Folder name"].tap()
+        app.alerts.textFields["Folder name"].typeText("Travel")
+        app.alerts.buttons["Save"].tap()
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Travel")).firstMatch.tap()
+        XCTAssertTrue(app.navigationBars["Travel"].waitForExistence(timeout: 5))
+        app.buttons["bookmarkCurrentPage"].tap()
+        let saved = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Local page")).firstMatch
+        XCTAssertTrue(saved.waitForExistence(timeout: 5))
+        capture(app, name: "bookmark-folder")
+        saved.press(forDuration: 1)
+        app.buttons["Move to folder"].tap()
+        app.buttons["Unfiled"].tap()
+        XCTAssertTrue(app.staticTexts["This folder is empty"].waitForExistence(timeout: 5))
+        app.navigationBars.buttons["Bookmarks"].tap()
+        XCTAssertTrue(saved.waitForExistence(timeout: 5))
+        let folder = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Travel")).firstMatch
+        folder.press(forDuration: 1)
+        app.buttons["Delete folder"].tap()
+        XCTAssertFalse(folder.exists)
+        XCTAssertTrue(saved.exists)
+        capture(app, name: "bookmark-unfiled")
+    }
+
     @MainActor func testHistorySearchAndClear() {
         let app = openHistoryFixture()
         XCTAssertTrue(app.staticTexts["Today"].exists)

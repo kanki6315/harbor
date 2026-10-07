@@ -53,6 +53,71 @@ import WebKit
         XCTAssertEqual(browser.archive.bookmarks.count, 1)
     }
 
+    func testBookmarkNamesPersistAndIgnoreStaleSuggestions() throws {
+        let folder = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let store = BrowserStore(fileURL: folder.appending(path: "state.json"))
+        let browser = BrowserModel(store: store, isTesting: true)
+        let url = URL(string: "https://example.com/guide")!
+        browser.archive.tabs[0].url = url
+        browser.archive.tabs[0].title = "  Travel Guide  "
+        browser.toggleBookmark()
+        let original = try XCTUnwrap(browser.archive.bookmarks.first)
+        XCTAssertEqual(original.title, "Travel Guide")
+        browser.applySuggestedBookmarkName("Weekend in Maine", to: original)
+        XCTAssertEqual(try store.load().bookmarks.first?.title, "Weekend in Maine")
+        let suggested = try XCTUnwrap(browser.archive.bookmarks.first)
+        browser.renameBookmark(original.id, to: "  My   trip ")
+        browser.applySuggestedBookmarkName("Late suggestion", to: suggested)
+        XCTAssertEqual(try store.load().bookmarks.first?.title, "My trip")
+        browser.renameBookmark(original.id, to: " ")
+        XCTAssertEqual(browser.archive.bookmarks.first?.title, "My trip")
+        browser.deleteBookmark(original.id)
+        browser.toggleBookmark()
+        browser.applySuggestedBookmarkName("Deleted suggestion", to: original)
+        XCTAssertEqual(browser.archive.bookmarks.first?.title, "Travel Guide")
+        let replacement = try XCTUnwrap(browser.archive.bookmarks.first)
+        browser.applySuggestedBookmarkName(String(repeating: "x", count: 81), to: replacement)
+        XCTAssertEqual(browser.archive.bookmarks.first?.title, "Travel Guide")
+        browser.deactivate()
+        browser.applySuggestedBookmarkName("Inactive profile", to: replacement)
+        XCTAssertEqual(try store.load().bookmarks.first?.title, "Travel Guide")
+        XCTAssertEqual(BookmarkNaming.fallback(title: "New Tab", url: url), "example.com")
+    }
+
+    func testBookmarkFoldersPersistAndDeletionPreservesPages() throws {
+        let folder = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let store = BrowserStore(fileURL: folder.appending(path: "state.json"))
+        let browser = BrowserModel(store: store, isTesting: true)
+        let travel = try XCTUnwrap(browser.createBookmarkFolder(named: "Travel"))
+        XCTAssertEqual(browser.createBookmarkFolder(named: " travel "), travel)
+        XCTAssertNil(browser.createBookmarkFolder(named: " "))
+        browser.archive.tabs[0].url = URL(string: "https://example.com/guide")!
+        browser.archive.tabs[0].title = "Guide"
+        browser.toggleBookmark(folderID: travel)
+        let bookmark = try XCTUnwrap(browser.archive.bookmarks.first)
+        XCTAssertEqual(try store.load().bookmarks.first?.folderID, travel)
+        let reading = try XCTUnwrap(browser.createBookmarkFolder(named: "Reading"))
+        browser.moveBookmark(bookmark.id, to: reading)
+        browser.applySuggestedBookmarkName("Travel guide", to: bookmark)
+        XCTAssertEqual(browser.archive.bookmarks.first?.title, "Travel guide")
+        XCTAssertEqual(browser.archive.bookmarks.first?.folderID, reading)
+        browser.renameBookmarkFolder(reading, to: "Read later")
+        XCTAssertEqual(try store.load().bookmarkFolders.last?.name, "Read later")
+        browser.renameBookmarkFolder(reading, to: "Travel")
+        XCTAssertEqual(browser.archive.bookmarkFolders.last?.name, "Read later")
+        browser.moveBookmark(bookmark.id, to: UUID())
+        XCTAssertEqual(browser.archive.bookmarks.first?.folderID, reading)
+        browser.deleteBookmarkFolder(reading)
+        let restored = try store.load()
+        XCTAssertEqual(restored.bookmarks.count, 1)
+        XCTAssertNil(restored.bookmarks.first?.folderID)
+        XCTAssertEqual(restored.bookmarkFolders.map(\.id), [travel])
+        let other = BrowserModel(store: BrowserStore(fileURL: folder.appending(path: "other/state.json")), isTesting: true)
+        XCTAssertTrue(other.archive.bookmarkFolders.isEmpty)
+    }
+
     func testPersistentCookieStoreAcrossWebViews() async throws {
         let first = WKWebView(frame: .zero, configuration: WKWebViewConfiguration())
         let cookie = try XCTUnwrap(HTTPCookie(properties: [.domain: "harbor-test.invalid", .path: "/", .name: "harbor-test", .value: "persistent", .expires: Date().addingTimeInterval(3600)]))

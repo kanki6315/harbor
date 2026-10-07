@@ -18,6 +18,7 @@ final class BrowserModel {
     var isClearingData = false
     private let store: BrowserStore
     private var persistTask: Task<Void, Never>?
+    private var bookmarkNameTasks: [UUID: Task<Void, Never>] = [:]
     private var mediaTask: Task<Void, Never>?
     private var memoryObserver: NSObjectProtocol?
     private(set) var isTesting = false
@@ -79,6 +80,7 @@ final class BrowserModel {
 
     isolated deinit {
         persistTask?.cancel(); mediaTask?.cancel()
+        for task in bookmarkNameTasks.values { task.cancel() }
         if let memoryObserver { NotificationCenter.default.removeObserver(memoryObserver) }
     }
 
@@ -103,6 +105,8 @@ final class BrowserModel {
 
     func deactivate() {
         isActive = false
+        for task in bookmarkNameTasks.values { task.cancel() }
+        bookmarkNameTasks.removeAll()
         persistTask?.cancel()
         dialog?.finish(nil)
         dialog = nil
@@ -222,12 +226,87 @@ final class BrowserModel {
         archive.history = Array(archive.history.prefix(3000))
         saveSoon()
     }
-    func toggleBookmark() {
-        guard let url = selectedTab.url else { return }
-        if let index = archive.bookmarks.firstIndex(where: { $0.url == url }) { archive.bookmarks.remove(at: index) }
-        else { archive.bookmarks.append(Bookmark(url: url, title: selectedTab.title)) }
-        saveSoon()
+    func toggleBookmark(folderID: UUID? = nil) {
+        guard isActive, let url = selectedTab.url else { return }
+        if let bookmark = archive.bookmarks.first(where: { $0.url == url }) {
+            deleteBookmark(bookmark.id)
+        } else {
+            let bookmark = Bookmark(url: url, title: BookmarkNaming.fallback(title: selectedTab.title, url: url),
+                                    folderID: archive.bookmarkFolders.contains(where: { $0.id == folderID }) ? folderID : nil)
+            archive.bookmarks.append(bookmark)
+            saveNow()
+            guard !isTesting else { return }
+            bookmarkNameTasks[bookmark.id] = Task { [weak self] in
+                let name = await BookmarkNaming.suggest(title: bookmark.title, url: bookmark.url)
+                guard !Task.isCancelled, let self else { return }
+                self.bookmarkNameTasks[bookmark.id] = nil
+                if let name { self.applySuggestedBookmarkName(name, to: bookmark) }
+            }
+        }
     }
+
+    func applySuggestedBookmarkName(_ name: String, to original: Bookmark) {
+        guard isActive, let index = archive.bookmarks.firstIndex(where: { $0.id == original.id && $0.title == original.title }) else { return }
+        let name = BookmarkNaming.normalized(name)
+        guard !name.isEmpty, name.count <= 80 else { return }
+        archive.bookmarks[index].title = name
+        saveNow()
+    }
+
+    func renameBookmark(_ id: UUID, to title: String) {
+        let title = BookmarkNaming.normalized(title)
+        guard isActive, !title.isEmpty,
+              let index = archive.bookmarks.firstIndex(where: { $0.id == id }) else { return }
+        bookmarkNameTasks.removeValue(forKey: id)?.cancel()
+        archive.bookmarks[index].title = title
+        saveNow()
+    }
+
+    func deleteBookmark(_ id: UUID) {
+        bookmarkNameTasks.removeValue(forKey: id)?.cancel()
+        archive.bookmarks.removeAll { $0.id == id }
+        saveNow()
+    }
+
+    @discardableResult
+    func createBookmarkFolder(named name: String) -> UUID? {
+        let name = BookmarkNaming.normalized(name)
+        guard isActive, !name.isEmpty else { return nil }
+        if let existing = archive.bookmarkFolders.first(where: { $0.name.localizedCaseInsensitiveCompare(name) == .orderedSame }) {
+            return existing.id
+        }
+        let folder = BookmarkFolder(name: name)
+        archive.bookmarkFolders.append(folder)
+        saveNow()
+        return folder.id
+    }
+
+    func renameBookmarkFolder(_ id: UUID, to name: String) {
+        let name = BookmarkNaming.normalized(name)
+        guard isActive, !name.isEmpty,
+              !archive.bookmarkFolders.contains(where: { $0.id != id && $0.name.localizedCaseInsensitiveCompare(name) == .orderedSame }),
+              let index = archive.bookmarkFolders.firstIndex(where: { $0.id == id }) else { return }
+        archive.bookmarkFolders[index].name = name
+        saveNow()
+    }
+
+    func moveBookmark(_ id: UUID, to folderID: UUID?) {
+        guard isActive, folderID == nil || archive.bookmarkFolders.contains(where: { $0.id == folderID }),
+              let index = archive.bookmarks.firstIndex(where: { $0.id == id }) else { return }
+        archive.bookmarks[index].folderID = folderID
+        saveNow()
+    }
+
+    func deleteBookmarkFolder(_ id: UUID) {
+        guard isActive else { return }
+        // Removing a folder never removes its saved pages.
+        for index in archive.bookmarks.indices where archive.bookmarks[index].folderID == id {
+            archive.bookmarks[index].folderID = nil
+        }
+        archive.bookmarkFolders.removeAll { $0.id == id }
+        saveNow()
+    }
+
     func settingsChanged() {
         for session in sessions.values {
             blocker.apply(to: session.webView, url: session.webView.url ?? archive.tabs.first(where: { $0.id == session.id })?.url,
