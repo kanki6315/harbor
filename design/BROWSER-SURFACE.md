@@ -58,3 +58,19 @@ FIRST VIEWPORT: Existing address and action controls start expanded over content
 FORM: Narrow refinement of the incumbent Operate surface, implemented directly; no concept seed or replacement visual world. The user's Safari screenshot and explicit glass-over-content request supersede the reserved solid strip and manual side-chevron direction. There are no manual collapse or expand chevrons; the centered URL pill restores the controls.
 
 FINISH: The glass-over-content layout received a scoped ship verdict. The subsequent motion refinement is documented, passed targeted and repeated-transition checks, and received scoped acceptance from an independent review of sampled simulator motion. Unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance.
+
+## Direction contract — profiles
+
+THESIS: Make the current browsing context discoverable and let the user switch between isolated profiles without mixing their data.
+
+OWN-WORLD: Extend the existing native Operate surface with SF Symbols, semantic text, grouped Forms, system sheets, navigation, pickers and destructive confirmations. Preserve Harbor’s glass browser controls and Horizon artwork.
+
+STORY: Open Profiles from the address row, More or Settings; select a profile, create or edit its name/icon, or delete it with a scoped confirmation. Choose a default profile and a background inactivity duration, including Never.
+
+FIRST VIEWPORT: Profiles presents the user’s real profile names, a checkmark on the current profile, edit controls and New profile. The following section contains Default profile and Return after. Explanatory text describes separation, switching and timeout behavior without suggesting device-level isolation.
+
+FORM: A narrow functional extension of Harbor’s established native settings and browser surfaces. Direct implementation follows the agreed profile plan; no replacement visual world, concept seed or generated assets.
+
+FINISH: Unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance. This extension creates no shipping rasters and preserves the incumbent design tokens.
+
+Implementation/verification: Profiles is reachable through the current profile’s icon in the address row, the named Profiles action in More, and Settings. Grouped native Forms, SF Symbols, semantic text, system sheets, pickers and confirmations follow the incumbent component conventions; accessibility Dynamic Type stacks a labeled Edit action beneath each profile’s selection row. The independent finish review issued a scoped ship verdict for the relevant code and five simulator captures in `.impeccable/review/`: `phone-profiles.png`, `phone-profiles-dark-large.png`, `phone-profile-editor-dark-large.png`, `phone-profile-return-editor.png` and `phone-profile-timeout.png`. This documents the reviewed light, dark, large-text and return-setting surfaces, not a full-suite pass or global visual approval. `DESIGN.md` and `.impeccable/design.json` remain unchanged.

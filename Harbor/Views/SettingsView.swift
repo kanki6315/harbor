@@ -2,11 +2,16 @@ import SwiftUI
 
 struct SettingsView: View {
     @Bindable var browser: BrowserModel
+    @Bindable var profiles: ProfileManager
     @State private var confirmClear = false
     @Environment(\.dismiss) private var dismiss
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    NavigationLink("Profiles") { ProfileList(profiles: profiles) }
+                    LabeledContent("Current profile", value: browser.profileName)
+                } footer: { Text("Browsing settings below apply to this profile.") }
                 Section("Privacy") {
                     Toggle("Tracker blocking", isOn: $browser.archive.settings.trackerBlocking)
                     Toggle("Remove tracking parameters", isOn: $browser.archive.settings.stripTrackingParameters)
@@ -48,15 +53,15 @@ struct SettingsView: View {
                     Text("Harbor uses WKWebView with persistent cookies and website storage. Tracker blocking reduces some tracking; it does not provide complete anonymity.")
                     Text("The app contains no analytics, telemetry, advertising or crash-reporting SDKs. Websites you visit may collect data.")
                     Text("Media codecs, DRM, streaming-service compatibility, Picture in Picture and background behavior depend on iOS, WebKit and each website.")
-                    LabeledContent("Version", value: "1.0")
+                    LabeledContent("Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Unknown")
                 }.font(.subheadline)
             }.navigationTitle("Settings")
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
                 .onChange(of: browser.archive.settings) { _, _ in browser.settingsChanged() }
-                .confirmationDialog("Clear browsing data?", isPresented: $confirmClear, titleVisibility: .visible) {
+                .confirmationDialog("Clear browsing data for \(browser.profileName)?", isPresented: $confirmClear, titleVisibility: .visible) {
                     Button("Clear data and close tabs", role: .destructive) { Task { await browser.clearWebsiteData() } }
                 } message: {
-                    Text("This closes all tabs and removes history, cookies, caches and website storage. You will be signed out of websites. Bookmarks, settings and website exceptions are kept.")
+                    Text("This closes this profile’s tabs and removes its history, cookies, caches and website storage. You will be signed out of websites. Bookmarks, settings and website exceptions are kept.")
                 }
         }
     }

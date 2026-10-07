@@ -6,7 +6,11 @@ final class BrowserModel {
     var archive: BrowserArchive
     private(set) var sessions: [UUID: TabSession] = [:]
     let blocker = ContentBlocker()
-    let downloads = DownloadManager()
+    let downloads: DownloadManager
+    let profileID: UUID
+    var profileName: String
+    let websiteDataStore: WKWebsiteDataStore
+    private(set) var isActive = true
     var errorMessage: String?
     var externalURL: URL?
     var dialog: WebDialog?
@@ -17,7 +21,7 @@ final class BrowserModel {
     private var mediaTask: Task<Void, Never>?
     private var memoryObserver: NSObjectProtocol?
     private(set) var isTesting = false
-    private var persistenceAvailable = true
+    private(set) var persistenceAvailable = true
     private var trimming = false
 
     var selectedID: UUID { archive.selectedTabID ?? archive.tabs[0].id }
@@ -32,26 +36,20 @@ final class BrowserModel {
         return "Tracker blocking on"
     }
 
-    init(store: BrowserStore = BrowserStore()) {
-        #if DEBUG
-        let testing = ProcessInfo.processInfo.arguments.contains("--uitesting")
-        if testing {
-            self.store = BrowserStore(fileURL: FileManager.default.temporaryDirectory.appending(path: "HarborUITests/browser.json"))
-        } else { self.store = store }
-        #else
-        let testing = false
+    init(store: BrowserStore = BrowserStore(), profileID: UUID = UUID(), profileName: String = "Personal",
+         websiteDataStore: WKWebsiteDataStore? = nil, isTesting: Bool = false) {
         self.store = store
-        #endif
+        self.profileID = profileID
+        self.profileName = profileName
+        self.websiteDataStore = websiteDataStore ?? .nonPersistent()
+        self.downloads = DownloadManager(profileID: profileID)
         do { archive = try self.store.load() }
         catch {
             archive = BrowserArchive()
             persistenceAvailable = false
             errorMessage = "Saved browsing data could not be read. It has been left untouched. \(error.localizedDescription)"
         }
-        isTesting = testing
-        #if DEBUG
-        if isTesting && ProcessInfo.processInfo.arguments.contains("--reset") { archive = BrowserArchive() }
-        #endif
+        self.isTesting = isTesting
         if !archive.settings.restoreTabs || archive.tabs.isEmpty { archive.tabs = [TabRecord()]; archive.selectedTabID = nil }
         if !archive.tabs.contains(where: { $0.id == archive.selectedTabID }) { archive.selectedTabID = archive.tabs[0].id }
         memoryObserver = NotificationCenter.default.addObserver(forName: UIApplication.didReceiveMemoryWarningNotification,
@@ -63,7 +61,7 @@ final class BrowserModel {
             await self.blocker.prepare()
             self.ensureSession(self.selectedID)
             #if DEBUG
-            if self.isTesting && ProcessInfo.processInfo.arguments.contains("--fixture"),
+            if self.isActive && self.isTesting && ProcessInfo.processInfo.arguments.contains("--fixture"),
                let url = Bundle.main.url(forResource: "browser-fixture", withExtension: "html") {
                 self.loadFixture(url)
             }
@@ -91,14 +89,29 @@ final class BrowserModel {
             self?.saveNow()
         }
     }
-    func saveNow() {
-        guard persistenceAvailable else { return }
-        do { try store.save(archive) }
-        catch { errorMessage = "Harbor could not save your session. \(error.localizedDescription)" }
+    @discardableResult func saveNow() -> Bool {
+        guard persistenceAvailable else { return false }
+        do { try store.save(archive); return true }
+        catch { errorMessage = "Harbor could not save your session. \(error.localizedDescription)"; return false }
+    }
+
+    func activate() {
+        isActive = true
+        ensureSession(selectedID)
+    }
+
+    func deactivate() {
+        isActive = false
+        persistTask?.cancel()
+        dialog?.finish(nil)
+        dialog = nil
+        externalURL = nil
+        for session in sessions.values { session.dispose() }
+        sessions.removeAll()
     }
 
     func ensureSession(_ id: UUID) {
-        guard blocker.ready, sessions[id] == nil,
+        guard isActive, !isClearingData, blocker.ready, sessions[id] == nil,
               let record = archive.tabs.first(where: { $0.id == id }), let url = record.url else { return }
         let session = TabSession(id: id, browser: self)
         sessions[id] = session
@@ -110,7 +123,7 @@ final class BrowserModel {
         navigate(url)
     }
     func navigate(_ original: URL) {
-        guard !isClearingData else { return }
+        guard isActive, !isClearingData else { return }
         guard ["http", "https"].contains(original.scheme?.lowercased() ?? "") else { externalURL = original; return }
         let url = archive.settings.stripTrackingParameters ? TrackingParameterCleaner.clean(original) : original
         guard let index = archive.tabs.firstIndex(where: { $0.id == selectedID }) else { return }
@@ -154,7 +167,8 @@ final class BrowserModel {
         lastClosed = nil
         selectTab(tab.id)
     }
-    func createPopup(configuration: WKWebViewConfiguration, url: URL?) -> WKWebView {
+    func createPopup(configuration: WKWebViewConfiguration, url: URL?) -> WKWebView? {
+        guard isActive, !isClearingData, configuration.websiteDataStore === websiteDataStore else { return nil }
         let tab = TabRecord(url: url)
         archive.tabs.append(tab)
         let session = TabSession(id: tab.id, browser: self, configuration: configuration)
@@ -171,7 +185,7 @@ final class BrowserModel {
         saveSoon()
     }
     func recordVisit(url: URL, title: String) {
-        guard ["http", "https"].contains(url.scheme?.lowercased() ?? "") else { return }
+        guard isActive, !isClearingData, ["http", "https"].contains(url.scheme?.lowercased() ?? "") else { return }
         if archive.history.first?.url == url { archive.history.removeFirst() }
         archive.history.insert(HistoryEntry(url: url, title: title), at: 0)
         archive.history = Array(archive.history.prefix(3000))
@@ -221,7 +235,7 @@ final class BrowserModel {
         // Stop affected pages first so they cannot immediately recreate deleted storage.
         let affected = sessions.values.filter { site == nil || ContentBlocker.siteKey($0.webView.url) == site }
         for session in affected { sessions.removeValue(forKey: session.id)?.dispose() }
-        let dataStore = WKWebsiteDataStore.default()
+        let dataStore = websiteDataStore
         let types = WKWebsiteDataStore.allWebsiteDataTypes()
         if let site {
             let records = await dataStore.dataRecords(ofTypes: types)

@@ -219,6 +219,161 @@ final class HarborUITests: XCTestCase {
         }
     }
 
+    @MainActor func testProfileManagementAndIsolationThroughUI() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--uitesting", "--reset"]
+        app.launch()
+        XCTAssertTrue(app.buttons["profilesButton"].waitForExistence(timeout: 10))
+        app.buttons["New tab"].tap()
+        // Leaving address editing exposes the profile control too.
+        app.buttons["profilesButton"].tap()
+        app.buttons["newProfile"].tap()
+        app.textFields["profileName"].tap()
+        app.textFields["profileName"].typeText("Work")
+        app.buttons["saveProfile"].tap()
+        XCTAssertTrue(app.buttons["Switch to Work"].waitForExistence(timeout: 5))
+        capture(app, name: "phone-profiles")
+        app.buttons["Switch to Work"].tap()
+        XCTAssertTrue(app.buttons["profilesButton"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.buttons["profilesButton"].label, "Profiles, Work")
+        app.buttons["tabsButton"].tap()
+        XCTAssertTrue(app.navigationBars["1 tab"].waitForExistence(timeout: 5))
+        app.buttons["Done"].tap()
+        app.buttons["moreButton"].tap()
+        app.buttons["Settings"].tap()
+        let tracker = app.switches["Tracker blocking"]
+        XCTAssertTrue(tracker.waitForExistence(timeout: 5))
+        tracker.coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.5)).tap()
+        XCTAssertEqual(tracker.value as? String, "0")
+        app.buttons["Done"].tap()
+        app.buttons["profilesButton"].tap()
+        app.buttons["Switch to Personal"].tap()
+        app.buttons["tabsButton"].tap()
+        XCTAssertTrue(app.navigationBars["2 tabs"].waitForExistence(timeout: 5))
+        app.buttons["Done"].tap()
+        app.buttons["moreButton"].tap()
+        app.buttons["Settings"].tap()
+        XCTAssertEqual(app.switches["Tracker blocking"].value as? String, "1")
+        app.buttons["Done"].tap()
+        app.buttons["profilesButton"].tap()
+        app.buttons["Edit Work"].tap()
+        let name = app.textFields["profileName"]
+        name.tap()
+        name.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 4) + "Office")
+        app.buttons["saveProfile"].tap()
+        XCTAssertTrue(app.buttons["Switch to Office"].waitForExistence(timeout: 5))
+        app.buttons["Switch to Office"].swipeLeft()
+        app.buttons["Delete"].tap()
+        app.buttons["Delete profile"].tap()
+        XCTAssertTrue(app.buttons["Switch to Office"].waitForNonExistence(timeout: 10))
+    }
+
+    @MainActor func testProfileTimeoutAfterBackgroundAndRelaunch() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--uitesting", "--reset"]
+        app.launch()
+        XCTAssertTrue(app.buttons["profilesButton"].waitForExistence(timeout: 10))
+        app.buttons["profilesButton"].tap()
+        app.buttons["newProfile"].tap()
+        app.textFields["profileName"].tap()
+        app.textFields["profileName"].typeText("Work")
+        app.buttons["saveProfile"].tap()
+        app.buttons["returnAfter"].tap()
+        XCTAssertTrue(app.navigationBars["Return after"].waitForExistence(timeout: 5))
+        let enabled = app.switches["returnEnabled"]
+        XCTAssertTrue(enabled.waitForExistence(timeout: 5))
+        enabled.coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.5)).tap()
+        let minutes = app.textFields["returnMinutes"]
+        if !minutes.waitForExistence(timeout: 5) { print(app.debugDescription) }
+        XCTAssertTrue(minutes.exists)
+        minutes.tap()
+        minutes.typeText(XCUIKeyboardKey.delete.rawValue + XCUIKeyboardKey.delete.rawValue + "1")
+        app.buttons["saveReturnPolicy"].tap()
+        capture(app, name: "phone-profile-timeout")
+        app.buttons["Switch to Work"].tap()
+        XCUIDevice.shared.press(.home)
+        app.activate()
+        XCTAssertTrue(app.buttons["profilesButton"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.buttons["profilesButton"].label, "Profiles, Work")
+        XCUIDevice.shared.press(.home)
+        app.terminate()
+        app.launchArguments = ["--uitesting"]
+        app.launch()
+        XCTAssertTrue(app.buttons["profilesButton"].waitForExistence(timeout: 10))
+        XCTAssertEqual(app.buttons["profilesButton"].label, "Profiles, Work")
+        XCUIDevice.shared.press(.home)
+        // Exercise the real persisted wall clock and lifecycle without a production debug override.
+        Thread.sleep(forTimeInterval: 61)
+        app.activate()
+        XCTAssertTrue(app.buttons["profilesButton"].waitForExistence(timeout: 10))
+        XCTAssertEqual(app.buttons["profilesButton"].label, "Profiles, Personal")
+    }
+
+    @MainActor func testDeletingActiveProfileWithLivePage() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--uitesting", "--reset", "--fixture"]
+        app.launch()
+        XCTAssertTrue(app.webViews.staticTexts["Harbor test page"].waitForExistence(timeout: 15))
+        app.buttons["profilesButton"].tap()
+        app.buttons["newProfile"].tap()
+        app.textFields["profileName"].tap()
+        app.textFields["profileName"].typeText("Work")
+        app.buttons["saveProfile"].tap()
+        app.buttons["Switch to Personal"].swipeLeft()
+        app.buttons["Delete"].tap()
+        app.buttons["Delete profile"].tap()
+        XCTAssertTrue(app.buttons["profilesButton"].waitForExistence(timeout: 10))
+        XCTAssertEqual(app.buttons["profilesButton"].label, "Profiles, Work")
+        app.buttons["profilesButton"].tap()
+        XCTAssertTrue(app.buttons["Switch to Work"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Retry deleting Personal"].exists)
+        XCTAssertFalse(app.alerts["Harbor"].exists)
+    }
+
+    @MainActor func testProfileReturnSettingsValidation() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--uitesting", "--reset"]
+        app.launch()
+        XCTAssertTrue(app.buttons["profilesButton"].waitForExistence(timeout: 10))
+        app.buttons["profilesButton"].tap()
+        app.buttons["returnAfter"].tap()
+        XCTAssertTrue(app.navigationBars["Return after"].waitForExistence(timeout: 5))
+        app.switches["returnEnabled"].coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.5)).tap()
+        let minutes = app.textFields["returnMinutes"]
+        XCTAssertTrue(minutes.waitForExistence(timeout: 5))
+        minutes.tap()
+        minutes.typeText(XCUIKeyboardKey.delete.rawValue + XCUIKeyboardKey.delete.rawValue + "0")
+        XCTAssertFalse(app.buttons["saveReturnPolicy"].isEnabled)
+        minutes.typeText(XCUIKeyboardKey.delete.rawValue + "5")
+        XCTAssertTrue(app.buttons["saveReturnPolicy"].isEnabled)
+        capture(app, name: "phone-profile-return-editor")
+        app.buttons["saveReturnPolicy"].tap()
+        XCTAssertTrue(app.navigationBars["Profiles"].waitForExistence(timeout: 5))
+        capture(app, name: "phone-profile-timeout")
+        app.buttons["returnAfter"].tap()
+        XCTAssertTrue(app.navigationBars["Return after"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.textFields["returnMinutes"].value as? String, "5")
+        app.switches["returnEnabled"].coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.5)).tap()
+        app.buttons["saveReturnPolicy"].tap()
+        XCTAssertTrue(app.navigationBars["Profiles"].waitForExistence(timeout: 5))
+        app.buttons["returnAfter"].tap()
+        XCTAssertTrue(app.navigationBars["Return after"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.switches["returnEnabled"].value as? String, "0")
+    }
+
+    @MainActor func testProfilesDarkLargeText() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--uitesting", "--reset", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL", "-AppleInterfaceStyle", "Dark"]
+        app.launch()
+        XCTAssertTrue(app.buttons["profilesButton"].waitForExistence(timeout: 10))
+        app.buttons["profilesButton"].tap()
+        XCTAssertTrue(app.buttons["newProfile"].waitForExistence(timeout: 5))
+        capture(app, name: "phone-profiles-dark-large")
+        app.buttons["newProfile"].tap()
+        XCTAssertTrue(app.textFields["profileName"].waitForExistence(timeout: 5))
+        capture(app, name: "phone-profile-editor-dark-large")
+    }
+
     @MainActor private func revealAboveChrome(_ element: XCUIElement, in app: XCUIApplication) {
         // Scrolling can replace the expanded address field with the floating URL pill.
         func controlsTop() -> CGFloat {

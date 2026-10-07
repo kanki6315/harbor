@@ -2,12 +2,13 @@ import SwiftUI
 import WebKit
 
 private enum BrowserSheet: String, Identifiable {
-    case tabs, history, bookmarks, settings, privacy
+    case tabs, history, bookmarks, settings, privacy, profiles
     var id: String { rawValue }
 }
 
 struct BrowserView: View {
-    @State private var browser = BrowserModel()
+    @Bindable var browser: BrowserModel
+    @Bindable var profiles: ProfileManager
     @State private var address = ""
     @State private var sheet: BrowserSheet?
     @State private var share: ShareItem?
@@ -80,7 +81,8 @@ struct BrowserView: View {
             case .tabs: TabSwitcherView(browser: browser)
             case .history: HistoryView(browser: browser)
             case .bookmarks: BookmarksView(browser: browser)
-            case .settings: SettingsView(browser: browser)
+            case .settings: SettingsView(browser: browser, profiles: profiles)
+            case .profiles: ProfilesView(profiles: profiles)
             case .privacy: PrivacyView(browser: browser)
             }
         }
@@ -103,9 +105,9 @@ struct BrowserView: View {
                 browser.externalURL = nil
             }
         } message: { Text(browser.externalURL?.absoluteString ?? "") }
-        .alert("Harbor", isPresented: Binding(get: { browser.errorMessage != nil || browser.downloads.errorMessage != nil }, set: { if !$0 { browser.errorMessage = nil; browser.downloads.errorMessage = nil } })) {
-            Button("OK", role: .cancel) { browser.errorMessage = nil; browser.downloads.errorMessage = nil }
-        } message: { Text(browser.errorMessage ?? browser.downloads.errorMessage ?? "") }
+        .alert("Harbor", isPresented: Binding(get: { browser.errorMessage != nil || browser.downloads.errorMessage != nil || profiles.errorMessage != nil }, set: { if !$0 { browser.errorMessage = nil; browser.downloads.errorMessage = nil; profiles.errorMessage = nil } })) {
+            Button("OK", role: .cancel) { browser.errorMessage = nil; browser.downloads.errorMessage = nil; profiles.errorMessage = nil }
+        } message: { Text(browser.errorMessage ?? browser.downloads.errorMessage ?? profiles.errorMessage ?? "") }
     }
 
     private var chrome: some View {
@@ -113,7 +115,7 @@ struct BrowserView: View {
             VStack(spacing: 8) {
                 if chromeCollapsed && !editingAddress {
                     Button { setChromeCollapsed(false) } label: {
-                        Text(compactAddress)
+                        Label(compactAddress, systemImage: profiles.currentProfile?.symbol ?? "person.crop.circle")
                             .font(.subheadline.weight(.medium))
                             .lineLimit(1).truncationMode(.middle)
                             .padding(.horizontal, 18).padding(.vertical, 8)
@@ -122,7 +124,7 @@ struct BrowserView: View {
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("Show browser controls for \(compactAddress)")
+                    .accessibilityLabel("Show browser controls for \(compactAddress), \(browser.profileName) profile")
                     .accessibilityIdentifier("expandBrowserControls")
                     .frame(maxWidth: .infinity)
                     .transition(.opacity)
@@ -132,6 +134,11 @@ struct BrowserView: View {
                         Button { editingAddress = false; sheet = .privacy } label: {
                             Image(systemName: "shield.lefthalf.filled").dynamicTypeSize(...DynamicTypeSize.xxxLarge).frame(width: 44, height: 48)
                         }.accessibilityLabel(browser.protectionStatus)
+                        Button { editingAddress = false; sheet = .profiles } label: {
+                            Image(systemName: profiles.currentProfile?.symbol ?? "person.crop.circle")
+                                .dynamicTypeSize(...DynamicTypeSize.xxxLarge).frame(width: 44, height: 48)
+                        }.accessibilityLabel("Profiles, \(browser.profileName)")
+                            .accessibilityIdentifier("profilesButton")
                         TextField("Search or enter address", text: $address,
                                   prompt: Text(typeSize.isAccessibilitySize ? "Address" : "Search or enter address")
                                     .foregroundStyle(Color.primary.opacity(0.72)))
@@ -180,6 +187,7 @@ struct BrowserView: View {
                                     .frame(maxWidth: .infinity, minHeight: 48)
                             }.accessibilityLabel("Tabs, \(browser.archive.tabs.count) open").accessibilityIdentifier("tabsButton")
                             Menu {
+                                Button("Profiles · \(browser.profileName)", systemImage: profiles.currentProfile?.symbol ?? "person.crop.circle") { sheet = .profiles }
                                 if let url = browser.selectedTab.url {
                                     Button("Share page", systemImage: "square.and.arrow.up") { share = ShareItem(url: url) }
                                     Button(browser.archive.bookmarks.contains(where: { $0.url == url }) ? "Remove bookmark" : "Add bookmark", systemImage: "bookmark") { browser.toggleBookmark() }

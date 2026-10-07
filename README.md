@@ -51,13 +51,25 @@ Native Codable persistence keeps this small app understandable and makes restora
 
 ## Sessions and memory
 
-Every normal WKWebView uses `WKWebsiteDataStore.default()`. Cookies, local storage, caches and website sessions belong to WebKit; Harbor does not serialize or manually recreate cookies. Sites may expire logins, impose third-party storage restrictions or require sign-in again. A persistent store cannot promise permanent authentication.
+Every profile owns a persistent `WKWebsiteDataStore(forIdentifier:)`; only a migrated original profile retains `WKWebsiteDataStore.default()` to preserve existing logins. Cookies, local storage, caches and website sessions belong to WebKit; Harbor does not serialize or manually recreate cookies. Sites may expire logins, impose third-party storage restrictions or require sign-in again. A persistent store cannot promise permanent authentication.
 
 Harbor saves tab IDs, URLs, titles, recency and the selected tab, plus settings, history, bookmarks and site exceptions. Changes are coalesced for 250 ms and flushed when the scene becomes inactive. Relaunch restores the selected tab; other tabs load lazily when selected. Back/forward lists, DOM state, scroll position, unsaved forms, in-memory JavaScript and media position are not serialized.
 
 The normal target is five resident web views. Recent views are preferred; the selected view, loading pages, full-screen views and views reported as playing media are protected from ordinary eviction. Memory warnings tighten the target to one and discard previews; inactive loading views may then be released, but selected, playing and full-screen views remain protected. This is a soft target: several active players or loading pages may exceed it. iOS can still terminate content processes under pressure. Harbor offers reload after process termination instead of pretending the page survived.
 
 Resident views remain attached under the selected page and are hidden from interaction/accessibility when inactive. The tab switcher is a sheet, so opening it does not intentionally stop media. Native `requestMediaPlaybackState()` is sampled every four seconds and before eviction. The periodic check also trims idle views after loading finishes. That is a coarse observation, not a guaranteed description of every remote player. Closing a tab explicitly pauses its media. There is also Pause media in the More menu when playback is reported.
+
+## Profiles
+
+Use the profile icon beside the address field, **More → Profiles**, or **Settings → Profiles** to create, switch, rename or delete profiles. Each owns its tabs, selected tab, recently closed tab, history, bookmarks, search/privacy settings, site exceptions, WebKit website data, and temporary downloads. Profile names and icons are editable. The last remaining profile cannot be deleted.
+
+Under **Profiles → When you return**, choose a default profile and **Return after**. The initial setting is **Never**; enable it and enter 1–10,080 minutes to return to the default profile after that long in the background. Shorter absences retain the current profile. The timestamp is saved on background entry and checked on foreground return and process launch, so system eviction and manual termination follow the same elapsed-time rule. Being inactive briefly for a permission prompt does not start the timer. The setting does not switch profiles during active browsing or erase any browsing data.
+
+Switching saves the outgoing archive and releases its web views; tabs restore lazily when you return. Unsaved forms, back/forward stacks, media position and other in-memory page state do not survive a profile switch. Downloads continue under their original profile and can be shared when returning to it. Clearing or deleting that profile cancels its downloads. Exported files remain outside Harbor’s control.
+
+Profile metadata lives in `Application Support/Harbor/profiles.json`; each browser archive lives in `Profiles/<UUID>/browser.json`. Existing installations migrate their archive into **Personal** and retain their existing WebKit store. The old archive is removed only after the new archive and registry have committed successfully. Corrupt metadata is reported and left untouched. Failed profile deletions remain visible as **Unfinished deletions** with a retry action.
+
+Profiles isolate Harbor’s browsing data, not iOS identities: device permissions, password providers, the clipboard, exported files and the network connection remain system-level facilities. There is no profile lock or separate encryption key.
 
 ## Privacy model
 
@@ -75,7 +87,7 @@ Harbor is **not an anonymity tool or a private/incognito browser**. Browsing met
 
 ## Website data and security
 
-Per-site clearing asks WebKit for domain records and removes matching cookies/storage. WebKit may report registrable domains, so related subdomains can also be affected; exact-origin deletion is not guaranteed. Pages affected by deletion are stopped and require an explicit reload. All-site clearing closes tabs and removes history, cookies, cache and website storage; bookmarks, settings and exceptions remain. Temporary downloads are removed and active downloads are cancelled.
+Per-site clearing asks WebKit for domain records and removes matching cookies/storage. WebKit may report registrable domains, so related subdomains can also be affected; exact-origin deletion is not guaranteed. Pages affected by deletion are stopped and require an explicit reload. All-site clearing is scoped to the current profile: it closes its tabs and removes its history, cookies, cache and website storage; bookmarks, settings and exceptions remain. Temporary downloads are removed and active downloads are cancelled.
 
 TLS validation, App Transport Security and the standard user agent are unchanged. There is no trust-challenge bypass, arbitrary-load exception, DRM workaround, injected remote script or universal third-party cookie override. Plain HTTP sites may be restricted by platform transport policy. Unknown schemes from automatic redirects or subframes are not launched. Supported user-activated external links go through iOS after confirmation; unavailable handlers produce an error.
 
@@ -93,7 +105,7 @@ Downloads use native `WKDownload`, including attachment headers and `download` l
 
 ## Validation and manual media checklist
 
-See [validation results](docs/VALIDATION.md) for the actual run evidence. Automated tests cover logic, WebKit configuration and rules, shared persistent cookies, tab metadata, and selected UI flows. The local test page and synthetic H.264/AAC sample make basic playback checks reproducible without a network. Debug launch flags `--uitesting --reset --fixture` use separate test metadata and open that fixture; they are inactive in Release. They do not create a separate WebKit cookie profile.
+See [validation results](docs/VALIDATION.md) for the actual run evidence. Automated tests cover logic, WebKit configuration and rules, shared persistent cookies, tab metadata, and selected UI flows. The local test page and synthetic H.264/AAC sample make basic playback checks reproducible without a network. Debug launch flags `--uitesting --reset --fixture` use separate test metadata and open that fixture; they are inactive in Release. They use dedicated named WebKit profiles as well as separate metadata, so they do not share the user’s website sessions.
 
 Record device, iOS version, site/page URL, date, blocking on/off, outcome and any reproducible error for each check. An unchecked box is **unverified**, not a compatibility claim.
 
@@ -122,7 +134,7 @@ Do not enter personal credentials into an automated fixture. Use an account you 
 
 Safari extensions are not automatically available in this embedded browser. Harbor uses the system WKWebView engine; it does not bundle another renderer. No claim is made about eligibility for alternative-engine entitlements or default-browser distribution entitlements.
 
-Future work: tab groups and iPad layouts; encrypted/private iCloud sync; profiles and Face ID; reader mode; custom rule lists; password-manager integration; per-site JavaScript, cookies, autoplay, media permissions and user-agent settings; HTTPS-only mode; downloadable-file management; opt-in background-media policy. These are not inactive controls pretending to be implemented features.
+Future work: tab groups and iPad layouts; encrypted/private iCloud sync; Face ID; reader mode; custom rule lists; password-manager integration; per-site JavaScript, cookies, autoplay, media permissions and user-agent settings; HTTPS-only mode; downloadable-file management; opt-in background-media policy. These are not inactive controls pretending to be implemented features.
 
 ### Apple/WebKit references
 
