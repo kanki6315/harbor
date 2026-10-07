@@ -40,3 +40,7 @@ Checked both pages in Chrome at desktop (1440px) and mobile (390px) widths, in l
 ## Brand assets
 
 The SVG mark combines the original Harbor Arch, Sun, and Water SVG layers from `assets/HarborIcon/Harbor.icon/Assets` without changing their path geometry. The favicon adds a navy background. InterVariable and its license are copied from `Harbor/Resources`. No generated imagery is used.
+
+## Cloudflare email handling
+
+Keep the `<!--email_off-->` comments around support email links. These exempt the links from Cloudflare Email Address Obfuscation, whose injected decoder script is blocked by this static site’s Content Security Policy. The public contact address must remain readable and clickable without JavaScript.
