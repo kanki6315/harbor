@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 
 /// Durable preferences are backed up; browsing sessions remain local to this device.
 struct BrowserStore {
@@ -79,5 +80,32 @@ struct BrowserStore {
             .write(to: durableURL, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
         // Never delete the source until both destination files have been committed.
         if FileManager.default.fileExists(atPath: fileURL.path) { try FileManager.default.removeItem(at: fileURL) }
+    }
+}
+
+// Previews are local, disposable files scoped to the same profile as the archive.
+// Keep them outside JSON so restoring many tabs never decodes every image.
+extension BrowserStore {
+    private var previewsURL: URL { fileURL.deletingLastPathComponent().appending(path: "TabPreviews") }
+    func previewURL(_ id: UUID) -> URL { previewsURL.appending(path: "\(id.uuidString).jpg") }
+
+    func savePreview(_ image: UIImage, id: UUID) throws {
+        guard let data = image.jpegData(compressionQuality: 0.7) else { return }
+        try FileManager.default.createDirectory(at: previewsURL, withIntermediateDirectories: true)
+        var directory = previewsURL
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        try directory.setResourceValues(values)
+        try data.write(to: previewURL(id), options: [.atomic, .completeFileProtection])
+    }
+
+    func removePreview(_ id: UUID) { try? FileManager.default.removeItem(at: previewURL(id)) }
+
+    func prunePreviews(keeping ids: Set<UUID>) {
+        guard let files = try? FileManager.default.contentsOfDirectory(at: previewsURL, includingPropertiesForKeys: nil) else { return }
+        for file in files {
+            guard let id = UUID(uuidString: file.deletingPathExtension().lastPathComponent), !ids.contains(id) else { continue }
+            try? FileManager.default.removeItem(at: file)
+        }
     }
 }

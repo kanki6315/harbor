@@ -600,6 +600,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = Harbor;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "Unlock your protected Harbor profiles with Face ID.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Websites can request camera access for calls or capturing photos.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Websites can request microphone access for calls or recording audio.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -609,7 +610,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1.2;
+				MARKETING_VERSION = 0.1.5;
 				PRODUCT_BUNDLE_IDENTIFIER = com.arjunakankipati.harbor;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -660,6 +661,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = Harbor;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "Unlock your protected Harbor profiles with Face ID.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Websites can request camera access for calls or capturing photos.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Websites can request microphone access for calls or recording audio.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -669,7 +671,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1.2;
+				MARKETING_VERSION = 0.1.5;
 				PRODUCT_BUNDLE_IDENTIFIER = com.arjunakankipati.harbor;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";

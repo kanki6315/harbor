@@ -52,6 +52,7 @@ final class BrowserModel {
         self.isTesting = isTesting
         if !archive.settings.restoreTabs || archive.tabs.isEmpty { archive.tabs = [TabRecord()]; archive.selectedTabID = nil }
         if !archive.tabs.contains(where: { $0.id == archive.selectedTabID }) { archive.selectedTabID = archive.tabs[0].id }
+        if persistenceAvailable { store.prunePreviews(keeping: Set(archive.tabs.map(\.id))) }
         memoryObserver = NotificationCenter.default.addObserver(forName: UIApplication.didReceiveMemoryWarningNotification,
                                                                object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in await self?.trimSessions(memoryPressure: true) }
@@ -154,6 +155,7 @@ final class BrowserModel {
     }
     func closeTab(_ id: UUID) {
         guard let index = archive.tabs.firstIndex(where: { $0.id == id }) else { return }
+        if let previous = lastClosed { store.removePreview(previous.id) }
         lastClosed = archive.tabs[index]
         sessions.removeValue(forKey: id)?.dispose()
         archive.tabs.remove(at: index)
@@ -167,6 +169,35 @@ final class BrowserModel {
         lastClosed = nil
         selectTab(tab.id)
     }
+    func moveTabs(from offsets: IndexSet, to destination: Int) {
+        archive.tabs.move(fromOffsets: offsets, toOffset: destination)
+        saveSoon()
+    }
+
+    func moveTab(_ id: UUID, onto target: UUID) {
+        guard let source = archive.tabs.firstIndex(where: { $0.id == id }),
+              let destination = archive.tabs.firstIndex(where: { $0.id == target }), source != destination else { return }
+        moveTabs(from: IndexSet(integer: source), to: destination > source ? destination + 1 : destination)
+    }
+
+    func previewURL(_ id: UUID) -> URL { store.previewURL(id) }
+
+    func savePreview(_ image: UIImage, for session: TabSession) {
+        guard isActive, !isClearingData, persistenceAvailable, sessions[session.id] === session else { return }
+        // A preview failure must not interrupt browsing; the live thumbnail remains available.
+        try? store.savePreview(image, id: session.id)
+    }
+
+    /// Release background pages without removing their tab records or saved previews.
+    func unloadBackgroundTabs() async {
+        await refreshMedia()
+        for session in Array(sessions.values) {
+            guard session.id != selectedID, session.mediaState != .playing,
+                  !session.fullscreen, !session.isLoading else { continue }
+            sessions.removeValue(forKey: session.id)?.dispose()
+        }
+    }
+
     func createPopup(configuration: WKWebViewConfiguration, url: URL?) -> WKWebView? {
         guard isActive, !isClearingData, configuration.websiteDataStore === websiteDataStore else { return nil }
         let tab = TabRecord(url: url)
@@ -231,6 +262,10 @@ final class BrowserModel {
     func clearWebsiteData(site: String? = nil) async {
         guard !isClearingData else { return }
         isClearingData = true
+        // Clear preview pixels too, including unloaded tabs and the undo-close record.
+        // Clearing all previews for site deletion is deliberately conservative.
+        store.prunePreviews(keeping: [])
+        for session in sessions.values { session.snapshot = nil }
         defer { isClearingData = false }
         // Stop affected pages first so they cannot immediately recreate deleted storage.
         let affected = sessions.values.filter { site == nil || ContentBlocker.siteKey($0.webView.url) == site }

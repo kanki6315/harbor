@@ -4,6 +4,67 @@ import Network
 @testable import Harbor
 
 @MainActor final class ProfileTests: XCTestCase {
+    func testProtectionPersistsAndLocksOnSwitchBackgroundAndRelaunch() async throws {
+        let manager = ProfileManager(store: store, authenticate: { _ in true })
+        let id = try XCTUnwrap(manager.currentProfile?.id)
+        let enabled = await manager.setProtection(id, enabled: true)
+        XCTAssertTrue(enabled)
+        XCTAssertNotNil(manager.browser)
+        XCTAssertTrue(manager.create(name: "Work", symbol: "briefcase"))
+        let work = try XCTUnwrap(manager.profiles.last?.id)
+        XCTAssertTrue(manager.select(work))
+        XCTAssertTrue(manager.select(id))
+        XCTAssertTrue(manager.isLocked)
+        XCTAssertNil(manager.browser)
+        await manager.unlockSelected()
+        XCTAssertNotNil(manager.browser)
+        manager.enteredBackground()
+        manager.becameActive()
+        XCTAssertTrue(manager.isLocked)
+        XCTAssertNil(manager.browser)
+        let relaunched = ProfileManager(store: store)
+        XCTAssertTrue(relaunched.isLocked)
+        XCTAssertNil(relaunched.browser)
+    }
+
+    func testFailedAuthenticationCannotUnlockDisableOrDelete() async throws {
+        let setup = ProfileManager(store: store, authenticate: { _ in true })
+        let id = try XCTUnwrap(setup.currentProfile?.id)
+        _ = await setup.setProtection(id, enabled: true)
+        XCTAssertTrue(setup.create(name: "Work", symbol: "briefcase"))
+        let manager = ProfileManager(store: store, authenticate: { _ in false })
+        await manager.unlockSelected()
+        XCTAssertNil(manager.browser)
+        let disabled = await manager.setProtection(id, enabled: false)
+        XCTAssertFalse(disabled)
+        await manager.delete(id)
+        XCTAssertTrue(manager.currentProfile?.isProtected == true)
+        XCTAssertEqual(manager.profiles.count, 2)
+    }
+
+    func testBackgroundDuringAuthenticationDiscardsSuccess() async throws {
+        let setup = ProfileManager(store: store, authenticate: { _ in true })
+        let id = try XCTUnwrap(setup.currentProfile?.id)
+        _ = await setup.setProtection(id, enabled: true)
+        var continuation: CheckedContinuation<Bool, Never>?
+        let manager = ProfileManager(store: store, authenticate: { _ in
+            await withCheckedContinuation { continuation = $0 }
+        })
+        let task = Task { await manager.unlockSelected() }
+        while continuation == nil { await Task.yield() }
+        manager.enteredBackground()
+        continuation?.resume(returning: true)
+        await task.value
+        XCTAssertTrue(manager.isLocked)
+        XCTAssertNil(manager.browser)
+    }
+
+    func testOldProfilesDecodeWithoutLock() throws {
+        let id = UUID()
+        let json = "{\"id\":\"\(id)\",\"name\":\"Personal\",\"symbol\":\"house\",\"usesLegacyWebStore\":false,\"isDeleting\":false}"
+        XCTAssertFalse(try JSONDecoder().decode(BrowserProfile.self, from: Data(json.utf8)).isProtected)
+    }
+
     private var root: URL!
     private var store: ProfileStore { ProfileStore(root: root) }
     override func setUp() async throws {

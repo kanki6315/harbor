@@ -32,6 +32,7 @@ struct ProfileList: View {
                                 Image(systemName: profile.symbol).dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                                 Text(profile.name).fixedSize(horizontal: false, vertical: true).layoutPriority(1)
                                     .foregroundStyle(.primary)
+                                if profile.isProtected { Image(systemName: "lock.fill").accessibilityLabel("Protected") }
                                 Spacer()
                                 if profiles.currentProfile?.id == profile.id {
                                     Image(systemName: "checkmark").dynamicTypeSize(...DynamicTypeSize.xxxLarge).foregroundStyle(.tint)
@@ -119,6 +120,16 @@ private struct ProfileEditor: View {
                         Label(iconName(symbol), systemImage: symbol).tag(symbol)
                     }
                 }
+                if let profile {
+                    Section {
+                        Toggle("Require \(profiles.authenticationLabel)", isOn: Binding(
+                            get: { profiles.profiles.first(where: { $0.id == profile.id })?.isProtected ?? false },
+                            set: { enabled in Task { await profiles.setProtection(profile.id, enabled: enabled) } }
+                        )).disabled(profiles.isAuthenticating)
+                    } footer: {
+                        Text("Unlock with Face ID, Touch ID, or your device passcode. Locks when you switch profiles or leave Harbor. Anyone with your device passcode can unlock this profile.")
+                    }
+                }
                 if let error = profiles.errorMessage { Text(error).foregroundStyle(.red) }
             }.navigationTitle(profile == nil ? "New profile" : "Edit profile")
                 .toolbar {
@@ -175,5 +186,24 @@ private struct ProfileReturnSettings: View {
                 enabled = profiles.registry?.returnAfterMinutes != nil
                 minutes = String(profiles.registry?.returnAfterMinutes ?? 30)
             }
+    }
+}
+
+struct LockedProfileView: View {
+    @Bindable var profiles: ProfileManager
+    @State private var showingProfiles = false
+
+    var body: some View {
+        ContentUnavailableView {
+            Label(profiles.currentProfile?.name ?? "Profile locked", systemImage: "lock.fill")
+        } description: {
+            Text(profiles.errorMessage ?? "Unlock this profile to access its tabs and browsing data.")
+        } actions: {
+            Button("Unlock with \(profiles.authenticationLabel)") {
+                Task { await profiles.unlockSelected() }
+            }.buttonStyle(.borderedProminent).disabled(profiles.isAuthenticating)
+            Button("Switch profile") { showingProfiles = true }.disabled(profiles.isAuthenticating)
+        }
+        .sheet(isPresented: $showingProfiles) { ProfilesView(profiles: profiles) }
     }
 }
