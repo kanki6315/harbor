@@ -123,3 +123,11 @@ Backup restoration was simulated by removing the excluded directories; no actual
 ### 0.1.5 integration verification
 
 After integrating main's Face ID profile locks and saved tab previews, all 29 HarborTests passed on iPhone 17 Pro / iOS 26.5 Simulator. Version 0.1.5 is set in both project.yml and the Xcode project. Result: `/tmp/harbor-backup-policy/Logs/Test/Test-Harbor-2026.10.07_17-01-47--0400.xcresult`. This was a simulator test build, not an archive or TestFlight upload.
+
+## Floating browser destinations — October 7, 2026
+
+Refreshed DESIGN.md and its Impeccable sidecar before implementing dedicated History/Settings at the top right, Bookmarks at the bottom right, and contextual Page actions at the top left. Profile management remains in Settings and the address-row profile shortcut stays available. The final top controls overlay content with no reserved row or full-width background; scrolling and address editing hide them.
+
+Simulator build passed on iPhone 18 Pro / iOS 27. Four initial targeted UI tests passed for destinations/bookmark add-remove, accessibility-size controls, collapse/restore, and tab restoration/settings. A focused rerun after local bookmark labels were shortened passed in actual simulator dark appearance (the launch argument alone did not apply dark appearance). After the user's overlay correction, both destination/bookmark and collapse/restore tests passed again, including assertions that website content extends behind the top buttons and retains the same frame when controls collapse. Final result: `/tmp/harbor-controls-build/Logs/Test/Test-Harbor-2026.10.07_17-36-04--0400.xcresult`.
+
+Inspected final light website controls and dark largest-text start-page controls. Captures: `/tmp/harbor-overlay-captures/controls-light.png` and `/tmp/harbor-overlay-start-dark-large.png`. The simulator was restored to light appearance and standard app text size. This is targeted simulator evidence; full-suite, physical-device, VoiceOver and landscape checks were not performed for this change. Floating controls can cover website content until collapsed; they do not reserve layout space.

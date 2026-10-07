@@ -1,6 +1,51 @@
 import XCTest
 
 final class HarborUITests: XCTestCase {
+    @MainActor func testBrowserDestinations() {
+        checkBrowserDestinations(darkLarge: false)
+    }
+
+    @MainActor func testBrowserDestinationsDarkLarge() {
+        checkBrowserDestinations(darkLarge: true)
+    }
+
+    @MainActor private func checkBrowserDestinations(darkLarge: Bool) {
+        let app = XCUIApplication()
+        app.launchArguments = ["--uitesting", "--reset", "--fixture", "-AppleInterfaceStyle", darkLarge ? "Dark" : "Light",
+                               "-UIPreferredContentSizeCategoryName", darkLarge ? "UICTContentSizeCategoryAccessibilityXXXL" : "UICTContentSizeCategoryL"]
+        app.launch()
+        XCTAssertTrue(app.webViews.staticTexts["Harbor test page"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.buttons["historyButton"].isHittable)
+        XCTAssertTrue(app.buttons["settingsButton"].isHittable)
+        XCTAssertTrue(app.buttons["bookmarksButton"].isHittable)
+        XCTAssertLessThan(app.buttons["historyButton"].frame.midX, app.buttons["settingsButton"].frame.midX)
+        XCTAssertLessThan(app.webViews.firstMatch.frame.minY, app.buttons["historyButton"].frame.midY, "The website must extend behind the top controls")
+        capture(app, name: darkLarge ? "controls-dark-large" : "controls-light")
+        app.buttons["bookmarksButton"].tap()
+        let bookmark = app.buttons["bookmarkCurrentPage"]
+        XCTAssertTrue(bookmark.waitForExistence(timeout: 5))
+        XCTAssertEqual(bookmark.label, "Bookmark this page")
+        bookmark.tap()
+        XCTAssertEqual(bookmark.label, "Remove bookmark for this page")
+        capture(app, name: darkLarge ? "bookmarks-dark-large" : "bookmarks-light")
+        app.buttons["Done"].tap()
+        app.buttons["bookmarksButton"].tap()
+        XCTAssertEqual(bookmark.label, "Remove bookmark for this page")
+        bookmark.tap()
+        XCTAssertEqual(bookmark.label, "Bookmark this page")
+        app.buttons["Done"].tap()
+        app.buttons["historyButton"].tap()
+        XCTAssertTrue(app.navigationBars["History"].waitForExistence(timeout: 5))
+        app.buttons["Done"].tap()
+        app.buttons["settingsButton"].tap()
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Profiles"].exists)
+        app.buttons["Done"].tap()
+        app.buttons["pageActionsButton"].tap()
+        XCTAssertTrue(app.buttons["Share page"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Add bookmark"].exists)
+    }
+
     @MainActor func testHistorySearchAndClear() {
         let app = openHistoryFixture()
         XCTAssertTrue(app.staticTexts["Today"].exists)
@@ -45,8 +90,7 @@ final class HarborUITests: XCTestCase {
         app.terminate()
         app.launchArguments = ["--uitesting"]
         app.launch()
-        app.buttons["moreButton"].tap()
-        app.buttons["History"].tap()
+        app.buttons["historyButton"].tap()
         XCTAssertTrue(app.buttons.matching(identifier: "historyVisit").matching(NSPredicate(format: "label BEGINSWITH %@", "Wikipedia,")).firstMatch.waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons.matching(identifier: "historyVisit").matching(NSPredicate(format: "label BEGINSWITH %@", "Plan your visit — Acadia National Park,")).firstMatch.exists)
         app.buttons.matching(identifier: "historyVisit").matching(NSPredicate(format: "label BEGINSWITH %@", "Human Interface Guidelines,")).firstMatch.tap()
@@ -68,9 +112,8 @@ final class HarborUITests: XCTestCase {
         }
         app.launchArguments += extra
         app.launch()
-        XCTAssertTrue(app.buttons["moreButton"].waitForExistence(timeout: 15))
-        app.buttons["moreButton"].tap()
-        app.buttons["History"].tap()
+        XCTAssertTrue(app.buttons["historyButton"].waitForExistence(timeout: 15))
+        app.buttons["historyButton"].tap()
         XCTAssertTrue(app.navigationBars["History"].waitForExistence(timeout: 5))
         return app
     }
@@ -147,8 +190,7 @@ final class HarborUITests: XCTestCase {
         app.buttons["tabsButton"].tap()
         XCTAssertTrue(app.navigationBars["2 tabs"].waitForExistence(timeout: 10))
         app.buttons["Done"].tap()
-        app.buttons["moreButton"].tap()
-        app.buttons["Settings"].tap()
+        app.buttons["settingsButton"].tap()
         XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.switches["Tracker blocking"].exists)
         capture(app, name: "phone-settings")
@@ -190,7 +232,9 @@ final class HarborUITests: XCTestCase {
         let reveal = app.buttons["expandBrowserControls"]
         XCTAssertTrue(reveal.waitForExistence(timeout: 5))
         XCTAssertFalse(app.textFields["addressField"].exists)
-        XCTAssertEqual(web.frame.height, expandedHeight, accuracy: 1)
+        XCTAssertEqual(web.frame.height, expandedHeight, accuracy: 1, "Floating controls must not resize the website")
+        XCTAssertFalse(app.buttons["historyButton"].exists)
+        XCTAssertFalse(app.buttons["settingsButton"].exists)
         for _ in 0..<5 { web.swipeUp() }
         let end = web.buttons["Page end action"]
         XCTAssertTrue(end.isHittable)
@@ -347,8 +391,7 @@ final class HarborUITests: XCTestCase {
         app.buttons["tabsButton"].tap()
         XCTAssertTrue(app.navigationBars["1 tab"].waitForExistence(timeout: 5))
         app.buttons["Done"].tap()
-        app.buttons["moreButton"].tap()
-        app.buttons["Settings"].tap()
+        app.buttons["settingsButton"].tap()
         let tracker = app.switches["Tracker blocking"]
         XCTAssertTrue(tracker.waitForExistence(timeout: 5))
         tracker.coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.5)).tap()
@@ -359,8 +402,7 @@ final class HarborUITests: XCTestCase {
         app.buttons["tabsButton"].tap()
         XCTAssertTrue(app.navigationBars["2 tabs"].waitForExistence(timeout: 5))
         app.buttons["Done"].tap()
-        app.buttons["moreButton"].tap()
-        app.buttons["Settings"].tap()
+        app.buttons["settingsButton"].tap()
         XCTAssertEqual(app.switches["Tracker blocking"].value as? String, "1")
         app.buttons["Done"].tap()
         app.buttons["profilesButton"].tap()

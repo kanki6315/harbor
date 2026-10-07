@@ -63,6 +63,11 @@ struct BrowserView: View {
                 ProgressView("Preparing browser…")
             }
         }
+        .overlay(alignment: .top) {
+            if browser.activeSession?.fullscreen != true && !chromeCollapsed && !editingAddress {
+                topChrome.transition(.opacity)
+            }
+        }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if browser.activeSession?.fullscreen != true {
                 chrome.onGeometryChange(for: CGFloat.self) { $0.size.height } action: { chromeHeight = $0 }
@@ -108,6 +113,52 @@ struct BrowserView: View {
         .alert("Harbor", isPresented: Binding(get: { browser.errorMessage != nil || browser.downloads.errorMessage != nil || profiles.errorMessage != nil }, set: { if !$0 { browser.errorMessage = nil; browser.downloads.errorMessage = nil; profiles.errorMessage = nil } })) {
             Button("OK", role: .cancel) { browser.errorMessage = nil; browser.downloads.errorMessage = nil; profiles.errorMessage = nil }
         } message: { Text(browser.errorMessage ?? browser.downloads.errorMessage ?? profiles.errorMessage ?? "") }
+    }
+
+    private var topChrome: some View {
+        GlassEffectContainer(spacing: 8) {
+            HStack {
+                if browser.selectedTab.url != nil || browser.downloads.completed != nil || browser.downloads.activeCount > 0 {
+                    Menu {
+                        if let url = browser.selectedTab.url {
+                            Button("Share page", systemImage: "square.and.arrow.up") { share = ShareItem(url: url) }
+                            Button(browser.archive.bookmarks.contains(where: { $0.url == url }) ? "Remove bookmark" : "Add bookmark", systemImage: "bookmark") { browser.toggleBookmark() }
+                        }
+                        if browser.activeSession?.mediaState == .playing {
+                            Button("Pause media", systemImage: "pause.fill") { browser.activeSession?.webView.pauseAllMediaPlayback(completionHandler: nil) }
+                        }
+                        if let download = browser.downloads.completed {
+                            Button("Save or share download", systemImage: "arrow.down.doc") { share = download }
+                        }
+                        if browser.downloads.activeCount > 0 { Text("Downloading \(browser.downloads.activeCount) file(s)…") }
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                            .frame(width: 48, height: 48)
+                    }
+                    .harborGlass()
+                    .accessibilityLabel("Page actions")
+                    .accessibilityIdentifier("pageActionsButton")
+                }
+                Spacer(minLength: 8)
+                HStack(spacing: 0) {
+                    Button { sheet = .history } label: {
+                        Image(systemName: "clock").frame(width: 48, height: 48)
+                    }
+                    .accessibilityLabel("History")
+                    .accessibilityIdentifier("historyButton")
+                    Button { sheet = .settings } label: {
+                        Image(systemName: "gearshape").frame(width: 48, height: 48)
+                    }
+                    .accessibilityLabel("Settings")
+                    .accessibilityIdentifier("settingsButton")
+                }
+                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                .harborGlass()
+            }
+            .padding(.horizontal, typeSize.isAccessibilitySize ? 8 : 16)
+            .padding(.vertical, 4)
+        }
     }
 
     private var chrome: some View {
@@ -186,25 +237,8 @@ struct BrowserView: View {
                                 }.frame(width: 27, height: 27)
                                     .frame(maxWidth: .infinity, minHeight: 48)
                             }.accessibilityLabel("Tabs, \(browser.archive.tabs.count) open").accessibilityIdentifier("tabsButton")
-                            Menu {
-                                Button("Profiles · \(browser.profileName)", systemImage: profiles.currentProfile?.symbol ?? "person.crop.circle") { sheet = .profiles }
-                                if let url = browser.selectedTab.url {
-                                    Button("Share page", systemImage: "square.and.arrow.up") { share = ShareItem(url: url) }
-                                    Button(browser.archive.bookmarks.contains(where: { $0.url == url }) ? "Remove bookmark" : "Add bookmark", systemImage: "bookmark") { browser.toggleBookmark() }
-                                }
-                                Button("Bookmarks", systemImage: "book") { sheet = .bookmarks }
-                                Button("History", systemImage: "clock") { sheet = .history }
-                                if browser.activeSession?.mediaState == .playing {
-                                    Button("Pause media", systemImage: "pause.fill") { browser.activeSession?.webView.pauseAllMediaPlayback(completionHandler: nil) }
-                                }
-                                if let download = browser.downloads.completed {
-                                    Button("Save or share download", systemImage: "arrow.down.doc") { share = download }
-                                }
-                                if browser.downloads.activeCount > 0 { Text("Downloading \(browser.downloads.activeCount) file(s)…") }
-                                Button("Settings", systemImage: "gearshape") { sheet = .settings }
-                            } label: {
-                                Image(systemName: "ellipsis").dynamicTypeSize(...DynamicTypeSize.xxxLarge).frame(maxWidth: .infinity, minHeight: 48)
-                            }.accessibilityLabel("More").accessibilityIdentifier("moreButton")
+                            action("Bookmarks", symbol: "book") { sheet = .bookmarks }
+                                .accessibilityIdentifier("bookmarksButton")
                         }.harborGlass()
                             .transition(reduceMotion ? .opacity :
                                 .offset(y: 12).combined(with: .opacity))

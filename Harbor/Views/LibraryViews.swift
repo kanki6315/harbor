@@ -173,22 +173,34 @@ struct BookmarksView: View {
     var body: some View {
         NavigationStack {
             List {
+                if let url = browser.selectedTab.url {
+                    Section {
+                        Button {
+                            browser.toggleBookmark()
+                        } label: {
+                            Label(browser.archive.bookmarks.contains(where: { $0.url == url }) ? "Remove bookmark for this page" : "Bookmark this page", systemImage: "bookmark")
+                        }
+                        .accessibilityIdentifier("bookmarkCurrentPage")
+                    }
+                }
+                if bookmarks.isEmpty {
+                    ContentUnavailableView(search.isEmpty ? "Keep a good find" : "No matching bookmarks", systemImage: "bookmark",
+                                           description: Text(search.isEmpty ? "Open a page, then choose Bookmark this page here." : "Try another title or address."))
+                        .listRowBackground(Color.clear)
+                }
                 ForEach(bookmarks) { bookmark in
                     Button { browser.navigate(bookmark.url); dismiss() } label: {
                         Label {
                             VStack(alignment: .leading, spacing: 5) {
                                 Text(bookmark.title).foregroundStyle(.primary).lineLimit(2)
-                                Text(bookmark.url.host ?? bookmark.url.absoluteString).foregroundStyle(.secondary).font(.subheadline)
+                                Text(bookmark.url.host ?? (bookmark.url.isFileURL ? "Local page" : bookmark.url.absoluteString))
+                                    .foregroundStyle(.secondary).font(.subheadline)
+                                    .lineLimit(2).truncationMode(.middle)
                             }.padding(.vertical, 4)
                         } icon: { Image(systemName: "bookmark").foregroundStyle(.tint) }
                     }.swipeActions {
                         Button("Delete", role: .destructive) { browser.archive.bookmarks.removeAll { $0.id == bookmark.id }; browser.saveNow() }
                     }
-                }
-            }.overlay {
-                if bookmarks.isEmpty {
-                    ContentUnavailableView(search.isEmpty ? "Keep a good find" : "No matching bookmarks", systemImage: "bookmark",
-                                           description: Text(search.isEmpty ? "Open a page, then choose Add bookmark from the More menu." : "Try another title or address."))
                 }
             }
             .navigationTitle("Bookmarks").searchable(text: $search, prompt: "Search bookmarks")
