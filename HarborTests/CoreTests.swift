@@ -1,4 +1,6 @@
 import XCTest
+import UIKit
+import WebKit
 @testable import Harbor
 
 final class CoreTests: XCTestCase {
@@ -29,4 +31,71 @@ final class CoreTests: XCTestCase {
         XCTAssertEqual(restored.selectedTabID, archive.selectedTabID)
         XCTAssertEqual(restored.settings, archive.settings)
     }
+    @MainActor func testReorderingPreservesSelectionAndSavedOrder() throws {
+        let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = BrowserStore(fileURL: directory.appending(path: "browser.json"))
+        let browser = BrowserModel(store: store, isTesting: true)
+        defer { browser.deactivate() }
+        let first = browser.selectedID
+        let second = browser.newTab()
+        let third = browser.newTab()
+        browser.moveTab(first, onto: third)
+        XCTAssertEqual(browser.archive.tabs.map(\.id), [second, third, first])
+        XCTAssertEqual(browser.selectedID, third)
+        browser.moveTabs(from: IndexSet(integer: 2), to: 0)
+        XCTAssertEqual(browser.archive.tabs.map(\.id), [first, second, third])
+        XCTAssertTrue(browser.saveNow())
+        XCTAssertEqual(try store.load().tabs.map(\.id), [first, second, third])
+        browser.moveTab(UUID(), onto: first)
+        XCTAssertEqual(browser.archive.tabs.count, 3)
+    }
+
+    @MainActor func testSavedPreviewsAreProfileScopedAndPruned() throws {
+        let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let first = BrowserStore(fileURL: directory.appending(path: "first/browser.json"))
+        let second = BrowserStore(fileURL: directory.appending(path: "second/browser.json"))
+        let id = UUID(), removed = UUID()
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 32, height: 48)).image { context in
+            UIColor.red.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 32, height: 48))
+        }
+        try first.savePreview(image, id: id)
+        try first.savePreview(image, id: removed)
+        XCTAssertNotNil(UIImage(contentsOfFile: first.previewURL(id).path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: second.previewURL(id).path))
+        first.prunePreviews(keeping: [id])
+        XCTAssertTrue(FileManager.default.fileExists(atPath: first.previewURL(id).path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: first.previewURL(removed).path))
+        first.removePreview(id)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: first.previewURL(id).path))
+    }
+
+    @MainActor func testUnloadingKeepsPreviewAndTabButReleasesSession() async throws {
+        let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = BrowserStore(fileURL: directory.appending(path: "browser.json"))
+        let browser = BrowserModel(store: store, isTesting: true)
+        defer { browser.deactivate() }
+        let configuration = WKWebViewConfiguration()
+        configuration.websiteDataStore = browser.websiteDataStore
+        _ = browser.createPopup(configuration: configuration, url: URL(string: "https://example.com"))
+        let id = browser.selectedID
+        let session = try XCTUnwrap(browser.sessions[id])
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 32, height: 48)).image { context in
+            UIColor.blue.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 32, height: 48))
+        }
+        browser.savePreview(image, for: session)
+        browser.newTab()
+        await browser.unloadBackgroundTabs()
+        XCTAssertNil(browser.sessions[id])
+        XCTAssertTrue(session.isDisposed)
+        XCTAssertTrue(browser.archive.tabs.contains { $0.id == id })
+        XCTAssertNotNil(UIImage(contentsOfFile: browser.previewURL(id).path))
+        await browser.clearWebsiteData()
+        XCTAssertFalse(FileManager.default.fileExists(atPath: browser.previewURL(id).path))
+    }
+
 }
