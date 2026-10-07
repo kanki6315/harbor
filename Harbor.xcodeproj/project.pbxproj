@@ -68,6 +68,7 @@
 		184640849705AB4AC6A00104 /* TabSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabSession.swift; sourceTree = "<group>"; };
 		1C02BFC1BBBA23DDCB63F733 /* Harbor.icon */ = {isa = PBXFileReference; lastKnownFileType = wrapper.icon; path = Harbor.icon; sourceTree = "<group>"; };
 		1C2F48FD8A25BDA443619403 /* ProfileManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileManager.swift; sourceTree = "<group>"; };
+		38799E22E8C2BA260619954C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		45AA0FFDCD1A6FA52AB31421 /* media-fixture.mp4 */ = {isa = PBXFileReference; path = "media-fixture.mp4"; sourceTree = "<group>"; };
 		460B5BEE1267E94874C9C1D1 /* ASSET-PROVENANCE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "ASSET-PROVENANCE.md"; sourceTree = "<group>"; };
 		5F28B32FF2AAAC119B3AE99C /* BrowserModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserModel.swift; sourceTree = "<group>"; };
@@ -179,6 +180,7 @@
 		BF003DDB7C2B097E650D3CE9 /* Harbor */ = {
 			isa = PBXGroup;
 			children = (
+				38799E22E8C2BA260619954C /* Info.plist */,
 				0A8A8C27CE4FDFE40DBABF50 /* App */,
 				7FC3AAF4688BBA276A8530BA /* Browser */,
 				B08CF369C7887AF95A886C7D /* Media */,
@@ -597,6 +599,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Harbor/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Harbor;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
@@ -658,6 +661,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Harbor/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Harbor;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";

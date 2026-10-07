@@ -9,6 +9,7 @@ final class ProfileManager {
     private(set) var isDeleting = false
     var errorMessage: String?
     let store: ProfileStore
+    private var pendingIncomingURLs: [UUID: [URL]] = [:]
     private var browsers: [UUID: BrowserModel] = [:]
     private let testing: Bool
     private var unlockedProfileID: UUID?
@@ -166,6 +167,27 @@ final class ProfileManager {
         }
         browser = model
         model.activate()
+        openPendingIncomingURLs()
+    }
+
+    /// Apply return/lock policy before choosing the receiving profile, regardless of
+    /// whether SwiftUI delivers the URL or the active-scene event first.
+    func openIncomingURL(_ url: URL, at date: Date = Date()) {
+        guard ["http", "https"].contains(url.scheme?.lowercased() ?? ""),
+              let host = url.host, !host.isEmpty else { return }
+        becameActive(at: date)
+        guard let profile = currentProfile else { return }
+        pendingIncomingURLs[profile.id, default: []].append(url)
+        openPendingIncomingURLs()
+    }
+
+    private func openPendingIncomingURLs() {
+        guard !isLocked, let browser, let id = currentProfile?.id,
+              browser.profileID == id else { return }
+        // Keep links tied to their receiving profile when the user switches away
+        // from a locked profile. Pending links live only in memory.
+        let urls = pendingIncomingURLs.removeValue(forKey: id) ?? []
+        for url in urls { browser.newTab(url: url) }
     }
 
     @discardableResult func select(_ id: UUID) -> Bool {
@@ -286,6 +308,7 @@ final class ProfileManager {
         browsers[id]?.deactivate()
         browsers[id]?.downloads.clearTemporaryFiles()
         browsers.removeValue(forKey: id)
+        pendingIncomingURLs.removeValue(forKey: id)
         // Let SwiftUI detach outgoing web views before WebKit removes their data store.
         await Task.yield()
         do {
