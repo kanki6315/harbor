@@ -1,0 +1,84 @@
+import SwiftUI
+
+struct StartPage: View {
+    @Bindable var browser: BrowserModel
+    var focusAddress: () -> Void
+    var showPrivacy: () -> Void
+    @Environment(\.dynamicTypeSize) private var typeSize
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 0) {
+                ZStack(alignment: .top) {
+                    HorizonArtwork()
+                    VStack(spacing: 4) {
+                        HarborMark().frame(width: 94, height: 94)
+                        Text("Harbor").font(.largeTitle.weight(.bold)).foregroundStyle(.white)
+                        Text("An open place to return to.").font(.subheadline).foregroundStyle(.white)
+                        Spacer(minLength: 70)
+                        Button(action: showPrivacy) {
+                            Label(browser.protectionStatus, systemImage: "shield.lefthalf.filled")
+                                .font(.subheadline.weight(.medium)).padding(.horizontal, 18).frame(minHeight: 44)
+                        }.buttonStyle(.plain).foregroundStyle(.white).harborGlass()
+                    }.padding(.top, 16).padding(.bottom, 26)
+                }.frame(height: typeSize.isAccessibilitySize ? 350 : 350)
+                VStack(alignment: .leading, spacing: 26) {
+                    if let recent = browser.archive.history.first {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Continue browsing").font(.title3.bold())
+                            Button { browser.navigate(recent.url) } label: {
+                                HStack(spacing: 14) {
+                                    Image(systemName: "clock.arrow.circlepath").font(.title2).foregroundStyle(.tint)
+                                    VStack(alignment: .leading, spacing: 5) {
+                                        Text(recent.title).font(.headline).lineLimit(2)
+                                        Text(recent.url.host ?? recent.url.absoluteString).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                                    }
+                                    Spacer()
+                                    Image(systemName: "arrow.up.right").foregroundStyle(.secondary)
+                                }.padding(18).frame(maxWidth: .infinity, alignment: .leading)
+                                    .background(Color(uiColor: .tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18))
+                            }.buttonStyle(.plain)
+                        }
+                    } else {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Where to next?").font(.title2.bold())
+                            Text("Search, visit a website, or pick up where you left off. Your tabs will be here when you return.")
+                                .font(.body).foregroundStyle(.secondary)
+                            Button("Search or enter address", systemImage: "magnifyingglass", action: focusAddress)
+                                .padding(.top, 4).frame(minHeight: 44)
+                        }
+                    }
+                    if !browser.archive.bookmarks.isEmpty {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Favorites").font(.title3.bold())
+                            ForEach(browser.archive.bookmarks.prefix(6)) { bookmark in
+                                Button { browser.navigate(bookmark.url) } label: {
+                                    HStack(spacing: 14) {
+                                        Image(systemName: "bookmark.fill").foregroundStyle(.tint).frame(width: 28)
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Text(bookmark.title).lineLimit(1)
+                                            Text(bookmark.url.host ?? "").font(.caption).foregroundStyle(.secondary)
+                                        }
+                                        Spacer()
+                                        Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
+                                    }.frame(minHeight: 52)
+                                }.buttonStyle(.plain)
+                            }
+                        }
+                    }
+                    if browser.archive.history.count > 1 {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Recently visited").font(.title3.bold())
+                            ForEach(Array(browser.archive.history.dropFirst().prefix(4))) { entry in
+                                Button { browser.navigate(entry.url) } label: {
+                                    Label(entry.title, systemImage: "globe").lineLimit(1).frame(minHeight: 44)
+                                }.buttonStyle(.plain)
+                            }
+                        }
+                    }
+                }.padding(24).frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color(uiColor: .systemGroupedBackground), in: UnevenRoundedRectangle(topLeadingRadius: 26, topTrailingRadius: 26))
+                    .padding(.top, -16)
+            }
+        }.background(Color(uiColor: .systemGroupedBackground)).accessibilityIdentifier("startPage")
+    }
+}

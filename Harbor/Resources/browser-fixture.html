@@ -1,0 +1,14 @@
+<!doctype html><html lang="en"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Harbor test page</title>
+<style>body{font:17px -apple-system;padding:20px;color:#0d2747;background:#e8f0f8}button,a{display:block;padding:14px;margin:8px 0}video{width:100%;background:#0d2747}audio{width:100%}</style>
+<h1>Harbor test page</h1><p>Local fixture · no external requests</p>
+<video id="video" controls playsinline loop preload="metadata" src="media-fixture.mp4"></video>
+<button onclick="video.play().then(()=>document.getElementById('state').textContent='Video playing').catch(()=>document.getElementById('state').textContent='Playback failed')">Play video</button>
+<button onclick="video.pause();document.getElementById('state').textContent='Video paused'">Pause video</button>
+<button onclick="video.webkitEnterFullscreen()">Full-screen video</button>
+<p id="state">Ready</p>
+<audio id="audio" controls loop src="media-fixture.mp4"></audio>
+<button onclick="audio.play().then(()=>document.getElementById('state').textContent='Audio playing').catch(()=>document.getElementById('state').textContent='Playback failed')">Play audio</button>
+<a href="https://example.com" target="_blank">Open popup tab</a>
+<button onclick="alert('Native dialog works')">Show alert</button>
+<a href="media-fixture.mp4" download="harbor-sample.mp4">Download sample</a>
+</html>
