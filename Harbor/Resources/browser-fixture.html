@@ -12,4 +12,8 @@
 <button onclick="alert('Native dialog works')">Show alert</button>
 <a href="media-fixture.mp4" download="harbor-sample.mp4">Download sample</a>
 <button onclick="video.src='https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_ts/master.m3u8';video.play().then(()=>document.getElementById('state').textContent='HLS playing').catch(e=>document.getElementById('state').textContent='HLS failed: '+e.name)">Play Apple HLS sample</button>
+<div style="height:650px" aria-hidden="true"></div>
+<button onclick="this.textContent='Page end reached'">Page end action</button>
+<div style="height:80px" aria-hidden="true"></div>
+<button style="position:fixed;bottom:0;right:12px;margin:0;background:#0d2747;color:white;z-index:10" onclick="this.textContent='Footer tapped'">Fixed footer action</button>
 </html>

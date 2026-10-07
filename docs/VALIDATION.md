@@ -68,3 +68,11 @@ Final focused result bundles: `Test-Harbor-2026.10.07_00-26-58--0400.xcresult` a
 The release attempt on the iPhone 17 simulator failed before test execution while launching the app and UI test runner. The terminal was force-closed, leaving its result bundle incomplete. Local `.release.env` now selects the previously working iPhone 18 Pro by UDID.
 
 A fresh full run exposed covered web controls in the HLS and popup tests after the transparent-chrome change. The browser now measures chrome height and applies explicit WebKit scroll insets; tests scroll targets above the native controls and assert their reachability before tapping. The subsequent full run passed 12 tests with the existing YouTube compatibility skip and no failures. Website geometry still extends beneath the status area and glass bars. No archive or upload was performed during this recovery.
+
+## Collapsible controls verification — October 7, 2026
+
+The bottom bars now collapse explicitly into a bottom-right 56 × 44pt restore handle. Both states reserve their own space outside the website viewport. This supersedes the earlier transparent-overlay geometry and manual WebKit scroll-inset workaround described above; fixed-position site footers stay inside the visible page. Start-page scrolling is clipped above the controls.
+
+On iPhone 17 Pro / iOS 26.5 Simulator, four targeted UI tests passed: collapse/restore with a tappable fixed footer and end-of-page action; largest-text/landscape geometry and editing; live video across tab switching; and audio/native fullscreen return. After capping the restore symbol to match the other toolbar icons, the large-text/landscape test passed again with actual simulator dark appearance. Rotation assertions now wait for settled geometry; full-screen screenshots avoid the app-capture rotation artifact. Result bundles: `/tmp/harbor-chrome-review/verified.xcresult` and `/tmp/harbor-chrome-review/final-appearance.xcresult`. Captures are in `.impeccable/review/phone-*.png` locally.
+
+This is targeted simulator validation, not a new full-suite or physical-device signoff.

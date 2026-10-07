@@ -11,29 +11,23 @@ struct BrowserView: View {
     @State private var address = ""
     @State private var sheet: BrowserSheet?
     @State private var share: ShareItem?
-    @State private var chromeHeight: CGFloat = 117
+    @State private var chromeCollapsed = false
     @FocusState private var editingAddress: Bool
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        GeometryReader { geometry in
-            content(in: geometry)
-        }
+        content
     }
 
-    private func content(in geometry: GeometryProxy) -> some View {
+    private var content: some View {
         ZStack {
             Color(uiColor: .systemBackground)
             // Resident views stay attached to preserve WebKit's media and native full-screen UI.
             ForEach(browser.archive.tabs) { tab in
                 if let session = browser.sessions[tab.id] {
-                    WebView(webView: session.webView,
-                            contentInsets: UIEdgeInsets(top: geometry.safeAreaInsets.top, left: 0,
-                                bottom: geometry.safeAreaInsets.bottom + (browser.activeSession?.fullscreen == true ? 0 : chromeHeight), right: 0))
-                        // Keep the page beneath the system status area and floating glass controls.
-                        // Explicit scroll insets keep controls reachable while the page draws behind glass.
-                        .ignoresSafeArea(.container, edges: .vertical)
+                    // A bounded viewport keeps fixed website controls inside the visible page.
+                    WebView(webView: session.webView)
                         .opacity(tab.id == browser.selectedID ? 1 : 0)
                         .allowsHitTesting(tab.id == browser.selectedID)
                         .accessibilityHidden(tab.id != browser.selectedID)
@@ -59,12 +53,13 @@ struct BrowserView: View {
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if browser.activeSession?.fullscreen != true {
-                chrome.onGeometryChange(for: CGFloat.self) { $0.size.height } action: { chromeHeight = $0 }
+                chrome
+                    .background(Color(uiColor: .systemBackground).ignoresSafeArea(.container, edges: .bottom))
             }
         }
         .onChange(of: browser.selectedID) { _, _ in editingAddress = false; syncAddress() }
         .onChange(of: browser.selectedTab.url) { _, _ in if !editingAddress { syncAddress() } }
-        .onChange(of: editingAddress) { _, value in if value { syncAddress() } }
+        .onChange(of: editingAddress) { _, value in if value { chromeCollapsed = false; syncAddress() } }
         .onChange(of: scenePhase) { _, phase in
             if phase != .active { browser.saveNow() }
             else { Task { await browser.refreshMedia() } }
@@ -105,69 +100,97 @@ struct BrowserView: View {
 
     private var chrome: some View {
         VStack(spacing: 8) {
-            if browser.activeSession?.isLoading == true {
-                ProgressView(value: browser.activeSession?.progress ?? 0).tint(.harborBlue).accessibilityLabel("Page loading")
-            }
-            HStack(spacing: 0) {
-                Button { editingAddress = false; sheet = .privacy } label: {
-                    Image(systemName: "shield.lefthalf.filled").dynamicTypeSize(...DynamicTypeSize.xxxLarge).frame(width: 44, height: 48)
-                }.accessibilityLabel(browser.protectionStatus)
-                TextField("Search or enter address", text: $address,
-                          prompt: Text(typeSize.isAccessibilitySize ? "Address" : "Search or enter address")
-                            .foregroundStyle(Color.primary.opacity(0.72)))
-                    .textInputAutocapitalization(.never).autocorrectionDisabled()
-                    .keyboardType(.webSearch).submitLabel(.go)
-                    .focused($editingAddress).onSubmit(submit)
-                    .accessibilityIdentifier("addressField")
-                    .frame(minHeight: 48)
-                if editingAddress {
-                    Button(action: submit) { Image(systemName: "arrow.right.circle.fill").dynamicTypeSize(...DynamicTypeSize.xxxLarge).frame(width: 44, height: 48) }
-                        .accessibilityLabel("Go")
-                } else if browser.selectedTab.url != nil {
-                    Button {
-                        if browser.activeSession?.isLoading == true { browser.activeSession?.webView.stopLoading() }
-                        else { browser.reload() }
-                    } label: {
-                        Image(systemName: browser.activeSession?.isLoading == true ? "xmark" : "arrow.clockwise").dynamicTypeSize(...DynamicTypeSize.xxxLarge).frame(width: 44, height: 48)
-                    }.accessibilityLabel(browser.activeSession?.isLoading == true ? "Stop loading" : "Reload")
+            if chromeCollapsed && !editingAddress {
+                HStack {
+                    Spacer(minLength: 0)
+                    Button { chromeCollapsed = false } label: {
+                        Image(systemName: "chevron.up")
+                            .font(.body.weight(.semibold))
+                            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                            .frame(width: 56, height: 44)
+                    }
+                    .harborGlass()
+                    .accessibilityLabel("Show browser controls")
+                    .accessibilityIdentifier("expandBrowserControls")
                 }
-            }.padding(.horizontal, 4).harborGlass()
-            if !editingAddress {
+            } else {
                 HStack(spacing: 0) {
-                    action("Back", symbol: "chevron.left") { browser.activeSession?.webView.goBack() }
-                        .disabled(browser.activeSession?.canGoBack != true)
-                    action("Forward", symbol: "chevron.right") { browser.activeSession?.webView.goForward() }
-                        .disabled(browser.activeSession?.canGoForward != true)
-                    action("New tab", symbol: "plus") { browser.newTab(); editingAddress = true }
-                    Button { browser.activeSession?.captureSnapshot(); sheet = .tabs } label: {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 5).strokeBorder(lineWidth: 1.8)
-                            Text("\(browser.archive.tabs.count)")
-                                .font(.system(size: 12, weight: .bold, design: .rounded))
-                                .monospacedDigit().lineLimit(1).minimumScaleFactor(0.5)
-                                .padding(.horizontal, 3)
-                        }.frame(width: 27, height: 27)
-                            .frame(maxWidth: .infinity, minHeight: 48)
-                    }.accessibilityLabel("Tabs, \(browser.archive.tabs.count) open").accessibilityIdentifier("tabsButton")
-                    Menu {
-                        if let url = browser.selectedTab.url {
-                            Button("Share page", systemImage: "square.and.arrow.up") { share = ShareItem(url: url) }
-                            Button(browser.archive.bookmarks.contains(where: { $0.url == url }) ? "Remove bookmark" : "Add bookmark", systemImage: "bookmark") { browser.toggleBookmark() }
+                    Button { editingAddress = false; sheet = .privacy } label: {
+                        Image(systemName: "shield.lefthalf.filled").dynamicTypeSize(...DynamicTypeSize.xxxLarge).frame(width: 44, height: 48)
+                    }.accessibilityLabel(browser.protectionStatus)
+                    TextField("Search or enter address", text: $address,
+                              prompt: Text(typeSize.isAccessibilitySize ? "Address" : "Search or enter address")
+                                .foregroundStyle(Color.primary.opacity(0.72)))
+                        .textInputAutocapitalization(.never).autocorrectionDisabled()
+                        .keyboardType(.webSearch).submitLabel(.go)
+                        .focused($editingAddress).onSubmit(submit)
+                        .accessibilityIdentifier("addressField")
+                        .frame(minHeight: 48)
+                    if editingAddress {
+                        Button(action: submit) { Image(systemName: "arrow.right.circle.fill").dynamicTypeSize(...DynamicTypeSize.xxxLarge).frame(width: 44, height: 48) }
+                            .accessibilityLabel("Go")
+                    } else if browser.selectedTab.url != nil {
+                        Button {
+                            if browser.activeSession?.isLoading == true { browser.activeSession?.webView.stopLoading() }
+                            else { browser.reload() }
+                        } label: {
+                            Image(systemName: browser.activeSession?.isLoading == true ? "xmark" : "arrow.clockwise").dynamicTypeSize(...DynamicTypeSize.xxxLarge).frame(width: 44, height: 48)
+                        }.accessibilityLabel(browser.activeSession?.isLoading == true ? "Stop loading" : "Reload")
+                    }
+                    if !editingAddress {
+                        Button { chromeCollapsed = true } label: {
+                            Image(systemName: "chevron.down")
+                                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                                .frame(width: 44, height: 48)
                         }
-                        Button("Bookmarks", systemImage: "book") { sheet = .bookmarks }
-                        Button("History", systemImage: "clock") { sheet = .history }
-                        if browser.activeSession?.mediaState == .playing {
-                            Button("Pause media", systemImage: "pause.fill") { browser.activeSession?.webView.pauseAllMediaPlayback(completionHandler: nil) }
+                        .accessibilityLabel("Hide browser controls")
+                        .accessibilityIdentifier("collapseBrowserControls")
+                    }
+                }.padding(.horizontal, 4).harborGlass()
+                    .overlay(alignment: .bottom) {
+                        if browser.activeSession?.isLoading == true {
+                            ProgressView(value: browser.activeSession?.progress ?? 0)
+                                .tint(.harborBlue).padding(.horizontal, 24)
+                                .accessibilityLabel("Page loading")
                         }
-                        if let download = browser.downloads.completed {
-                            Button("Save or share download", systemImage: "arrow.down.doc") { share = download }
-                        }
-                        if browser.downloads.activeCount > 0 { Text("Downloading \(browser.downloads.activeCount) file(s)…") }
-                        Button("Settings", systemImage: "gearshape") { sheet = .settings }
-                    } label: {
-                        Image(systemName: "ellipsis").dynamicTypeSize(...DynamicTypeSize.xxxLarge).frame(maxWidth: .infinity, minHeight: 48)
-                    }.accessibilityLabel("More").accessibilityIdentifier("moreButton")
-                }.harborGlass()
+                    }
+                if !editingAddress {
+                    HStack(spacing: 0) {
+                        action("Back", symbol: "chevron.left") { browser.activeSession?.webView.goBack() }
+                            .disabled(browser.activeSession?.canGoBack != true)
+                        action("Forward", symbol: "chevron.right") { browser.activeSession?.webView.goForward() }
+                            .disabled(browser.activeSession?.canGoForward != true)
+                        action("New tab", symbol: "plus") { browser.newTab(); editingAddress = true }
+                        Button { browser.activeSession?.captureSnapshot(); sheet = .tabs } label: {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 5).strokeBorder(lineWidth: 1.8)
+                                Text("\(browser.archive.tabs.count)")
+                                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                                    .monospacedDigit().lineLimit(1).minimumScaleFactor(0.5)
+                                    .padding(.horizontal, 3)
+                            }.frame(width: 27, height: 27)
+                                .frame(maxWidth: .infinity, minHeight: 48)
+                        }.accessibilityLabel("Tabs, \(browser.archive.tabs.count) open").accessibilityIdentifier("tabsButton")
+                        Menu {
+                            if let url = browser.selectedTab.url {
+                                Button("Share page", systemImage: "square.and.arrow.up") { share = ShareItem(url: url) }
+                                Button(browser.archive.bookmarks.contains(where: { $0.url == url }) ? "Remove bookmark" : "Add bookmark", systemImage: "bookmark") { browser.toggleBookmark() }
+                            }
+                            Button("Bookmarks", systemImage: "book") { sheet = .bookmarks }
+                            Button("History", systemImage: "clock") { sheet = .history }
+                            if browser.activeSession?.mediaState == .playing {
+                                Button("Pause media", systemImage: "pause.fill") { browser.activeSession?.webView.pauseAllMediaPlayback(completionHandler: nil) }
+                            }
+                            if let download = browser.downloads.completed {
+                                Button("Save or share download", systemImage: "arrow.down.doc") { share = download }
+                            }
+                            if browser.downloads.activeCount > 0 { Text("Downloading \(browser.downloads.activeCount) file(s)…") }
+                            Button("Settings", systemImage: "gearshape") { sheet = .settings }
+                        } label: {
+                            Image(systemName: "ellipsis").dynamicTypeSize(...DynamicTypeSize.xxxLarge).frame(maxWidth: .infinity, minHeight: 48)
+                        }.accessibilityLabel("More").accessibilityIdentifier("moreButton")
+                    }.harborGlass()
+                }
             }
         }
         .padding(.horizontal, typeSize.isAccessibilitySize ? 8 : 16).padding(.top, 8).padding(.bottom, 5)
