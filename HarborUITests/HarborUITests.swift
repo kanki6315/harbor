@@ -1,6 +1,19 @@
 import XCTest
 
 final class HarborUITests: XCTestCase {
+    @MainActor func testLockDelaySetting() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--uitesting", "--reset", "--locked-profile-fixture"]
+        app.launch()
+        app.buttons["Switch profile"].tap()
+        app.buttons["Edit Personal"].tap()
+        XCTAssertTrue(app.buttons["lockAfterPicker"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["30 minutes"].exists)
+        app.buttons["lockAfterPicker"].tap()
+        XCTAssertTrue(app.buttons["Immediately"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["1 hour"].exists)
+    }
+
     @MainActor func testLockedProfileAppearanceAndSwitching() {
         let app = XCUIApplication()
         for (name, extra) in [

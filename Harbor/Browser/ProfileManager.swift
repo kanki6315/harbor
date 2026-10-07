@@ -12,6 +12,7 @@ final class ProfileManager {
     private var browsers: [UUID: BrowserModel] = [:]
     private let testing: Bool
     private var unlockedProfileID: UUID?
+    private var lockBackgroundedAt: Date?
     private var authenticationGeneration = 0
     private var authenticationContext: LAContext?
     private(set) var isAuthenticating = false
@@ -72,6 +73,18 @@ final class ProfileManager {
             if browser == nil { activateSelected() }
         }
         return true
+    }
+
+    @discardableResult func setLockAfter(_ id: UUID, minutes: Int) async -> Bool {
+        guard BrowserProfile.lockDelays.contains(minutes),
+              let profile = profiles.first(where: { $0.id == id }) else { return false }
+        if profile.effectiveLockAfterMinutes == minutes { return true }
+        errorMessage = nil
+        guard await verifyOwner(reason: "Change the lock delay for \(profile.name)."),
+              var candidate = registry,
+              let index = candidate.profiles.firstIndex(where: { $0.id == id && !$0.isDeleting }) else { return false }
+        candidate.profiles[index].lockAfterMinutes = minutes
+        return commit(candidate)
     }
 
     var profiles: [BrowserProfile] { registry?.availableProfiles ?? [] }
@@ -203,17 +216,26 @@ final class ProfileManager {
         browser?.saveNow()
         authenticationGeneration += 1
         authenticationContext?.invalidate()
-        unlockedProfileID = nil
-        if currentProfile?.isProtected == true {
-            browser?.deactivate()
-            browser = nil
-        }
+        if lockBackgroundedAt == nil { lockBackgroundedAt = date }
+        lockIfExpired(at: date)
         guard var candidate = registry, candidate.backgroundedAt == nil else { return }
         candidate.backgroundedAt = date
         _ = commit(candidate)
     }
 
+    private func lockIfExpired(at date: Date) {
+        guard let profile = currentProfile, profile.isProtected,
+              let departed = lockBackgroundedAt,
+              date.timeIntervalSince(departed) >= Double(profile.effectiveLockAfterMinutes) * 60 else { return }
+        unlockedProfileID = nil
+        browser?.deactivate()
+        browser = nil
+    }
+
     func becameActive(at date: Date = Date()) {
+        // Check before displaying retained content; iOS may suspend background timers.
+        lockIfExpired(at: date)
+        lockBackgroundedAt = nil
         guard var candidate = registry else { return }
         let target = candidate.profileOnReturn(at: date)
         // Save/switch before consuming the timestamp, so a failed save can be retried.

@@ -113,7 +113,7 @@ Keep the lock experience in the same visual world as the start page: shared `Hor
 
 The primary action uses native `.borderedProminent` styling with a capsule border shape and a full-width label with a minimum 44pt height. Its label names the available authentication method. A native progress indicator appears during authentication and both unlock and switch-profile actions disable until it finishes. Switch profile is the secondary text action and opens the native Profiles sheet. Authentication errors appear below the actions with an exclamation symbol and wrapping body text.
 
-The actual profile lock state selects this screen in place of the browser and its presented sheets. An inactive but unlocked scene retains its browser preview; backgrounding a protected profile locks it. The lock screen exposes no tab previews or browsing content.
+The actual profile lock state selects this screen in place of the browser and its presented sheets. An inactive but unlocked scene retains its browser preview; protected profiles lock on return after their configured time away (30 minutes by default). The native profile editor’s “Lock after” picker offers Immediately, 1, 5, 15 or 30 minutes, and 1 hour. Switching profiles and restarting Harbor still require authentication. The lock screen exposes no tab previews or browsing content.
 
 ### Tab cards
 

@@ -126,8 +126,22 @@ private struct ProfileEditor: View {
                             get: { profiles.profiles.first(where: { $0.id == profile.id })?.isProtected ?? false },
                             set: { enabled in Task { await profiles.setProtection(profile.id, enabled: enabled) } }
                         )).disabled(profiles.isAuthenticating)
+                        if profiles.profiles.first(where: { $0.id == profile.id })?.isProtected == true {
+                            Picker("Lock after", selection: Binding(
+                                get: { profiles.profiles.first(where: { $0.id == profile.id })?.effectiveLockAfterMinutes ?? 30 },
+                                set: { minutes in Task { await profiles.setLockAfter(profile.id, minutes: minutes) } }
+                            )) {
+                                Text("Immediately").tag(0)
+                                Text("1 minute").tag(1)
+                                Text("5 minutes").tag(5)
+                                Text("15 minutes").tag(15)
+                                Text("30 minutes").tag(30)
+                                Text("1 hour").tag(60)
+                            }.disabled(profiles.isAuthenticating)
+                                .accessibilityIdentifier("lockAfterPicker")
+                        }
                     } footer: {
-                        Text("Unlock with Face ID, Touch ID, or your device passcode. Locks when you switch profiles or leave Harbor. Anyone with your device passcode can unlock this profile.")
+                        Text("Unlock with Face ID, Touch ID, or your device passcode. The lock delay starts when you leave Harbor. Switching profiles or restarting Harbor locks immediately. Anyone with your device passcode can unlock this profile.")
                     }
                 }
                 if let error = profiles.errorMessage { Text(error).foregroundStyle(.red) }

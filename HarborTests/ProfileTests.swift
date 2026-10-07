@@ -20,6 +20,8 @@ import Network
         await manager.unlockSelected()
         XCTAssertFalse(manager.isLocked)
         XCTAssertNotNil(manager.browser)
+        let immediate = await manager.setLockAfter(id, minutes: 0)
+        XCTAssertTrue(immediate)
         manager.enteredBackground()
         XCTAssertTrue(manager.isLocked)
         XCTAssertNil(manager.browser)
@@ -31,6 +33,32 @@ import Network
         XCTAssertNil(relaunched.browser)
     }
 
+    func testLockDelayDefaultBoundaryAndPersistence() async throws {
+        let manager = ProfileManager(store: store, authenticate: { _ in true })
+        let id = try XCTUnwrap(manager.currentProfile?.id)
+        _ = await manager.setProtection(id, enabled: true)
+        XCTAssertEqual(manager.currentProfile?.effectiveLockAfterMinutes, 30)
+        let start = Date(timeIntervalSince1970: 10000)
+        manager.enteredBackground(at: start)
+        manager.enteredBackground(at: start.addingTimeInterval(60))
+        manager.becameActive(at: start.addingTimeInterval(1799))
+        XCTAssertFalse(manager.isLocked)
+        XCTAssertNotNil(manager.browser)
+        manager.enteredBackground(at: start.addingTimeInterval(1800))
+        manager.becameActive(at: start.addingTimeInterval(3600))
+        XCTAssertTrue(manager.isLocked)
+        XCTAssertNil(manager.browser)
+        await manager.unlockSelected()
+        let saved = await manager.setLockAfter(id, minutes: 5)
+        XCTAssertTrue(saved)
+        manager.enteredBackground(at: start)
+        manager.becameActive(at: start.addingTimeInterval(300))
+        XCTAssertTrue(manager.isLocked)
+        let restored = ProfileManager(store: store)
+        XCTAssertEqual(restored.currentProfile?.effectiveLockAfterMinutes, 5)
+        XCTAssertTrue(restored.isLocked)
+    }
+
     func testFailedAuthenticationCannotUnlockDisableOrDelete() async throws {
         let setup = ProfileManager(store: store, authenticate: { _ in true })
         let id = try XCTUnwrap(setup.currentProfile?.id)
@@ -39,6 +67,9 @@ import Network
         let manager = ProfileManager(store: store, authenticate: { _ in false })
         await manager.unlockSelected()
         XCTAssertNil(manager.browser)
+        let delayChanged = await manager.setLockAfter(id, minutes: 60)
+        XCTAssertFalse(delayChanged)
+        XCTAssertEqual(manager.currentProfile?.effectiveLockAfterMinutes, 30)
         let disabled = await manager.setProtection(id, enabled: false)
         XCTAssertFalse(disabled)
         await manager.delete(id)
@@ -66,7 +97,9 @@ import Network
     func testOldProfilesDecodeWithoutLock() throws {
         let id = UUID()
         let json = "{\"id\":\"\(id)\",\"name\":\"Personal\",\"symbol\":\"house\",\"usesLegacyWebStore\":false,\"isDeleting\":false}"
-        XCTAssertFalse(try JSONDecoder().decode(BrowserProfile.self, from: Data(json.utf8)).isProtected)
+        let decoded = try JSONDecoder().decode(BrowserProfile.self, from: Data(json.utf8))
+        XCTAssertFalse(decoded.isProtected)
+        XCTAssertEqual(decoded.effectiveLockAfterMinutes, 30)
     }
 
     private var root: URL!
