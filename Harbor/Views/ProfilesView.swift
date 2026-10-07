@@ -109,6 +109,8 @@ private struct ProfileEditor: View {
     let profile: BrowserProfile?
     @State private var name = ""
     @State private var symbol = BrowserProfile.symbols[0]
+    @State private var requiresAuthentication = false
+    @State private var isSaving = false
     @Environment(\.dismiss) private var dismiss
     var body: some View {
         NavigationStack {
@@ -144,19 +146,37 @@ private struct ProfileEditor: View {
                         Text("Unlock with Face ID, Touch ID, or your device passcode. The lock delay starts when you leave Harbor. Switching profiles or restarting Harbor locks immediately. Anyone with your device passcode can unlock this profile.")
                     }
                 }
+                if profile == nil {
+                    Section {
+                        Toggle("Require \(profiles.authenticationLabel)", isOn: $requiresAuthentication)
+                            .accessibilityIdentifier("newProfileProtection")
+                    } footer: {
+                        Text("Unlock with Face ID, Touch ID, or your device passcode. Anyone with your device passcode can unlock this profile.")
+                    }
+                }
                 if let error = profiles.errorMessage { Text(error).foregroundStyle(.red) }
-            }.navigationTitle(profile == nil ? "New profile" : "Edit profile")
+            }.disabled(isSaving).navigationTitle(profile == nil ? "New profile" : "Edit profile")
                 .toolbar {
-                    ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                    ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.disabled(isSaving) }
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Save") {
-                            let saved = profile.map { profiles.rename($0.id, name: name, symbol: symbol) }
-                                ?? profiles.create(name: name, symbol: symbol)
-                            if saved { dismiss() }
-                        }.disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                            isSaving = true
+                            Task {
+                                let saved: Bool
+                                if let profile {
+                                    saved = profiles.rename(profile.id, name: name, symbol: symbol)
+                                } else {
+                                    saved = await profiles.create(name: name, symbol: symbol,
+                                                                  requiresAuthentication: requiresAuthentication)
+                                }
+                                isSaving = false
+                                if saved { dismiss() }
+                            }
+                        }.disabled(isSaving || profiles.isAuthenticating || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                             .accessibilityIdentifier("saveProfile")
                     }
                 }
+                .interactiveDismissDisabled(isSaving)
                 .onAppear { name = profile?.name ?? ""; symbol = profile?.symbol ?? BrowserProfile.symbols[0] }
         }
     }
@@ -168,22 +188,36 @@ private struct ProfileEditor: View {
 private struct ProfileReturnSettings: View {
     @Bindable var profiles: ProfileManager
     @State private var enabled = false
-    @State private var minutes = "30"
+    @State private var minutes = 30.0
     @Environment(\.dismiss) private var dismiss
-    private var validMinutes: Int? {
-        guard let value = Int(minutes), (1...10080).contains(value) else { return nil }
-        return value
+    private var durationLabel: String {
+        let value = Int(minutes)
+        let hours = value / 60
+        let remainder = value % 60
+        if hours == 0 { return "\(value) minutes" }
+        let hourLabel = hours == 1 ? "1 hour" : "\(hours) hours"
+        return remainder == 0 ? hourLabel : "\(hourLabel) \(remainder) minutes"
     }
     var body: some View {
         Form {
             Section {
                 Toggle("Return to default profile", isOn: $enabled).accessibilityIdentifier("returnEnabled")
                 if enabled {
-                    TextField("Minutes", text: $minutes).keyboardType(.numberPad)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(durationLabel).accessibilityIdentifier("returnDuration")
+                        Slider(value: $minutes, in: 5...1440, step: 5) {
+                            Text("Return after")
+                        } minimumValueLabel: {
+                            Text("5 min")
+                        } maximumValueLabel: {
+                            Text("24 hr")
+                        }
+                        .accessibilityValue(durationLabel)
                         .accessibilityIdentifier("returnMinutes")
+                    }
                 }
             } footer: {
-                Text(enabled ? "Enter 1–10,080 minutes. When you reopen Harbor after this much time away, it switches to your default profile." : "Harbor will keep your last-used profile, even after restarting.")
+                Text(enabled ? "When you reopen Harbor after this much time away, it switches to your default profile." : "Harbor will keep your last-used profile, even after restarting.")
             }
             if let error = profiles.errorMessage { Text(error).foregroundStyle(.red) }
         }.navigationTitle("Return after").navigationBarTitleDisplayMode(.inline)
@@ -191,14 +225,14 @@ private struct ProfileReturnSettings: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         guard let id = profiles.registry?.defaultProfileID else { return }
-                        profiles.configureReturn(defaultID: id, minutes: enabled ? validMinutes : nil)
-                        if profiles.registry?.returnAfterMinutes == (enabled ? validMinutes : nil) { dismiss() }
-                    }.disabled(enabled && validMinutes == nil).accessibilityIdentifier("saveReturnPolicy")
+                        profiles.configureReturn(defaultID: id, minutes: enabled ? Int(minutes) : nil)
+                        if profiles.registry?.returnAfterMinutes == (enabled ? Int(minutes) : nil) { dismiss() }
+                    }.accessibilityIdentifier("saveReturnPolicy")
                 }
             }
             .onAppear {
                 enabled = profiles.registry?.returnAfterMinutes != nil
-                minutes = String(profiles.registry?.returnAfterMinutes ?? 30)
+                minutes = Double(min(1440, max(5, profiles.registry?.returnAfterMinutes ?? 30)))
             }
     }
 }
