@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-07T21:36:03.771880+00:00",
+  "generatedAt": "2026-10-07T22:00:25.124347+00:00",
   "title": "Design System: Harbor",
   "extensions": {
     "colorMeta": {
@@ -139,8 +139,8 @@
     {
       "name": "Top browser controls",
       "kind": "nav",
-      "description": "Documentation-only native control approximation. Contextual Page actions floats at the leading edge; History and Settings float at the trailing edge. The outer surround is transparent over content, without a reserved row. Hidden when scrolling, editing the address or viewing fullscreen media.",
-      "html": "<nav class=\"ds-top\" aria-label=\"Browser utilities\"><button>Page actions</button><span></span><button>History</button><button>Settings</button></nav>",
+      "description": "Documentation-only native control approximation. Page actions floats at the leading edge only for media/download actions; Share, History and Settings float at the trailing edge. Share appears for a page with a URL. The outer surround is transparent over content, without a reserved row. Hidden when scrolling, editing the address or viewing fullscreen media.",
+      "html": "<nav class=\"ds-top\" aria-label=\"Browser utilities\"><button>Page actions</button><span></span><button>Share</button><button>History</button><button>Settings</button></nav>",
       "css": ".ds-top{display:flex;gap:8px;color:CanvasText}.ds-top span{flex:1}.ds-top button{min-width:48px;min-height:48px;border:0;border-radius:99px;background:ButtonFace;color:ButtonText;font:14px system-ui}.ds-top button:hover{opacity:.8}.ds-top button:active{opacity:.6}.ds-top button:focus-visible{outline:2px solid Highlight;outline-offset:2px}"
     }
   ],
