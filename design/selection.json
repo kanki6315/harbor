@@ -1,0 +1,12 @@
+{
+  "status": "direction-selected-before-implementation",
+  "product": "Harbor",
+  "primaryReference": ".impeccable/mocks/harbor-glass/horizon.png",
+  "organizationReference": ".impeccable/mocks/harbor-glass/collections.png",
+  "designAuthority": "DESIGN.md",
+  "surfaceBrief": "design/BROWSER-SURFACE.md",
+  "groupsScope": "future",
+  "mergedCompExists": false,
+  "appImplementationAuthorizedThisTurn": false,
+  "interpretation": "User acceptance of the preceding recommendation: Horizon visual identity with Collections organization."
+}
