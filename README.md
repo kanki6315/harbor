@@ -69,7 +69,7 @@ Switching saves the outgoing archive and releases its web views; tabs restore la
 
 Profile metadata lives in `Application Support/Harbor/profiles.json`; each browser archive lives in `Profiles/<UUID>/browser.json`. Existing installations migrate their archive into **Personal** and retain their existing WebKit store. The old archive is removed only after the new archive and registry have committed successfully. Corrupt metadata is reported and left untouched. Failed profile deletions remain visible as **Unfinished deletions** with a retry action.
 
-Profiles isolate Harbor’s browsing data, not iOS identities: device permissions, password providers, the clipboard, exported files and the network connection remain system-level facilities. There is no profile lock or separate encryption key.
+Profiles isolate Harbor’s browsing data, not iOS identities: device permissions, password providers, the clipboard, exported files and the network connection remain system-level facilities. To lock a profile, open its edit screen and enable **Require Face ID** (Touch ID or device authentication on other devices). Harbor authenticates with the system biometrics or device passcode before enabling/disabling protection or deleting a protected profile. Protected profiles lock on launch, when switched away from, and when Harbor enters the background; automatic return to a protected default also opens the lock screen. Anyone who can authenticate as the device owner can unlock any protected profile. This is an app access lock, with no separate encryption key for profile data.
 
 ## Privacy model
 
