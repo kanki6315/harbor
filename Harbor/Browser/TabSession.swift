@@ -170,6 +170,35 @@ extension TabSession: WKNavigationDelegate {
 }
 
 extension TabSession: WKUIDelegate {
+    func webView(_ webView: WKWebView, contextMenuConfigurationForElement elementInfo: WKContextMenuElementInfo,
+                 completionHandler: @escaping (UIContextMenuConfiguration?) -> Void) {
+        guard let url = elementInfo.linkURL else { completionHandler(nil); return }
+        // Replace WebKit's suggested actions: its Open action can launch the system browser.
+        // A custom menu without a preview also avoids a preview commit opening externally.
+        completionHandler(UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { [weak self] _ in
+            var actions: [UIAction] = []
+            if ["http", "https", "about", "blob", "data"].contains(url.scheme?.lowercased() ?? "") {
+                actions.append(UIAction(title: "Open Link", image: UIImage(systemName: "arrow.up.right")) { [weak self] _ in
+                    self?.webView.load(URLRequest(url: url))
+                })
+                actions.append(UIAction(title: "Open in New Tab", image: UIImage(systemName: "plus.square.on.square")) { [weak self] _ in
+                    self?.browser?.newTab(url: url)
+                })
+            }
+            if ["http", "https"].contains(url.scheme?.lowercased() ?? "") {
+                actions.append(UIAction(title: "Open in Default Browser", image: UIImage(systemName: "safari")) { [weak self] _ in
+                    UIApplication.shared.open(url) { [weak self] success in
+                        if !success { self?.browser?.errorMessage = "This link could not be opened in the default browser." }
+                    }
+                })
+            }
+            actions.append(UIAction(title: "Copy Link", image: UIImage(systemName: "doc.on.doc")) { _ in
+                UIPasteboard.general.url = url
+            })
+            return UIMenu(children: actions)
+        })
+    }
+
     func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
                  for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
         guard navigationAction.targetFrame == nil else { return nil }

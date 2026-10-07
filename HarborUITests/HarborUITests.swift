@@ -1,6 +1,25 @@
 import XCTest
 
 final class HarborUITests: XCTestCase {
+    @MainActor func testLinkHoldOpensInHarborNewTab() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--uitesting", "--reset", "--fixture"]
+        app.launch()
+        let link = app.webViews.links["Open popup tab"]
+        XCTAssertTrue(link.waitForExistence(timeout: 15))
+        revealAboveChrome(link, in: app)
+        link.press(forDuration: 1)
+        XCTAssertTrue(app.buttons["Open in New Tab"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Open Link"].exists)
+        XCTAssertTrue(app.buttons["Open in Default Browser"].exists)
+        XCTAssertTrue(app.buttons["Copy Link"].exists)
+        app.buttons["Open in New Tab"].tap()
+        XCTAssertTrue(app.buttons["tabsButton"].waitForExistence(timeout: 5))
+        app.buttons["tabsButton"].tap()
+        XCTAssertTrue(app.navigationBars["2 tabs"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Open Harbor test page"].exists)
+    }
+
     @MainActor func testStartPageTabsSettingsAndRestore() {
         let app = XCUIApplication()
         app.launchArguments = ["--uitesting", "--reset"]
