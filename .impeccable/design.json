@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-07T04:27:29.292792+00:00",
+  "generatedAt": "2026-10-07T21:36:03.771880+00:00",
   "title": "Design System: Harbor",
   "extensions": {
     "colorMeta": {
@@ -72,7 +72,23 @@
       }
     },
     "shadows": [],
-    "motion": [],
+    "motion": [
+      {
+        "name": "browser-collapse",
+        "value": "SwiftUI smooth(duration: 0.24, extraBounce: 0)",
+        "purpose": "Collapse expanded browser controls into the compact URL pill."
+      },
+      {
+        "name": "browser-expand",
+        "value": "SwiftUI smooth(duration: 0.32, extraBounce: 0)",
+        "purpose": "Restore browser controls."
+      },
+      {
+        "name": "reduce-motion",
+        "value": "SwiftUI easeOut(duration: 0.12)",
+        "purpose": "Opacity transitions without glass morphing or offset."
+      }
+    ],
     "breakpoints": [
       {
         "name": "accessibility-reflow",
@@ -117,8 +133,15 @@
       "name": "Browser action row",
       "kind": "nav",
       "description": "Documentation-only HTML approximation of native SwiftUI structure; native semantic colors, SF Symbols, Dynamic Type and Liquid Glass must be evaluated in iOS. Example labels are not production user data. Native outer chrome is transparent over website content; capsule materials remain system-rendered.",
-      "html": "<nav class=\"ds-nav\" aria-label=\"Browser\"><button>Back</button><button>Forward</button><button>New tab</button><button aria-label=\"Tabs, 1 open\"><span class=\"ds-tab-count\">1</span></button><button>More</button></nav>",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Browser\"><button>Back</button><button>Forward</button><button>New tab</button><button aria-label=\"Tabs, 1 open\"><span class=\"ds-tab-count\">1</span></button><button>Bookmarks</button></nav>",
       "css": ".ds-nav{display:flex;border-radius:99px;background:ButtonFace;padding:0 8px}.ds-nav button{min-height:48px;border:0;background:transparent;color:ButtonText;padding:0 10px;font:14px system-ui}.ds-nav button:hover{opacity:.8}.ds-nav button:focus-visible{outline:2px solid Highlight;border-radius:99px}.ds-nav button:active{opacity:.6} .ds-nav .ds-tab-count{display:grid;place-items:center;width:27px;height:27px;border:1.8px solid currentColor;border-radius:5px;font:700 12px system-ui;font-variant-numeric:tabular-nums}"
+    },
+    {
+      "name": "Top browser controls",
+      "kind": "nav",
+      "description": "Documentation-only native control approximation. Contextual Page actions floats at the leading edge; History and Settings float at the trailing edge. The outer surround is transparent over content, without a reserved row. Hidden when scrolling, editing the address or viewing fullscreen media.",
+      "html": "<nav class=\"ds-top\" aria-label=\"Browser utilities\"><button>Page actions</button><span></span><button>History</button><button>Settings</button></nav>",
+      "css": ".ds-top{display:flex;gap:8px;color:CanvasText}.ds-top span{flex:1}.ds-top button{min-width:48px;min-height:48px;border:0;border-radius:99px;background:ButtonFace;color:ButtonText;font:14px system-ui}.ds-top button:hover{opacity:.8}.ds-top button:active{opacity:.6}.ds-top button:focus-visible{outline:2px solid Highlight;outline-offset:2px}"
     }
   ],
   "narrative": {
