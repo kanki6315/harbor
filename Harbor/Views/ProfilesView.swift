@@ -183,7 +183,7 @@ private struct ProfileReturnSettings: View {
                         .accessibilityIdentifier("returnMinutes")
                 }
             } footer: {
-                Text(enabled ? "Enter 1–10,080 minutes. Time counts only while Harbor is in the background." : "Harbor will keep your last-used profile, even after restarting.")
+                Text(enabled ? "Enter 1–10,080 minutes. When you reopen Harbor after this much time away, it switches to your default profile." : "Harbor will keep your last-used profile, even after restarting.")
             }
             if let error = profiles.errorMessage { Text(error).foregroundStyle(.red) }
         }.navigationTitle("Return after").navigationBarTitleDisplayMode(.inline)
