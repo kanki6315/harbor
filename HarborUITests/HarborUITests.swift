@@ -64,9 +64,11 @@ final class HarborUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Profiles"].exists)
         app.buttons["Done"].tap()
-        app.buttons["pageActionsButton"].tap()
-        XCTAssertTrue(app.buttons["Share page"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["Add bookmark"].exists)
+        XCTAssertLessThan(app.buttons["sharePageButton"].frame.midX, app.buttons["historyButton"].frame.midX)
+        app.buttons["sharePageButton"].tap()
+        XCTAssertTrue(app.navigationBars["UIActivityContentView"].waitForExistence(timeout: 15))
+        capture(app, name: "direct-share-sheet")
+        app.buttons["header.closeButton"].tap()
     }
 
     @MainActor func testRenameBookmark() {

@@ -132,6 +132,12 @@ Simulator build passed on iPhone 18 Pro / iOS 27. Four initial targeted UI tests
 
 Inspected final light website controls and dark largest-text start-page controls. Captures: `/tmp/harbor-overlay-captures/controls-light.png` and `/tmp/harbor-overlay-start-dark-large.png`. The simulator was restored to light appearance and standard app text size. This is targeted simulator evidence; full-suite, physical-device, VoiceOver and landscape checks were not performed for this change. Floating controls can cover website content until collapsed; they do not reserve layout space.
 
+### Direct Share refinement
+
+Share now sits left of History and Settings in the floating top-right capsule. The duplicate Add/Remove bookmark menu item is removed; current-page saving remains inside Bookmarks. The leading Page actions menu appears only for media/download actions.
+
+The targeted destination test passed on iPhone 18 Pro / iOS 27, including bookmark add/remove, History/Settings navigation, direct native share-sheet presentation and dismissal: `/tmp/harbor-controls-build/Logs/Test/Test-Harbor-2026.10.07_18-04-18--0400.xcresult`. Inspected the updated light-mode browser capture at `/tmp/harbor-share-review/controls-light.png`. Earlier attempts used unsuitable assertions for the system share sheet and were superseded by the passing check against the observed native navigation bar. No additional full-suite or hardware verification is claimed.
+
 ## Bookmark names and folders — 2026-10-07
 
 New bookmarks save immediately with a page-title fallback, then request a bounded, structured name from Apple Foundation Models when available. Only title, hostname and URL path are used; query strings, credentials and fragments are excluded. Generation errors keep the fallback. Manual renames, deletions and profile deactivation cancel pending suggestions. Folder moves do not invalidate a pending name suggestion.
