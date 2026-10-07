@@ -12,22 +12,31 @@ struct BrowserView: View {
     @State private var sheet: BrowserSheet?
     @State private var share: ShareItem?
     @State private var chromeCollapsed = false
+    @State private var chromeHeight: CGFloat = 117
     @FocusState private var editingAddress: Bool
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        content
+        GeometryReader { geometry in content(in: geometry) }
     }
 
-    private var content: some View {
+    private func content(in geometry: GeometryProxy) -> some View {
         ZStack {
             Color(uiColor: .systemBackground)
             // Resident views stay attached to preserve WebKit's media and native full-screen UI.
             ForEach(browser.archive.tabs) { tab in
                 if let session = browser.sessions[tab.id] {
-                    // A bounded viewport keeps fixed website controls inside the visible page.
-                    WebView(webView: session.webView)
+                    WebView(webView: session.webView,
+                            contentInsets: UIEdgeInsets(top: 0, left: 0,
+                                bottom: browser.activeSession?.fullscreen == true ? 0 : chromeHeight + geometry.safeAreaInsets.bottom,
+                                right: 0),
+                            onScrollDown: {
+                                guard tab.id == browser.selectedID, !editingAddress,
+                                      browser.activeSession?.fullscreen != true else { return }
+                                chromeCollapsed = true
+                            })
+                        .ignoresSafeArea(.container, edges: .bottom)
                         .opacity(tab.id == browser.selectedID ? 1 : 0)
                         .allowsHitTesting(tab.id == browser.selectedID)
                         .accessibilityHidden(tab.id != browser.selectedID)
@@ -53,11 +62,10 @@ struct BrowserView: View {
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if browser.activeSession?.fullscreen != true {
-                chrome
-                    .background(Color(uiColor: .systemBackground).ignoresSafeArea(.container, edges: .bottom))
+                chrome.onGeometryChange(for: CGFloat.self) { $0.size.height } action: { chromeHeight = $0 }
             }
         }
-        .onChange(of: browser.selectedID) { _, _ in editingAddress = false; syncAddress() }
+        .onChange(of: browser.selectedID) { _, _ in editingAddress = false; chromeCollapsed = false; syncAddress() }
         .onChange(of: browser.selectedTab.url) { _, _ in if !editingAddress { syncAddress() } }
         .onChange(of: editingAddress) { _, value in if value { chromeCollapsed = false; syncAddress() } }
         .onChange(of: scenePhase) { _, phase in
@@ -101,18 +109,20 @@ struct BrowserView: View {
     private var chrome: some View {
         VStack(spacing: 8) {
             if chromeCollapsed && !editingAddress {
-                HStack {
-                    Spacer(minLength: 0)
-                    Button { chromeCollapsed = false } label: {
-                        Image(systemName: "chevron.up")
-                            .font(.body.weight(.semibold))
-                            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-                            .frame(width: 56, height: 44)
-                    }
-                    .harborGlass()
-                    .accessibilityLabel("Show browser controls")
-                    .accessibilityIdentifier("expandBrowserControls")
+                Button { chromeCollapsed = false } label: {
+                    Text(compactAddress)
+                        .font(.subheadline.weight(.medium))
+                        .lineLimit(1).truncationMode(.middle)
+                        .padding(.horizontal, 18).padding(.vertical, 8)
+                        .harborGlass()
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Show browser controls for \(compactAddress)")
+                .accessibilityIdentifier("expandBrowserControls")
+                .frame(maxWidth: .infinity)
+
             } else {
                 HStack(spacing: 0) {
                     Button { editingAddress = false; sheet = .privacy } label: {
@@ -137,15 +147,7 @@ struct BrowserView: View {
                             Image(systemName: browser.activeSession?.isLoading == true ? "xmark" : "arrow.clockwise").dynamicTypeSize(...DynamicTypeSize.xxxLarge).frame(width: 44, height: 48)
                         }.accessibilityLabel(browser.activeSession?.isLoading == true ? "Stop loading" : "Reload")
                     }
-                    if !editingAddress {
-                        Button { chromeCollapsed = true } label: {
-                            Image(systemName: "chevron.down")
-                                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-                                .frame(width: 44, height: 48)
-                        }
-                        .accessibilityLabel("Hide browser controls")
-                        .accessibilityIdentifier("collapseBrowserControls")
-                    }
+
                 }.padding(.horizontal, 4).harborGlass()
                     .overlay(alignment: .bottom) {
                         if browser.activeSession?.isLoading == true {
@@ -195,6 +197,11 @@ struct BrowserView: View {
         }
         .padding(.horizontal, typeSize.isAccessibilitySize ? 8 : 16).padding(.top, 8).padding(.bottom, 5)
     }
+    private var compactAddress: String {
+        guard let url = browser.selectedTab.url else { return "Search or enter address" }
+        return url.host ?? (url.isFileURL ? "Local page" : url.absoluteString)
+    }
+
     private func action(_ name: String, symbol: String, perform: @escaping () -> Void) -> some View {
         Button(action: perform) { Image(systemName: symbol).dynamicTypeSize(...DynamicTypeSize.xxxLarge).frame(maxWidth: .infinity, minHeight: 48) }.accessibilityLabel(name)
     }
