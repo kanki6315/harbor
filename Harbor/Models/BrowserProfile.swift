@@ -7,6 +7,9 @@ struct BrowserProfile: Codable, Identifiable, Equatable {
     // Only an upgraded installation's original profile owns WebKit's default store.
     var usesLegacyWebStore = false
     var isDeleting = false
+    // Optional for backwards-compatible decoding of existing profile registries.
+    var requiresAuthentication: Bool? = nil
+    var isProtected: Bool { requiresAuthentication == true }
 
     static let symbols = ["person.crop.circle", "briefcase", "house", "book", "leaf", "star"]
 }
