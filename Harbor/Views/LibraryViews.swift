@@ -167,8 +167,6 @@ struct BookmarksView: View {
     @Bindable var browser: BrowserModel
     @State private var search = ""
     @State private var renamingBookmark: Bookmark?
-    @State private var bookmarkName = ""
-    @State private var showingRename = false
     @State private var renamingFolder: BookmarkFolder?
     @State private var folderName = ""
     @State private var showingFolderName = false
@@ -182,13 +180,8 @@ struct BookmarksView: View {
                     folderContents(folder.id)
                 }
         }
-        .alert("Rename bookmark", isPresented: $showingRename) {
-            TextField("Name", text: $bookmarkName)
-            Button("Cancel", role: .cancel) { renamingBookmark = nil }
-            Button("Save") {
-                if let bookmark = renamingBookmark { browser.renameBookmark(bookmark.id, to: bookmarkName) }
-                renamingBookmark = nil
-            }.disabled(BookmarkNaming.normalized(bookmarkName).isEmpty)
+        .sheet(item: $renamingBookmark) { bookmark in
+            BookmarkRenameView(browser: browser, bookmark: bookmark)
         }
         .alert(renamingFolder == nil ? "New folder" : "Rename folder", isPresented: $showingFolderName) {
             TextField("Folder name", text: $folderName)
@@ -254,7 +247,12 @@ struct BookmarksView: View {
             } else if !visibleBookmarks.isEmpty {
                 Section(search.isEmpty && folderID == nil ? "Unfiled" : "Saved pages") {
                     ForEach(visibleBookmarks) { bookmark in
-                        bookmarkRow(bookmark)
+                        VStack(alignment: .leading, spacing: 12) {
+                            bookmarkRow(bookmark)
+                            BookmarkNameSuggestionView(browser: browser, bookmarkID: bookmark.id) {
+                                browser.useSuggestedBookmarkName(bookmark.id)
+                            }
+                        }
                     }
                 }
             }
@@ -339,10 +337,106 @@ struct BookmarksView: View {
     }
 
     private func beginRenaming(_ bookmark: Bookmark) {
-        renamingBookmark = bookmark; bookmarkName = bookmark.title; showingRename = true
+        renamingBookmark = bookmark
     }
 
     private func beginRenaming(_ folder: BookmarkFolder) {
         renamingFolder = folder; folderName = folder.name; showingFolderName = true
+    }
+}
+
+/// Choice controls are separate from the navigation button, so using a name never opens the page.
+private struct BookmarkNameSuggestionView: View {
+    @Bindable var browser: BrowserModel
+    let bookmarkID: UUID
+    var isDraft = false
+    let useName: () -> Void
+
+    var body: some View {
+        if let state = browser.bookmarkNameStates[bookmarkID] {
+            VStack(alignment: .leading, spacing: 10) {
+                switch state {
+                case .generating:
+                    HStack(spacing: 8) {
+                        ProgressView()
+                        Text("Suggesting a name…")
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("bookmarkNameLoading")
+                case .suggested(let name):
+                    Text("Suggested name: \(name)")
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("bookmarkNameSuggestion")
+                    Button(action: useName) {
+                        Text("Use name")
+                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                            .contentShape(Rectangle())
+                    }
+                    .accessibilityIdentifier(isDraft ? "useBookmarkNameDraft" : "useBookmarkName")
+                case .unavailable:
+                    Text("No suggestion available. Your name is unchanged.")
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Button {
+                    browser.keepOriginalBookmarkName(bookmarkID)
+                } label: {
+                    Text(state == .unavailable ? "Dismiss" : "Keep original")
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                        .contentShape(Rectangle())
+                }.accessibilityIdentifier(isDraft ? "keepBookmarkNameDraft" : "keepBookmarkName")
+            }
+            .font(.subheadline)
+            .buttonStyle(.borderless)
+            .padding(.vertical, 4)
+        }
+    }
+}
+
+private struct BookmarkRenameView: View {
+    @Bindable var browser: BrowserModel
+    let bookmark: Bookmark
+    @State private var name: String
+    @Environment(\.dismiss) private var dismiss
+
+    init(browser: BrowserModel, bookmark: Bookmark) {
+        self.browser = browser
+        self.bookmark = bookmark
+        _name = State(initialValue: bookmark.title)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("Name", text: $name)
+                        .accessibilityIdentifier("bookmarkRenameName")
+                    Button("Suggest nickname", systemImage: "sparkles") {
+                        browser.requestBookmarkName(bookmark)
+                    }
+                    .disabled(browser.bookmarkNameStates[bookmark.id] == .generating)
+                    .accessibilityIdentifier("suggestBookmarkNickname")
+                    BookmarkNameSuggestionView(browser: browser, bookmarkID: bookmark.id, isDraft: true) {
+                        if case .suggested(let suggestion) = browser.bookmarkNameStates[bookmark.id] {
+                            name = suggestion
+                            browser.keepOriginalBookmarkName(bookmark.id)
+                        }
+                    }
+                } footer: {
+                    Text("Suggestions are made on this device. Choose Use name to fill the field, then Save to rename your bookmark.")
+                }
+            }
+            .navigationTitle("Rename bookmark")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        browser.renameBookmark(bookmark.id, to: name)
+                        dismiss()
+                    }.disabled(BookmarkNaming.normalized(name).isEmpty)
+                }
+            }
+        }
+        .onDisappear { browser.keepOriginalBookmarkName(bookmark.id) }
     }
 }

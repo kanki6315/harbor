@@ -53,39 +53,57 @@ import WebKit
         XCTAssertEqual(browser.archive.bookmarks.count, 1)
     }
 
-    func testBookmarkNamesPersistAndIgnoreStaleSuggestions() throws {
+    func testBookmarkNamesRequireAcceptanceAndIgnoreCancelledResults() async throws {
         let folder = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: folder) }
         let store = BrowserStore(fileURL: folder.appending(path: "state.json"))
         let browser = BrowserModel(store: store, isTesting: true)
         let url = URL(string: "https://example.com/guide")!
         browser.archive.tabs[0].url = url
-        browser.archive.tabs[0].title = "  Travel Guide  "
+        browser.archive.tabs[0].title = "Travel Guide"
         browser.toggleBookmark()
         let original = try XCTUnwrap(browser.archive.bookmarks.first)
-        XCTAssertEqual(original.title, "Travel Guide")
-        browser.applySuggestedBookmarkName("Weekend in Maine", to: original)
+        let task = browser.requestBookmarkName(original) { _, _ in "Weekend in Maine" }
+        XCTAssertEqual(browser.bookmarkNameStates[original.id], .generating)
+        await task?.value
+        XCTAssertEqual(browser.bookmarkNameStates[original.id], .suggested("Weekend in Maine"))
+        XCTAssertEqual(try store.load().bookmarks.first?.title, "Travel Guide")
+        browser.keepOriginalBookmarkName(original.id)
+        XCTAssertNil(browser.bookmarkNameStates[original.id])
+        XCTAssertEqual(try store.load().bookmarks.first?.title, "Travel Guide")
+        await browser.requestBookmarkName(original) { _, _ in "Weekend in Maine" }?.value
+        browser.useSuggestedBookmarkName(original.id)
         XCTAssertEqual(try store.load().bookmarks.first?.title, "Weekend in Maine")
-        let suggested = try XCTUnwrap(browser.archive.bookmarks.first)
+        XCTAssertNil(browser.bookmarkNameStates[original.id])
+        let current = try XCTUnwrap(browser.archive.bookmarks.first)
+        let late = browser.requestBookmarkName(current) { _, _ in "Late suggestion" }
         browser.renameBookmark(original.id, to: "  My   trip ")
-        browser.applySuggestedBookmarkName("Late suggestion", to: suggested)
+        await late?.value
         XCTAssertEqual(try store.load().bookmarks.first?.title, "My trip")
-        browser.renameBookmark(original.id, to: " ")
-        XCTAssertEqual(browser.archive.bookmarks.first?.title, "My trip")
+        XCTAssertNil(browser.bookmarkNameStates[original.id])
+        let manual = try XCTUnwrap(browser.archive.bookmarks.first)
+        let deleted = browser.requestBookmarkName(manual) { _, _ in "Deleted suggestion" }
         browser.deleteBookmark(original.id)
         browser.toggleBookmark()
-        browser.applySuggestedBookmarkName("Deleted suggestion", to: original)
+        await deleted?.value
         XCTAssertEqual(browser.archive.bookmarks.first?.title, "Travel Guide")
+        XCTAssertNil(browser.bookmarkNameStates[original.id])
         let replacement = try XCTUnwrap(browser.archive.bookmarks.first)
-        browser.applySuggestedBookmarkName(String(repeating: "x", count: 81), to: replacement)
+        await browser.requestBookmarkName(replacement) { _, _ in nil }?.value
+        XCTAssertEqual(browser.bookmarkNameStates[replacement.id], .unavailable)
         XCTAssertEqual(browser.archive.bookmarks.first?.title, "Travel Guide")
+        let cancelled = browser.requestBookmarkName(replacement) { _, _ in "Rejected name" }
+        browser.keepOriginalBookmarkName(replacement.id)
+        await cancelled?.value
+        XCTAssertNil(browser.bookmarkNameStates[replacement.id])
+        let inactive = browser.requestBookmarkName(replacement) { _, _ in "Inactive profile" }
         browser.deactivate()
-        browser.applySuggestedBookmarkName("Inactive profile", to: replacement)
+        await inactive?.value
+        XCTAssertTrue(browser.bookmarkNameStates.isEmpty)
         XCTAssertEqual(try store.load().bookmarks.first?.title, "Travel Guide")
-        XCTAssertEqual(BookmarkNaming.fallback(title: "New Tab", url: url), "example.com")
     }
 
-    func testBookmarkFoldersPersistAndDeletionPreservesPages() throws {
+    func testBookmarkFoldersPersistAndDeletionPreservesPages() async throws {
         let folder = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: folder) }
         let store = BrowserStore(fileURL: folder.appending(path: "state.json"))
@@ -99,8 +117,10 @@ import WebKit
         let bookmark = try XCTUnwrap(browser.archive.bookmarks.first)
         XCTAssertEqual(try store.load().bookmarks.first?.folderID, travel)
         let reading = try XCTUnwrap(browser.createBookmarkFolder(named: "Reading"))
+        let naming = browser.requestBookmarkName(bookmark) { _, _ in "Travel guide" }
         browser.moveBookmark(bookmark.id, to: reading)
-        browser.applySuggestedBookmarkName("Travel guide", to: bookmark)
+        await naming?.value
+        browser.useSuggestedBookmarkName(bookmark.id)
         XCTAssertEqual(browser.archive.bookmarks.first?.title, "Travel guide")
         XCTAssertEqual(browser.archive.bookmarks.first?.folderID, reading)
         browser.renameBookmarkFolder(reading, to: "Read later")
