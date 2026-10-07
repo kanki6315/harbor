@@ -1,6 +1,40 @@
 import XCTest
 
 final class HarborUITests: XCTestCase {
+    @MainActor func testTabReorderAndUnloadedPreview() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--uitesting", "--reset", "--fixture"]
+        app.launch()
+        XCTAssertTrue(app.webViews.staticTexts["Harbor test page"].waitForExistence(timeout: 15))
+        let pause = app.webViews.buttons["Pause video"]
+        revealAboveChrome(pause, in: app)
+        pause.tap()
+        app.buttons["tabsButton"].tap()
+        app.buttons["tabSwitcherNewTab"].tap()
+        app.buttons["tabsButton"].tap()
+        app.buttons["tabOptions"].tap()
+        app.buttons["Unload background tabs"].tap()
+        XCTAssertTrue(app.staticTexts["Unloaded. Opens again when selected."].waitForExistence(timeout: 5))
+        capture(app, name: "phone-tabs-unloaded")
+        app.buttons["reorderTabs"].tap()
+        XCTAssertTrue(app.navigationBars["Reorder tabs"].waitForExistence(timeout: 5))
+        capture(app, name: "phone-tabs-reorder")
+        let firstRow = app.cells.element(boundBy: 0)
+        let secondRow = app.cells.element(boundBy: 1)
+        XCTAssertTrue(firstRow.exists && secondRow.exists)
+        firstRow.coordinate(withNormalizedOffset: CGVector(dx: 0.94, dy: 0.5))
+            .press(forDuration: 0.5, thenDragTo: secondRow.coordinate(withNormalizedOffset: CGVector(dx: 0.94, dy: 0.9)))
+        XCTAssertTrue(app.cells.element(boundBy: 0).staticTexts["New Tab"].exists)
+        app.navigationBars["Reorder tabs"].buttons["Done"].tap()
+        app.buttons["Done"].tap()
+        app.terminate()
+        app.launchArguments = ["--uitesting"]
+        app.launch()
+        app.buttons["tabsButton"].tap()
+        XCTAssertTrue(app.staticTexts["Unloaded. Opens again when selected."].waitForExistence(timeout: 5))
+        capture(app, name: "phone-tabs-restored-preview")
+    }
+
     @MainActor func testLinkHoldOpensInHarborNewTab() {
         let app = XCUIApplication()
         app.launchArguments = ["--uitesting", "--reset", "--fixture"]
