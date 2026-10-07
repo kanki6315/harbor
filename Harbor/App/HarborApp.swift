@@ -12,8 +12,16 @@ struct HarborApp: App {
     @Environment(\.scenePhase) private var scenePhase
     var body: some Scene {
         WindowGroup {
-            if let browser = profiles.browser {
+            if profiles.isLocked {
+                LockedProfileView(profiles: profiles)
+            } else if let browser = profiles.browser {
                 BrowserView(browser: browser, profiles: profiles).id(browser.profileID)
+                    .overlay {
+                        if scenePhase != .active && profiles.currentProfile?.isProtected == true {
+                            Color(uiColor: .systemBackground).ignoresSafeArea()
+                                .overlay { Image(systemName: "lock.fill").font(.largeTitle) }
+                        }
+                    }
             } else {
                 ContentUnavailableView("Could not open profiles", systemImage: "exclamationmark.triangle",
                                        description: Text(profiles.errorMessage ?? "Please reopen Harbor to try again."))
