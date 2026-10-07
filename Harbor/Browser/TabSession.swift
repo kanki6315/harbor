@@ -17,13 +17,14 @@ final class TabSession: NSObject, Identifiable {
     var snapshot: UIImage?
     var lastUsed = Date()
     var hasCommitted = false
+    private(set) var isDisposed = false
     private var observations: [NSKeyValueObservation] = []
 
     init(id: UUID, browser: BrowserModel, configuration: WKWebViewConfiguration? = nil) {
         self.id = id
         self.browser = browser
         let config = configuration ?? WKWebViewConfiguration()
-        config.websiteDataStore = .default()
+        config.websiteDataStore = browser.websiteDataStore
         config.userContentController = WKUserContentController()
         MediaPolicy.configure(config)
         webView = WKWebView(frame: .zero, configuration: config)
@@ -58,7 +59,7 @@ final class TabSession: NSObject, Identifiable {
     }
 
     func updateMetadata() {
-        guard hasCommitted, let url = webView.url else { return }
+        guard !isDisposed, hasCommitted, let url = webView.url else { return }
         browser?.updateTab(id, url: url, title: webView.title)
     }
 
@@ -71,12 +72,14 @@ final class TabSession: NSObject, Identifiable {
         let config = WKSnapshotConfiguration()
         config.snapshotWidth = 320
         webView.takeSnapshot(with: config) { [weak self] image, _ in
-            guard let image else { return }
-            self?.snapshot = image
+            guard let self, !self.isDisposed, let image else { return }
+            self.snapshot = image
         }
     }
 
     func dispose() {
+        isDisposed = true
+        browser = nil
         webView.stopLoading()
         webView.pauseAllMediaPlayback(completionHandler: nil)
         webView.navigationDelegate = nil

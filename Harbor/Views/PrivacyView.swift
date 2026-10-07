@@ -49,7 +49,7 @@ struct PrivacyView: View {
                 }
             }.navigationTitle("Privacy").navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
-                .confirmationDialog("Clear data for \(browser.site ?? "this website")?", isPresented: $confirmClear, titleVisibility: .visible) {
+                .confirmationDialog("Clear data for \(browser.site ?? "this website") in \(browser.profileName)?", isPresented: $confirmClear, titleVisibility: .visible) {
                     Button("Clear website data", role: .destructive) {
                         Task { await browser.clearWebsiteData(site: browser.site); cleared = true }
                     }

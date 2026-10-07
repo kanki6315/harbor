@@ -22,11 +22,11 @@ Reduce tracking while preserving everyday browsing, website logins, local storag
 
 Persistent normal browsing; combined address/search entry; DuckDuckGo by default with Google and Bing choices; navigation, sharing, tab creation/closing/switching/restoration; bundled WebKit tracker rules; tracking parameter cleaning; persistent per-site blocking exceptions; local history and bookmarks; settings and explicit browsing-data deletion. Basic WebKit downloads with system sharing are implemented.
 
-Use the normal persistent WebKit data store. No app analytics, telemetry, ad SDKs, or crash reporting SDKs. Preserve TLS validation and standard user agent. Never fabricate blocked-request counts. Platform and verification limits are recorded in `docs/VALIDATION.md`.
+Use a separate persistent WebKit data store per profile, retaining the legacy default store only for a migrated original profile. No app analytics, telemetry, ad SDKs, or crash reporting SDKs. Preserve TLS validation and standard user agent. Never fabricate blocked-request counts. Platform and verification limits are recorded in `docs/VALIDATION.md`.
 
 First usable milestone: browse, sign in, open tabs, relaunch with tabs and website sessions retained where the website allows, block common trackers, and disable blocking for a broken site.
 
-Tab groups are a future feature to accommodate in the design, not a confirmed MVP implementation requirement. Other future features include profiles, optional private sync, Face ID, reader mode, custom lists, and iPad layout.
+Tab groups are a future feature to accommodate in the design, not a confirmed MVP implementation requirement. Profiles include isolated browsing data and an optional inactivity-based return to a default profile. Other future features include optional private sync, Face ID, reader mode, custom lists, and iPad layout.
 
 ## Brand Commitments
 

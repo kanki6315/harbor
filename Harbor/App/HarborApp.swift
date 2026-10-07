@@ -8,5 +8,23 @@ struct HarborApp: App {
             CTFontManagerRegisterFontsForURL(font as CFURL, .process, nil)
         }
     }
-    var body: some Scene { WindowGroup { BrowserView() } }
+    @State private var profiles = ProfileManager()
+    @Environment(\.scenePhase) private var scenePhase
+    var body: some Scene {
+        WindowGroup {
+            if let browser = profiles.browser {
+                BrowserView(browser: browser, profiles: profiles).id(browser.profileID)
+            } else {
+                ContentUnavailableView("Could not open profiles", systemImage: "exclamationmark.triangle",
+                                       description: Text(profiles.errorMessage ?? "Please reopen Harbor to try again."))
+            }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            switch phase {
+            case .background: profiles.enteredBackground()
+            case .active: profiles.becameActive()
+            default: profiles.browser?.saveNow()
+            }
+        }
+    }
 }
