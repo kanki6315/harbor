@@ -1,6 +1,28 @@
 import XCTest
 
 final class HarborUITests: XCTestCase {
+    @MainActor func testLockedProfileAppearanceAndSwitching() {
+        let app = XCUIApplication()
+        for (name, extra) in [
+            ("phone-locked", [String]()),
+            ("phone-locked-accessibility", ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"])
+        ] {
+            app.launchArguments = ["--uitesting", "--reset", "--locked-profile-fixture"] + extra
+            app.launch()
+            XCTAssertTrue(app.buttons["unlockProfile"].waitForExistence(timeout: 5))
+            XCTAssertFalse(app.buttons["moreButton"].exists)
+            capture(app, name: name)
+            if extra.isEmpty {
+                XCUIDevice.shared.orientation = .landscapeLeft
+                capture(app, name: "phone-locked-landscape")
+                XCUIDevice.shared.orientation = .portrait
+            }
+            app.buttons["Switch profile"].tap()
+            XCTAssertTrue(app.navigationBars["Profiles"].waitForExistence(timeout: 5))
+            app.terminate()
+        }
+    }
+
     @MainActor func testHistorySearchAndClear() {
         let app = openHistoryFixture()
         XCTAssertTrue(app.staticTexts["Today"].exists)
