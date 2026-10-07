@@ -48,6 +48,11 @@ struct SettingsView: View {
                 } header: { Text("Media") } footer: {
                     Text("Per-site autoplay and media permissions may be added in a future version.")
                 }
+                Section("Storage and backup") {
+                    Text("Profiles, bookmarks, settings and website exceptions can be included in your device backup.")
+                    Text("Open tabs, browsing history and activity timestamps stay on this device and are excluded from future backups. Older backups may still contain them.")
+                    Text("Website logins and storage are managed by WebKit. Backup does not sync Harbor across devices or guarantee that website logins will be restored.")
+                }.font(.subheadline)
                 Section("About Harbor") {
                     LabeledContent("Rendering engine", value: "Apple WebKit")
                     Text("Harbor uses WKWebView with persistent cookies and website storage. Tracker blocking reduces some tracking; it does not provide complete anonymity.")

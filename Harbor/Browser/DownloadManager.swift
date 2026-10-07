@@ -12,6 +12,8 @@ final class DownloadManager: NSObject, WKDownloadDelegate {
     init(profileID: UUID) {
         directory = Self.directory(profileID: profileID)
         super.init()
+        // No downloads survive process termination; remove leftovers before this profile starts any.
+        try? FileManager.default.removeItem(at: directory)
     }
     static func directory(profileID: UUID) -> URL {
         FileManager.default.temporaryDirectory.appending(path: "HarborDownloads/Profiles/\(profileID.uuidString)")
