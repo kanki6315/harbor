@@ -77,9 +77,109 @@ final class HarborUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Profiles"].exists)
         app.buttons["Done"].tap()
-        app.buttons["pageActionsButton"].tap()
-        XCTAssertTrue(app.buttons["Share page"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["Add bookmark"].exists)
+        XCTAssertLessThan(app.buttons["sharePageButton"].frame.midX, app.buttons["historyButton"].frame.midX)
+        app.buttons["sharePageButton"].tap()
+        XCTAssertTrue(app.navigationBars["UIActivityContentView"].waitForExistence(timeout: 15))
+        capture(app, name: "direct-share-sheet")
+        app.buttons["header.closeButton"].tap()
+    }
+
+    @MainActor func testRenameBookmark() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--uitesting", "--reset", "--fixture"]
+        app.launch()
+        XCTAssertTrue(app.webViews.staticTexts["Harbor test page"].waitForExistence(timeout: 15))
+        app.buttons["bookmarksButton"].tap()
+        app.buttons["bookmarkCurrentPage"].tap()
+        let savedPage = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Local page")).firstMatch
+        XCTAssertTrue(savedPage.waitForExistence(timeout: 5))
+        savedPage.press(forDuration: 1)
+        app.buttons["Rename"].tap()
+        let name = app.textFields["bookmarkRenameName"]
+        XCTAssertTrue(name.waitForExistence(timeout: 5))
+        name.tap()
+        let oldName = name.value as? String ?? ""
+        name.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: oldName.count) + "My saved page")
+        app.buttons["Save"].tap()
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "My saved page")).firstMatch.waitForExistence(timeout: 5))
+        capture(app, name: "bookmark-renamed")
+        app.buttons["Done"].tap()
+        app.buttons["bookmarksButton"].tap()
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "My saved page")).firstMatch.exists)
+    }
+
+    @MainActor func testBookmarkNameSuggestions() {
+        checkBookmarkNameSuggestions(largeText: false)
+    }
+
+    @MainActor func testBookmarkNameSuggestionsLargeText() {
+        checkBookmarkNameSuggestions(largeText: true)
+    }
+
+    @MainActor private func checkBookmarkNameSuggestions(largeText: Bool) {
+        let app = XCUIApplication()
+        app.launchArguments = ["--uitesting", "--reset", "--fixture", "--bookmark-name-fixture"]
+        if largeText {
+            app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityM"]
+        }
+        app.launch()
+        XCTAssertTrue(app.webViews.staticTexts["Harbor test page"].waitForExistence(timeout: 15))
+        app.buttons["bookmarksButton"].tap()
+        app.buttons["bookmarkCurrentPage"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["bookmarkNameLoading"].firstMatch.waitForExistence(timeout: 2))
+        capture(app, name: "bookmark-name-loading")
+        XCTAssertTrue(app.buttons["useBookmarkName"].waitForExistence(timeout: 8))
+        capture(app, name: "bookmark-name-choice")
+        let original = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Harbor test page")).firstMatch
+        XCTAssertTrue(original.exists)
+        app.buttons["keepBookmarkName"].tap()
+        XCTAssertTrue(original.exists)
+        original.press(forDuration: 1)
+        app.buttons["Rename"].tap()
+        app.buttons["suggestBookmarkNickname"].tap()
+        XCTAssertTrue(app.buttons["useBookmarkNameDraft"].waitForExistence(timeout: 8))
+        capture(app, name: "bookmark-rename-suggestion")
+        app.buttons["useBookmarkNameDraft"].tap()
+        XCTAssertEqual(app.textFields["bookmarkRenameName"].value as? String, "Harbor fixture guide")
+        app.buttons["Cancel"].tap()
+        XCTAssertTrue(original.waitForExistence(timeout: 5), "Cancelling must keep the original name")
+        original.press(forDuration: 1)
+        app.buttons["Rename"].tap()
+        app.buttons["suggestBookmarkNickname"].tap()
+        XCTAssertTrue(app.buttons["useBookmarkNameDraft"].waitForExistence(timeout: 8))
+        app.buttons["useBookmarkNameDraft"].tap()
+        app.buttons["Save"].tap()
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Harbor fixture guide")).firstMatch.waitForExistence(timeout: 5))
+    }
+
+    @MainActor func testBookmarkFolders() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--uitesting", "--reset", "--fixture"]
+        app.launch()
+        XCTAssertTrue(app.webViews.staticTexts["Harbor test page"].waitForExistence(timeout: 15))
+        app.buttons["bookmarksButton"].tap()
+        app.buttons["newBookmarkFolder"].tap()
+        app.alerts.textFields["Folder name"].tap()
+        app.alerts.textFields["Folder name"].typeText("Travel")
+        app.alerts.buttons["Save"].tap()
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Travel")).firstMatch.tap()
+        XCTAssertTrue(app.navigationBars["Travel"].waitForExistence(timeout: 5))
+        app.buttons["bookmarkCurrentPage"].tap()
+        let saved = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Local page")).firstMatch
+        XCTAssertTrue(saved.waitForExistence(timeout: 5))
+        capture(app, name: "bookmark-folder")
+        saved.press(forDuration: 1)
+        app.buttons["Move to folder"].tap()
+        app.buttons["Unfiled"].tap()
+        XCTAssertTrue(app.staticTexts["This folder is empty"].waitForExistence(timeout: 5))
+        app.navigationBars.buttons["Bookmarks"].tap()
+        XCTAssertTrue(saved.waitForExistence(timeout: 5))
+        let folder = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Travel")).firstMatch
+        folder.press(forDuration: 1)
+        app.buttons["Delete folder"].tap()
+        XCTAssertFalse(folder.exists)
+        XCTAssertTrue(saved.exists)
+        capture(app, name: "bookmark-unfiled")
     }
 
     @MainActor func testHistorySearchAndClear() {

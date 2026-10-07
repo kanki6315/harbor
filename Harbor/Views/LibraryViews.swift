@@ -166,45 +166,277 @@ private struct HistoryRow: View {
 struct BookmarksView: View {
     @Bindable var browser: BrowserModel
     @State private var search = ""
+    @State private var renamingBookmark: Bookmark?
+    @State private var renamingFolder: BookmarkFolder?
+    @State private var folderName = ""
+    @State private var showingFolderName = false
+    @State private var movingBookmark: Bookmark?
     @Environment(\.dismiss) private var dismiss
-    var bookmarks: [Bookmark] {
-        browser.archive.bookmarks.filter { search.isEmpty || $0.title.localizedCaseInsensitiveContains(search) || $0.url.absoluteString.localizedCaseInsensitiveContains(search) }
-    }
+
     var body: some View {
         NavigationStack {
-            List {
-                if let url = browser.selectedTab.url {
-                    Section {
-                        Button {
-                            browser.toggleBookmark()
-                        } label: {
-                            Label(browser.archive.bookmarks.contains(where: { $0.url == url }) ? "Remove bookmark for this page" : "Bookmark this page", systemImage: "bookmark")
-                        }
-                        .accessibilityIdentifier("bookmarkCurrentPage")
+            folderContents(nil)
+                .navigationDestination(for: BookmarkFolder.self) { folder in
+                    folderContents(folder.id)
+                }
+        }
+        .sheet(item: $renamingBookmark) { bookmark in
+            BookmarkRenameView(browser: browser, bookmark: bookmark)
+        }
+        .alert(renamingFolder == nil ? "New folder" : "Rename folder", isPresented: $showingFolderName) {
+            TextField("Folder name", text: $folderName)
+            Button("Cancel", role: .cancel) { renamingFolder = nil }
+            Button("Save") {
+                if let folder = renamingFolder { browser.renameBookmarkFolder(folder.id, to: folderName) }
+                else { browser.createBookmarkFolder(named: folderName) }
+                renamingFolder = nil
+            }.disabled(!validFolderName)
+        } message: {
+            Text("Choose a unique name for this folder.")
+        }
+        .sheet(item: $movingBookmark) { bookmark in
+            NavigationStack {
+                List {
+                    moveDestination("Unfiled", id: nil, bookmark: bookmark)
+                    ForEach(browser.archive.bookmarkFolders) { folder in
+                        moveDestination(folder.name, id: folder.id, bookmark: bookmark)
                     }
                 }
-                if bookmarks.isEmpty {
-                    ContentUnavailableView(search.isEmpty ? "Keep a good find" : "No matching bookmarks", systemImage: "bookmark",
-                                           description: Text(search.isEmpty ? "Open a page, then choose Bookmark this page here." : "Try another title or address."))
-                        .listRowBackground(Color.clear)
+                .navigationTitle("Move bookmark")
+                .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { movingBookmark = nil } } }
+            }
+        }
+    }
+
+    private var validFolderName: Bool {
+        let name = BookmarkNaming.normalized(folderName)
+        return !name.isEmpty && !browser.archive.bookmarkFolders.contains {
+            $0.id != renamingFolder?.id && $0.name.localizedCaseInsensitiveCompare(name) == .orderedSame
+        }
+    }
+
+    private func bookmarks(in folderID: UUID?) -> [Bookmark] {
+        browser.archive.bookmarks.filter { bookmark in
+            if search.isEmpty { return bookmark.folderID == folderID }
+            let folder = browser.archive.bookmarkFolders.first { $0.id == bookmark.folderID }
+            return (folderID == nil || bookmark.folderID == folderID) &&
+                (bookmark.title.localizedCaseInsensitiveContains(search) ||
+                 bookmark.url.absoluteString.localizedCaseInsensitiveContains(search) ||
+                 folder?.name.localizedCaseInsensitiveContains(search) == true)
+        }
+    }
+
+    private func folderContents(_ folderID: UUID?) -> some View {
+        let visibleBookmarks = bookmarks(in: folderID)
+        return List {
+            if let url = browser.selectedTab.url {
+                Section {
+                    Button { browser.toggleBookmark(folderID: folderID) } label: {
+                        Label(browser.archive.bookmarks.contains(where: { $0.url == url }) ? "Remove bookmark for this page" : "Bookmark this page", systemImage: "bookmark")
+                    }.accessibilityIdentifier("bookmarkCurrentPage")
                 }
-                ForEach(bookmarks) { bookmark in
-                    Button { browser.navigate(bookmark.url); dismiss() } label: {
-                        Label {
-                            VStack(alignment: .leading, spacing: 5) {
-                                Text(bookmark.title).foregroundStyle(.primary).lineLimit(2)
-                                Text(bookmark.url.host ?? (bookmark.url.isFileURL ? "Local page" : bookmark.url.absoluteString))
-                                    .foregroundStyle(.secondary).font(.subheadline)
-                                    .lineLimit(2).truncationMode(.middle)
-                            }.padding(.vertical, 4)
-                        } icon: { Image(systemName: "bookmark").foregroundStyle(.tint) }
-                    }.swipeActions {
-                        Button("Delete", role: .destructive) { browser.archive.bookmarks.removeAll { $0.id == bookmark.id }; browser.saveNow() }
+            }
+            if folderID == nil && search.isEmpty && !browser.archive.bookmarkFolders.isEmpty {
+                foldersSection
+            }
+            if visibleBookmarks.isEmpty && (folderID != nil || !search.isEmpty || browser.archive.bookmarkFolders.isEmpty) {
+                ContentUnavailableView(search.isEmpty ? (folderID == nil ? "Keep a good find" : "This folder is empty") : "No matching bookmarks",
+                                       systemImage: folderID == nil ? "bookmark" : "folder",
+                                       description: Text(search.isEmpty ? "Bookmark this page, or move saved pages here using their menu." : "Try another name, folder or address."))
+                    .listRowBackground(Color.clear)
+            } else if !visibleBookmarks.isEmpty {
+                Section(search.isEmpty && folderID == nil ? "Unfiled" : "Saved pages") {
+                    ForEach(visibleBookmarks) { bookmark in
+                        VStack(alignment: .leading, spacing: 12) {
+                            bookmarkRow(bookmark)
+                            BookmarkNameSuggestionView(browser: browser, bookmarkID: bookmark.id) {
+                                browser.useSuggestedBookmarkName(bookmark.id)
+                            }
+                        }
                     }
                 }
             }
-            .navigationTitle("Bookmarks").searchable(text: $search, prompt: "Search bookmarks")
-            .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Done") { dismiss() } } }
         }
+        .navigationTitle(folderID.flatMap { id in browser.archive.bookmarkFolders.first { $0.id == id }?.name } ?? "Bookmarks")
+        .searchable(text: $search, prompt: folderID == nil ? "Search all bookmarks" : "Search this folder")
+        .toolbar {
+            if folderID == nil {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("New folder", systemImage: "folder.badge.plus") {
+                        renamingFolder = nil; folderName = ""; showingFolderName = true
+                    }.accessibilityIdentifier("newBookmarkFolder")
+                }
+            }
+            ToolbarItem(placement: .topBarTrailing) { Button("Done") { dismiss() } }
+        }
+    }
+
+    private var foldersSection: some View {
+        Section {
+            ForEach(browser.archive.bookmarkFolders) { folder in
+                NavigationLink(value: folder) {
+                    Label {
+                        HStack {
+                            Text(folder.name)
+                            Spacer()
+                            Text(String(browser.archive.bookmarks.filter { $0.folderID == folder.id }.count))
+                                .foregroundStyle(.secondary)
+                        }
+                    } icon: { Image(systemName: "folder").foregroundStyle(.tint) }
+                }
+                .swipeActions {
+                    Button("Delete folder", role: .destructive) { browser.deleteBookmarkFolder(folder.id) }
+                    Button("Rename") { beginRenaming(folder) }.tint(.blue)
+                }
+                .contextMenu {
+                    Button("Rename", systemImage: "pencil") { beginRenaming(folder) }
+                    Button("Delete folder", systemImage: "trash", role: .destructive) { browser.deleteBookmarkFolder(folder.id) }
+                }
+            }
+        } header: { Text("Folders") } footer: { Text("Deleting a folder keeps its bookmarks in Unfiled.") }
+    }
+
+    private func bookmarkRow(_ bookmark: Bookmark) -> some View {
+        Button { browser.navigate(bookmark.url); dismiss() } label: {
+            Label {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(bookmark.title).foregroundStyle(.primary).lineLimit(2)
+                    Text(bookmark.url.host ?? (bookmark.url.isFileURL ? "Local page" : bookmark.url.absoluteString))
+                        .foregroundStyle(.secondary).font(.subheadline)
+                        .lineLimit(2).truncationMode(.middle)
+                    if !search.isEmpty, let folder = browser.archive.bookmarkFolders.first(where: { $0.id == bookmark.folderID }) {
+                        Text(folder.name).font(.caption).foregroundStyle(.secondary)
+                    }
+                }.padding(.vertical, 4)
+            } icon: { Image(systemName: "bookmark").foregroundStyle(.tint) }
+        }
+        .buttonStyle(.plain)
+        .swipeActions {
+            Button("Delete", role: .destructive) { browser.deleteBookmark(bookmark.id) }
+            Button("Rename") { beginRenaming(bookmark) }.tint(.blue)
+            Button("Move") { movingBookmark = bookmark }.tint(.orange)
+        }
+        .contextMenu {
+            Button("Rename", systemImage: "pencil") { beginRenaming(bookmark) }
+            Button("Move to folder", systemImage: "folder") { movingBookmark = bookmark }
+            Button("Delete", systemImage: "trash", role: .destructive) { browser.deleteBookmark(bookmark.id) }
+        }
+    }
+
+    private func moveDestination(_ name: String, id: UUID?, bookmark: Bookmark) -> some View {
+        Button {
+            browser.moveBookmark(bookmark.id, to: id)
+            movingBookmark = nil
+        } label: {
+            HStack {
+                Label(name, systemImage: "folder")
+                Spacer()
+                if bookmark.folderID == id { Image(systemName: "checkmark").accessibilityLabel("Current folder") }
+            }
+        }
+    }
+
+    private func beginRenaming(_ bookmark: Bookmark) {
+        renamingBookmark = bookmark
+    }
+
+    private func beginRenaming(_ folder: BookmarkFolder) {
+        renamingFolder = folder; folderName = folder.name; showingFolderName = true
+    }
+}
+
+/// Choice controls are separate from the navigation button, so using a name never opens the page.
+private struct BookmarkNameSuggestionView: View {
+    @Bindable var browser: BrowserModel
+    let bookmarkID: UUID
+    var isDraft = false
+    let useName: () -> Void
+
+    var body: some View {
+        if let state = browser.bookmarkNameStates[bookmarkID] {
+            VStack(alignment: .leading, spacing: 10) {
+                switch state {
+                case .generating:
+                    HStack(spacing: 8) {
+                        ProgressView()
+                        Text("Suggesting a name…")
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("bookmarkNameLoading")
+                case .suggested(let name):
+                    Text("Suggested name: \(name)")
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("bookmarkNameSuggestion")
+                    Button(action: useName) {
+                        Text("Use name")
+                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                            .contentShape(Rectangle())
+                    }
+                    .accessibilityIdentifier(isDraft ? "useBookmarkNameDraft" : "useBookmarkName")
+                case .unavailable:
+                    Text("No suggestion available. Your name is unchanged.")
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Button {
+                    browser.keepOriginalBookmarkName(bookmarkID)
+                } label: {
+                    Text(state == .unavailable ? "Dismiss" : "Keep original")
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                        .contentShape(Rectangle())
+                }.accessibilityIdentifier(isDraft ? "keepBookmarkNameDraft" : "keepBookmarkName")
+            }
+            .font(.subheadline)
+            .buttonStyle(.borderless)
+            .padding(.vertical, 4)
+        }
+    }
+}
+
+private struct BookmarkRenameView: View {
+    @Bindable var browser: BrowserModel
+    let bookmark: Bookmark
+    @State private var name: String
+    @Environment(\.dismiss) private var dismiss
+
+    init(browser: BrowserModel, bookmark: Bookmark) {
+        self.browser = browser
+        self.bookmark = bookmark
+        _name = State(initialValue: bookmark.title)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("Name", text: $name)
+                        .accessibilityIdentifier("bookmarkRenameName")
+                    Button("Suggest nickname", systemImage: "sparkles") {
+                        browser.requestBookmarkName(bookmark)
+                    }
+                    .disabled(browser.bookmarkNameStates[bookmark.id] == .generating)
+                    .accessibilityIdentifier("suggestBookmarkNickname")
+                    BookmarkNameSuggestionView(browser: browser, bookmarkID: bookmark.id, isDraft: true) {
+                        if case .suggested(let suggestion) = browser.bookmarkNameStates[bookmark.id] {
+                            name = suggestion
+                            browser.keepOriginalBookmarkName(bookmark.id)
+                        }
+                    }
+                } footer: {
+                    Text("Suggestions are made on this device. Choose Use name to fill the field, then Save to rename your bookmark.")
+                }
+            }
+            .navigationTitle("Rename bookmark")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        browser.renameBookmark(bookmark.id, to: name)
+                        dismiss()
+                    }.disabled(BookmarkNaming.normalized(name).isEmpty)
+                }
+            }
+        }
+        .onDisappear { browser.keepOriginalBookmarkName(bookmark.id) }
     }
 }

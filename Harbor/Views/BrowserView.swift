@@ -118,12 +118,8 @@ struct BrowserView: View {
     private var topChrome: some View {
         GlassEffectContainer(spacing: 8) {
             HStack {
-                if browser.selectedTab.url != nil || browser.downloads.completed != nil || browser.downloads.activeCount > 0 {
+                if browser.activeSession?.mediaState == .playing || browser.downloads.completed != nil || browser.downloads.activeCount > 0 {
                     Menu {
-                        if let url = browser.selectedTab.url {
-                            Button("Share page", systemImage: "square.and.arrow.up") { share = ShareItem(url: url) }
-                            Button(browser.archive.bookmarks.contains(where: { $0.url == url }) ? "Remove bookmark" : "Add bookmark", systemImage: "bookmark") { browser.toggleBookmark() }
-                        }
                         if browser.activeSession?.mediaState == .playing {
                             Button("Pause media", systemImage: "pause.fill") { browser.activeSession?.webView.pauseAllMediaPlayback(completionHandler: nil) }
                         }
@@ -142,6 +138,13 @@ struct BrowserView: View {
                 }
                 Spacer(minLength: 8)
                 HStack(spacing: 0) {
+                    if let url = browser.selectedTab.url {
+                        Button { share = ShareItem(url: url) } label: {
+                            Image(systemName: "square.and.arrow.up").frame(width: 48, height: 48)
+                        }
+                        .accessibilityLabel("Share page")
+                        .accessibilityIdentifier("sharePageButton")
+                    }
                     Button { sheet = .history } label: {
                         Image(systemName: "clock").frame(width: 48, height: 48)
                     }

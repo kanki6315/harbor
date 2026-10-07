@@ -31,6 +31,25 @@ final class CoreTests: XCTestCase {
         XCTAssertEqual(restored.selectedTabID, archive.selectedTabID)
         XCTAssertEqual(restored.settings, archive.settings)
     }
+    func testBookmarksFromBeforeFoldersStillDecode() throws {
+        let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = BrowserStore(fileURL: directory.appending(path: "browser.json"))
+        var archive = BrowserArchive()
+        archive.bookmarks = [Bookmark(url: URL(string: "https://example.com")!, title: "Saved")]
+        var legacy = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(archive)) as? [String: Any])
+        legacy.removeValue(forKey: "bookmarkFolders")
+        let decoded = try JSONDecoder().decode(BrowserArchive.self, from: JSONSerialization.data(withJSONObject: legacy))
+        XCTAssertTrue(decoded.bookmarkFolders.isEmpty)
+        XCTAssertNil(decoded.bookmarks.first?.folderID)
+        try store.save(archive)
+        var preferences = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: store.durableURL)) as? [String: Any])
+        preferences.removeValue(forKey: "bookmarkFolders")
+        try JSONSerialization.data(withJSONObject: preferences).write(to: store.durableURL)
+        XCTAssertEqual(try store.load().bookmarks, archive.bookmarks)
+        XCTAssertTrue(try store.load().bookmarkFolders.isEmpty)
+    }
+
     func testSplitStorageMigrationAndBackupRestore() throws {
         let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }

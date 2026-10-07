@@ -131,3 +131,27 @@ Refreshed DESIGN.md and its Impeccable sidecar before implementing dedicated His
 Simulator build passed on iPhone 18 Pro / iOS 27. Four initial targeted UI tests passed for destinations/bookmark add-remove, accessibility-size controls, collapse/restore, and tab restoration/settings. A focused rerun after local bookmark labels were shortened passed in actual simulator dark appearance (the launch argument alone did not apply dark appearance). After the user's overlay correction, both destination/bookmark and collapse/restore tests passed again, including assertions that website content extends behind the top buttons and retains the same frame when controls collapse. Final result: `/tmp/harbor-controls-build/Logs/Test/Test-Harbor-2026.10.07_17-36-04--0400.xcresult`.
 
 Inspected final light website controls and dark largest-text start-page controls. Captures: `/tmp/harbor-overlay-captures/controls-light.png` and `/tmp/harbor-overlay-start-dark-large.png`. The simulator was restored to light appearance and standard app text size. This is targeted simulator evidence; full-suite, physical-device, VoiceOver and landscape checks were not performed for this change. Floating controls can cover website content until collapsed; they do not reserve layout space.
+
+### Direct Share refinement
+
+Share now sits left of History and Settings in the floating top-right capsule. The duplicate Add/Remove bookmark menu item is removed; current-page saving remains inside Bookmarks. The leading Page actions menu appears only for media/download actions.
+
+The targeted destination test passed on iPhone 18 Pro / iOS 27, including bookmark add/remove, History/Settings navigation, direct native share-sheet presentation and dismissal: `/tmp/harbor-controls-build/Logs/Test/Test-Harbor-2026.10.07_18-04-18--0400.xcresult`. Inspected the updated light-mode browser capture at `/tmp/harbor-share-review/controls-light.png`. Earlier attempts used unsuitable assertions for the system share sheet and were superseded by the passing check against the observed native navigation bar. No additional full-suite or hardware verification is claimed.
+
+## Bookmark names and folders — 2026-10-07
+
+New bookmarks save immediately with a page-title fallback, then request a bounded, structured name from Apple Foundation Models when available. Only title, hostname and URL path are used; query strings, credentials and fragments are excluded. Generation errors keep the fallback. Manual renames, deletions and profile deactivation cancel pending suggestions. Folder moves do not invalidate a pending name suggestion.
+
+Named folders support creation, rename, navigation, saving into the current folder and moving bookmarks. Deleting a folder moves its pages to Unfiled. Root search matches names, URLs and folder names across folders. Folders are currently single-level and profile-scoped. Existing archives and durable preferences without folder fields decode successfully.
+
+Simulator build and 32 unit tests passed, including legacy decoding, persistence, profile isolation, folder deletion, invalid destinations and stale name suggestions. Three distinct UI tests passed: bookmark rename; folder create/save/move/delete; browser destinations at accessibility text size. The latter two passed again in actual simulator dark appearance after final styling changes. Light rename and dark folder/accessibility screenshots were inspected. Results: `/tmp/harbor-bookmark-build/Logs/Test/Test-Harbor-2026.10.07_18-11-34--0400.xcresult` and `/tmp/harbor-bookmark-build/Logs/Test/Test-Harbor-2026.10.07_18-13-24--0400.xcresult`.
+
+Actual Foundation Models generation quality and latency still require a supported physical device with Apple Intelligence available. Automated tests bypass generation and exercise persistence and stale-result safeguards deterministically.
+
+### Explicit bookmark-name choices and rename suggestions — 2026-10-07
+
+Supersedes automatic name application above. New bookmarks retain their saved title while an inline spinner says “Suggesting a name…”. Completed suggestions require Use name or Keep original. Generation failures show dismissible feedback without changing the title. The native rename sheet offers Suggest nickname; accepting fills only the editable draft, Save commits it and Cancel discards it. Suggestions and generation status are transient; app relaunch retains the last explicitly saved name. Profile deactivation, manual saving, deletion and rejection clear pending work.
+
+Six WebKit/model tests passed, including explicit acceptance, rejection, generation failure, cancellation, deletion/recreation, folder moves and profile deactivation. Four targeted UI cases passed across runs: ordinary manual rename; folder organization; suggestion progress/rejection and rename draft acceptance/Cancel/Save; the same suggestion flow in actual dark appearance with accessibility-medium text. Light and dark screenshots were inspected. Initial test-only failures (loading accessibility element type and duplicated button identifiers behind the rename sheet) were corrected before the passing runs. Final UI results: `/tmp/harbor-bookmark-build/Logs/Test/Test-Harbor-2026.10.07_18-35-25--0400.xcresult` and `/tmp/harbor-bookmark-build/Logs/Test/Test-Harbor-2026.10.07_18-36-36--0400.xcresult`.
+
+UI tests use a DEBUG-only deterministic naming fixture, and model tests inject controlled results. Actual Apple Intelligence generation quality and latency remain unverified on physical hardware.
