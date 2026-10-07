@@ -82,3 +82,9 @@ This is targeted simulator validation, not a new full-suite or physical-device s
 The user's Safari references supersede the reserved-strip approach above. Browser controls again float over page content with no solid bottom surround. Scrolling down a website minimizes the two rows into a centered URL pill; tapping it restores both rows without focusing the address field. Switching tabs restores expanded controls. The viewport height stays unchanged during collapse; measured bottom scroll insets keep ordinary page-end content reachable. This does not guarantee clearance for every CSS fixed footer.
 
 Three targeted UI tests passed on iPhone 17 Pro / iOS 26.5 Simulator: scroll-collapse/URL restoration and end-page action; accessibility text/landscape/editing; video across tab switching. The appearance test also passed in simulator dark mode. Evidence: `/tmp/harbor-chrome-review/floating.xcresult` and `/tmp/harbor-chrome-review/floating-dark.xcresult`; current captures in `.impeccable/review/`. Physical-device and arbitrary-site verification remain outstanding.
+
+## Browser control motion — October 7, 2026
+
+Expanded and minimized address glass now share a native glass identity inside a GlassEffectContainer. Collapse uses a 240ms smooth transition; restore uses 320ms, both without bounce. The action row fades with a 12pt offset. Reduce Motion selects a 120ms opacity transition without shared-glass morphing or action-row displacement.
+
+Simulator tests passed for scroll-collapse/restoration and page-end access, accessibility text/landscape/editing, and three consecutive collapse/restore cycles with usable tabs and no unintended keyboard. Results: `/tmp/harbor-chrome-review/motion.xcresult` and `motion-repeat.xcresult`; transition recording: `/tmp/harbor-chrome-review/motion.mp4`. Reduce Motion behavior was reviewed in code; device-level accessibility and performance remain unverified.

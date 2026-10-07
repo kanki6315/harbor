@@ -94,6 +94,25 @@ final class HarborUITests: XCTestCase {
         capture(app, name: "phone-expanded-footer")
     }
 
+    @MainActor func testRepeatedChromeTransitions() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--uitesting", "--reset", "--fixture"]
+        app.launch()
+        let web = app.webViews.firstMatch
+        XCTAssertTrue(web.staticTexts["Harbor test page"].waitForExistence(timeout: 15))
+        for _ in 0..<3 {
+            web.swipeUp()
+            let pill = app.buttons["expandBrowserControls"]
+            XCTAssertTrue(pill.waitForExistence(timeout: 5))
+            pill.tap()
+            XCTAssertTrue(app.textFields["addressField"].waitForExistence(timeout: 5))
+            XCTAssertTrue(app.buttons["tabsButton"].isHittable)
+            XCTAssertFalse(app.keyboards.firstMatch.exists)
+            web.swipeDown()
+        }
+        capture(app, name: "phone-motion-restored")
+    }
+
     @MainActor func testCollapsedControlsInDarkLargeTextAndLandscape() {
         let app = XCUIApplication()
         app.launchArguments = ["--uitesting", "--reset", "--fixture",
