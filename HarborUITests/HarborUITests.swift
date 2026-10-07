@@ -53,8 +53,8 @@ final class HarborUITests: XCTestCase {
         let web = app.webViews.firstMatch
         XCTAssertTrue(web.staticTexts["Harbor test page"].waitForExistence(timeout: 20))
         XCTAssertGreaterThan(web.frame.minY, 0, "Website controls must stay below the system status area")
-        XCTAssertLessThanOrEqual(web.frame.maxY, app.textFields["addressField"].frame.minY,
-                                 "Website viewport must end above browser controls")
+        XCTAssertGreaterThan(web.frame.maxY, app.buttons["tabsButton"].frame.maxY,
+                             "Website must draw behind floating controls")
         capture(app, name: "phone-website-glass")
         let instance = web.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Page instance ")).firstMatch.label
         web.buttons["Play video"].tap()
@@ -70,23 +70,19 @@ final class HarborUITests: XCTestCase {
         web.buttons["Pause video"].tap()
         XCTAssertTrue(web.staticTexts["Video paused"].exists)
     }
-    @MainActor func testCollapsibleControlsLeaveFooterReachable() {
+    @MainActor func testScrollingCollapsesControlsAndURLRestoresThem() {
         let app = XCUIApplication()
         app.launchArguments = ["--uitesting", "--reset", "--fixture"]
         app.launch()
         let web = app.webViews.firstMatch
         let footer = web.buttons["Fixed footer action"]
         XCTAssertTrue(footer.waitForExistence(timeout: 15))
-        XCTAssertLessThanOrEqual(footer.frame.maxY, app.textFields["addressField"].frame.minY)
         let expandedHeight = web.frame.height
-        app.buttons["collapseBrowserControls"].tap()
+        app.webViews.firstMatch.swipeUp()
         let reveal = app.buttons["expandBrowserControls"]
         XCTAssertTrue(reveal.waitForExistence(timeout: 5))
         XCTAssertFalse(app.textFields["addressField"].exists)
-        XCTAssertGreaterThan(web.frame.height, expandedHeight + 40)
-        XCTAssertLessThanOrEqual(footer.frame.maxY, reveal.frame.minY)
-        footer.tap()
-        XCTAssertTrue(web.buttons["Footer tapped"].exists)
+        XCTAssertEqual(web.frame.height, expandedHeight, accuracy: 1)
         for _ in 0..<5 { web.swipeUp() }
         let end = web.buttons["Page end action"]
         XCTAssertTrue(end.isHittable)
@@ -95,7 +91,6 @@ final class HarborUITests: XCTestCase {
         capture(app, name: "phone-minimized-footer")
         reveal.tap()
         XCTAssertTrue(app.textFields["addressField"].waitForExistence(timeout: 5))
-        XCTAssertLessThanOrEqual(web.buttons["Footer tapped"].frame.maxY, app.textFields["addressField"].frame.minY)
         capture(app, name: "phone-expanded-footer")
     }
 
@@ -107,28 +102,24 @@ final class HarborUITests: XCTestCase {
         app.launch()
         let footer = app.webViews.buttons["Fixed footer action"]
         XCTAssertTrue(footer.waitForExistence(timeout: 15))
-        XCTAssertLessThanOrEqual(footer.frame.maxY, app.textFields["addressField"].frame.minY)
         capture(app, name: "phone-dark-large-expanded")
-        app.buttons["collapseBrowserControls"].tap()
+        app.webViews.firstMatch.swipeUp()
         let reveal = app.buttons["expandBrowserControls"]
         XCTAssertTrue(reveal.waitForExistence(timeout: 5))
-        XCTAssertLessThanOrEqual(footer.frame.maxY, reveal.frame.minY)
         capture(app, name: "phone-dark-large-minimized")
         XCUIDevice.shared.orientation = .landscapeLeft
         defer { XCUIDevice.shared.orientation = .portrait }
         let rotationSettled = NSPredicate { _, _ in
             app.frame.width > app.frame.height && reveal.frame.minY > 0 &&
-                footer.frame.minY > 0 && footer.frame.maxY <= reveal.frame.minY
+                footer.frame.minY > 0
         }
         expectation(for: rotationSettled, evaluatedWith: app)
         waitForExpectations(timeout: 5)
         XCTAssertTrue(reveal.isHittable)
-        XCTAssertLessThanOrEqual(footer.frame.maxY, reveal.frame.minY)
         capture(app, name: "phone-landscape-minimized")
         reveal.tap()
         let address = app.textFields["addressField"]
         XCTAssertTrue(address.waitForExistence(timeout: 5))
-        XCTAssertLessThanOrEqual(footer.frame.maxY, address.frame.minY)
         capture(app, name: "phone-landscape-expanded")
         address.tap()
         XCTAssertTrue(app.buttons["Go"].exists)
@@ -210,12 +201,16 @@ final class HarborUITests: XCTestCase {
     }
 
     @MainActor private func revealAboveChrome(_ element: XCUIElement, in app: XCUIApplication) {
-        // XCTest can consider a web element hittable even when native glass overlaps it.
+        // Scrolling can replace the expanded address field with the floating URL pill.
+        func controlsTop() -> CGFloat {
+            let pill = app.buttons["expandBrowserControls"]
+            return pill.exists ? pill.frame.minY : app.textFields["addressField"].frame.minY
+        }
         for _ in 0..<4 {
-            if element.frame.maxY < app.textFields["addressField"].frame.minY - 8 { break }
+            if element.frame.maxY < controlsTop() - 8 { break }
             app.webViews.firstMatch.swipeUp()
         }
-        XCTAssertLessThan(element.frame.maxY, app.textFields["addressField"].frame.minY,
+        XCTAssertLessThan(element.frame.maxY, controlsTop(),
                           "Page controls must scroll above the browser chrome")
     }
 

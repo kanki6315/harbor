@@ -76,3 +76,9 @@ The bottom bars now collapse explicitly into a bottom-right 56 × 44pt restore h
 On iPhone 17 Pro / iOS 26.5 Simulator, four targeted UI tests passed: collapse/restore with a tappable fixed footer and end-of-page action; largest-text/landscape geometry and editing; live video across tab switching; and audio/native fullscreen return. After capping the restore symbol to match the other toolbar icons, the large-text/landscape test passed again with actual simulator dark appearance. Rotation assertions now wait for settled geometry; full-screen screenshots avoid the app-capture rotation artifact. Result bundles: `/tmp/harbor-chrome-review/verified.xcresult` and `/tmp/harbor-chrome-review/final-appearance.xcresult`. Captures are in `.impeccable/review/phone-*.png` locally.
 
 This is targeted simulator validation, not a new full-suite or physical-device signoff.
+
+## Floating URL pill revision — October 7, 2026
+
+The user's Safari references supersede the reserved-strip approach above. Browser controls again float over page content with no solid bottom surround. Scrolling down a website minimizes the two rows into a centered URL pill; tapping it restores both rows without focusing the address field. Switching tabs restores expanded controls. The viewport height stays unchanged during collapse; measured bottom scroll insets keep ordinary page-end content reachable. This does not guarantee clearance for every CSS fixed footer.
+
+Three targeted UI tests passed on iPhone 17 Pro / iOS 26.5 Simulator: scroll-collapse/URL restoration and end-page action; accessibility text/landscape/editing; video across tab switching. The appearance test also passed in simulator dark mode. Evidence: `/tmp/harbor-chrome-review/floating.xcresult` and `/tmp/harbor-chrome-review/floating-dark.xcresult`; current captures in `.impeccable/review/`. Physical-device and arbitrary-site verification remain outstanding.

@@ -95,6 +95,7 @@ struct StartPage: View {
                     .padding(.top, -16)
             }
         }
+        .scrollClipDisabled()
         .background {
             VStack(spacing: 0) {
                 Color.harborNavy.frame(height: 350)
