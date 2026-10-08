@@ -1,5 +1,11 @@
 # Validation — 2026-10-07
 
+## UI test expectations — October 8, 2026
+
+Updated the two stale UI assertions without changing production code. `testLocalVideoAcrossBrowserUI` now expects the viewport to extend beneath the status bar, matching the floating-controls layout, and still checks playback and live-page preservation across tab switches. `testTabReorderAndUnloadedPreview` checks that reordering keeps the page unloaded, selecting it reopens it, and relaunch converts the local file-URL tab to a start page under the HTTP(S)-only restoration policy. The earlier claim that the local fixture preview survives relaunch no longer applies.
+
+Both targeted tests passed on iPhone 18 Pro / iOS 27.0: **2 tests, 0 failures**. Result: `/tmp/harbor-ui-test-fixes/Logs/Test/Test-Harbor-2026.10.08_00-21-35--0400.xcresult`.
+
 ## Tab memory budget and state restoration — October 8, 2026
 
 Unloaded tabs now save WebKit interaction state and restore back/forward history, scroll and form contents when selected; state follows preview scoping, protection, clearing and pruning. The fixed five-page budget is replaced by one scaled to device memory and current headroom. Trimming samples media only for tabs about to unload and is triggered by tab changes, finished loads and leaving full screen, with a 20-second retry only while a playing tab blocks unloading. The 4-second all-tab poll is now a 5-second check of the visible tab for the Pause media menu item. Background page-process terminations unload the tab; the visible page reloads once automatically. Background entry unloads eligible tabs.

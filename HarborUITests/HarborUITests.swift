@@ -358,13 +358,25 @@ final class HarborUITests: XCTestCase {
             .press(forDuration: 0.5, thenDragTo: secondRow.coordinate(withNormalizedOffset: CGVector(dx: 0.94, dy: 0.9)))
         XCTAssertTrue(app.cells.element(boundBy: 0).staticTexts["New Tab"].exists)
         app.navigationBars["Reorder tabs"].buttons["Done"].tap()
+        XCTAssertTrue(app.staticTexts["Unloaded. Opens again when selected."].exists,
+                      "Reordering must keep the background page unloaded")
+        app.buttons["Open Harbor test page"].tap()
+        XCTAssertTrue(app.webViews.staticTexts["Harbor test page"].waitForExistence(timeout: 15),
+                      "Selecting an unloaded tab must reopen its page")
+        app.buttons["tabsButton"].tap()
+        XCTAssertFalse(app.staticTexts["Unloaded. Opens again when selected."].exists)
         app.buttons["Done"].tap()
         app.terminate()
         app.launchArguments = ["--uitesting"]
         app.launch()
         app.buttons["tabsButton"].tap()
-        XCTAssertTrue(app.staticTexts["Unloaded. Opens again when selected."].waitForExistence(timeout: 5))
-        capture(app, name: "phone-tabs-restored-preview")
+        XCTAssertTrue(app.navigationBars["2 tabs"].waitForExistence(timeout: 5))
+        // The bundled file URL is usable during this session, but only HTTP(S)
+        // addresses are restorable. Its tab becomes a start page after relaunch.
+        XCTAssertEqual(app.buttons.matching(identifier: "Open New Tab").count, 2)
+        XCTAssertFalse(app.buttons["Open Harbor test page"].exists)
+        XCTAssertFalse(app.staticTexts["Unloaded. Opens again when selected."].exists)
+        capture(app, name: "phone-tabs-local-page-reset")
     }
 
     @MainActor func testLinkHoldOpensInHarborNewTab() {
@@ -417,7 +429,8 @@ final class HarborUITests: XCTestCase {
         app.launch()
         let web = app.webViews.firstMatch
         XCTAssertTrue(web.staticTexts["Harbor test page"].waitForExistence(timeout: 20))
-        XCTAssertGreaterThan(web.frame.minY, 0, "Website controls must stay below the system status area")
+        XCTAssertEqual(web.frame.minY, app.frame.minY, accuracy: 1,
+                       "The website viewport must extend beneath the status bar")
         XCTAssertGreaterThan(web.frame.maxY, app.buttons["tabsButton"].frame.maxY,
                              "Website must draw behind floating controls")
         capture(app, name: "phone-website-glass")
