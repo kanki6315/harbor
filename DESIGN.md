@@ -121,7 +121,7 @@ The actual profile lock state selects this screen in place of the browser and it
 
 ### Tab cards
 
-Use actual captured snapshots when present, otherwise a navy placeholder with the Harbor mark for a start page or a globe/domain for a website. Separate close and open targets preserve intent. Cards support drag reordering, accessible move actions and a native Reorder list. Successful local snapshots persist across launches and background-tab unloading; unloaded pages reload when selected. Selected state combines border and checkmark; playing media adds a labeled speaker symbol. Closing exposes native toolbar Undo close.
+Use actual captured snapshots when present, otherwise a navy placeholder with the Harbor mark for a start page or a globe/domain for a website. Separate close and open targets preserve intent. Cards support drag reordering, accessible move actions and a native Reorder list. Successful local snapshots persist across launches and background-tab unloading; unloaded pages restore their history and scroll position when selected. Selected state combines border and checkmark; playing media adds a labeled speaker symbol. Closing exposes native toolbar Undo close.
 
 ### Library, settings and privacy
 

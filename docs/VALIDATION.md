@@ -1,5 +1,11 @@
 # Validation — 2026-10-07
 
+## Tab memory budget and state restoration — October 8, 2026
+
+Unloaded tabs now save WebKit interaction state and restore back/forward history, scroll and form contents when selected; state follows preview scoping, protection, clearing and pruning. The fixed five-page budget is replaced by one scaled to device memory and current headroom. Trimming samples media only for tabs about to unload and is triggered by tab changes, finished loads and leaving full screen, with a 20-second retry only while a playing tab blocks unloading. The 4-second all-tab poll is now a 5-second check of the visible tab for the Pause media menu item. Background page-process terminations unload the tab; the visible page reloads once automatically. Background entry unloads eligible tabs.
+
+New unit and WebKit tests passed on iPhone 17 Pro / iOS 27.0 simulator: budget scaling, state pruning, and restoring a two-entry history (via simulated requests, no network) after unloading. After merging the browser safety follow-ups, all 53 unit, profile and WebKit tests passed. `testAudioAndNativeFullscreen` and `testStartPageTabsSettingsAndRestore` passed. Two UI failures reproduce identically on the unmodified base commit and are not caused by this change: `testTabReorderAndUnloadedPreview` line 366 (file-URL fixture tabs are not restorable, so no tab is "Unloaded" after relaunch) and `testLocalVideoAcrossBrowserUI` line 420 (status-area layout assertion). Physical-device memory behavior, jetsam headroom readings and background unloading on hardware were not verified.
+
 ## Live tab-grid reordering — October 7, 2026
 
 Tab previews now reorder on drag entry with a 220 ms ease-out animation; Reduce Motion disables the added layout animation. The drag payload is restricted to Harbor's process. Dropping completes the already-applied order without moving the tab a second time.

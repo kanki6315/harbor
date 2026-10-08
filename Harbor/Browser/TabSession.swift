@@ -18,8 +18,13 @@ final class TabSession: NSObject, Identifiable {
     var mediaState: WKMediaPlaybackState = .none
     var fullscreen = false
     var loadError: String?
+    /// Held only when the preview could not be saved; otherwise the switcher reads it from disk.
     var snapshot: UIImage?
+    /// Bumped when a new preview is saved so the switcher reloads it.
+    private(set) var previewRevision = 0
     var lastUsed = Date()
+    /// Limits automatic reloads after the page's process ends, so a crashing page cannot loop.
+    var lastAutomaticReload: Date?
     var hasCommitted = false
     private(set) var isDisposed = false
     private var observations: [NSKeyValueObservation] = []
@@ -57,7 +62,13 @@ final class TabSession: NSObject, Identifiable {
                 Task { @MainActor in self?.updateMetadata() }
             },
             webView.observe(\.fullscreenState, options: [.new]) { [weak self] view, _ in
-                Task { @MainActor in self?.fullscreen = view.fullscreenState != .notInFullscreen }
+                Task { @MainActor in
+                    guard let self else { return }
+                    let wasFullscreen = self.fullscreen
+                    self.fullscreen = view.fullscreenState != .notInFullscreen
+                    // A full-screen tab is never unloaded; recheck the budget once it leaves.
+                    if wasFullscreen && !self.fullscreen { self.browser?.scheduleTrim() }
+                }
             }
         ]
     }
@@ -79,8 +90,12 @@ final class TabSession: NSObject, Identifiable {
         webView.takeSnapshot(with: config) { [weak self] image, _ in
             guard let self, !self.isDisposed, self.webView.url == capturedURL,
                   self.browser?.isClearingData == false, let image else { return }
-            self.snapshot = image
-            self.browser?.savePreview(image, for: self)
+            if self.browser?.savePreview(image, for: self) == true {
+                self.snapshot = nil
+                self.previewRevision += 1
+            } else {
+                self.snapshot = image
+            }
         }
     }
 
@@ -191,6 +206,8 @@ extension TabSession: WKNavigationDelegate {
         updateMetadata()
         if let url = webView.url { browser?.recordVisit(url: url, title: webView.title ?? url.host ?? "Page") }
         captureSnapshot()
+        // A loading tab is never unloaded; recheck the budget once it settles.
+        browser?.scheduleTrim()
     }
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
         failed(error)
@@ -204,7 +221,7 @@ extension TabSession: WKNavigationDelegate {
     }
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
         mediaState = .none
-        loadError = "iOS released this page to free memory. Reload to continue."
+        browser?.contentProcessTerminated(self)
     }
     func webView(_ webView: WKWebView, navigationAction: WKNavigationAction, didBecome download: WKDownload) {
         browser?.downloads.accept(download)

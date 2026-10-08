@@ -117,6 +117,34 @@ extension BrowserStore {
     }
 }
 
+// Saved WebKit interaction state (back/forward list, scroll, form contents) for unloaded tabs.
+// It can hold page and form data, so it shares the previews' protection and lifetime.
+extension BrowserStore {
+    private var statesURL: URL { fileURL.deletingLastPathComponent().appending(path: "TabStates") }
+    private func stateURL(_ id: UUID) -> URL { statesURL.appending(path: "\(id.uuidString).state") }
+
+    func saveTabState(_ data: Data, id: UUID) throws {
+        try FileManager.default.createDirectory(at: statesURL, withIntermediateDirectories: true)
+        var directory = statesURL
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        try directory.setResourceValues(values)
+        try data.write(to: stateURL(id), options: [.atomic, .completeFileProtection])
+    }
+
+    func loadTabState(_ id: UUID) -> Data? { try? Data(contentsOf: stateURL(id)) }
+
+    func removeTabState(_ id: UUID) { try? FileManager.default.removeItem(at: stateURL(id)) }
+
+    func pruneTabStates(keeping ids: Set<UUID>) {
+        guard let files = try? FileManager.default.contentsOfDirectory(at: statesURL, includingPropertiesForKeys: nil) else { return }
+        for file in files {
+            guard let id = UUID(uuidString: file.deletingPathExtension().lastPathComponent), !ids.contains(id) else { continue }
+            try? FileManager.default.removeItem(at: file)
+        }
+    }
+}
+
 /// Serialize routine writes off the UI thread. Explicit flushes join the same queue,
 /// so an older autosave cannot overwrite a newer user action or recreate deleted data.
 final class BrowserArchiveWriter: @unchecked Sendable {

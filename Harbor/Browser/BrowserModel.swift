@@ -4,6 +4,7 @@
 
 import SwiftUI
 import WebKit
+import os
 
 /// All browser sheets share one presentation slot, including website dialogs.
 enum BrowserSheet: Identifiable {
@@ -71,10 +72,13 @@ final class BrowserModel {
     private(set) var bookmarkNameStates: [UUID: BookmarkNameState] = [:]
     private var bookmarkNameTasks: [UUID: Task<Void, Never>] = [:]
     private var mediaTask: Task<Void, Never>?
+    private var trimRetryTask: Task<Void, Never>?
     private var memoryObserver: NSObjectProtocol?
     private(set) var isTesting = false
     private(set) var persistenceAvailable = true
     private var trimming = false
+    /// A trim requested mid-pass; true when any request was for memory pressure.
+    private var queuedTrim: Bool?
 
     var selectedID: UUID { archive.selectedTabID ?? archive.tabs[0].id }
     var selectedTab: TabRecord { archive.tabs.first(where: { $0.id == selectedID }) ?? archive.tabs[0] }
@@ -105,7 +109,10 @@ final class BrowserModel {
         self.isTesting = isTesting
         if !archive.settings.restoreTabs || archive.tabs.isEmpty { archive.tabs = [TabRecord()]; archive.selectedTabID = nil }
         if !archive.tabs.contains(where: { $0.id == archive.selectedTabID }) { archive.selectedTabID = archive.tabs[0].id }
-        if persistenceAvailable { store.prunePreviews(keeping: Set(archive.tabs.map(\.id))) }
+        if persistenceAvailable {
+            store.prunePreviews(keeping: Set(archive.tabs.map(\.id)))
+            store.pruneTabStates(keeping: Set(archive.tabs.map(\.id)))
+        }
         memoryObserver = NotificationCenter.default.addObserver(forName: UIApplication.didReceiveMemoryWarningNotification,
                                                                object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in await self?.trimSessions(memoryPressure: true) }
@@ -121,17 +128,19 @@ final class BrowserModel {
             }
             #endif
         }
+        // Only the browser menu's Pause action reads the visible tab's media state between
+        // explicit refreshes. Unloading samples background tabs itself when it needs to.
         mediaTask = Task { [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(4))
+                try? await Task.sleep(for: .seconds(5))
                 guard !Task.isCancelled else { break }
-                await self?.trimSessions()
+                await self?.refreshVisibleMedia()
             }
         }
     }
 
     isolated deinit {
-        persistTask?.cancel(); mediaTask?.cancel()
+        persistTask?.cancel(); mediaTask?.cancel(); trimRetryTask?.cancel()
         for task in bookmarkNameTasks.values { task.cancel() }
         if let memoryObserver { NotificationCenter.default.removeObserver(memoryObserver) }
     }
@@ -162,6 +171,8 @@ final class BrowserModel {
     }
 
     func deactivate() {
+        // Save before going inactive; inactive browsers write nothing further.
+        for session in sessions.values { saveState(of: session) }
         isActive = false
         for task in bookmarkNameTasks.values { task.cancel() }
         bookmarkNameTasks.removeAll()
@@ -170,6 +181,8 @@ final class BrowserModel {
         writer.flush()
         sheet = nil
         externalURL = nil
+        trimRetryTask?.cancel()
+        trimRetryTask = nil
         for session in sessions.values { session.dispose() }
         sessions.removeAll()
     }
@@ -180,6 +193,13 @@ final class BrowserModel {
         let session = TabSession(id: id, browser: self)
         sessions[id] = session
         blocker.apply(to: session.webView, url: url, settings: archive.settings)
+        // Restore back/forward history, scroll and form state saved when the tab was unloaded.
+        // Saved state can trail the tab (a navigation from the unloaded tab, or a page left
+        // after the last save), so the record's address wins when they differ.
+        if let state = store.loadTabState(id) {
+            session.webView.interactionState = state
+            if session.webView.url == url { return }
+        }
         session.webView.load(URLRequest(url: url))
     }
     func navigate(_ input: String) {
@@ -208,6 +228,8 @@ final class BrowserModel {
     }
     func selectTab(_ id: UUID) {
         guard let index = archive.tabs.firstIndex(where: { $0.id == id }) else { return }
+        // Recency means "last visible", so the tab being left counts as just used.
+        activeSession?.lastUsed = Date()
         activeSession?.captureSnapshot()
         if id != selectedID { dialog = nil }
         archive.selectedTabID = id
@@ -215,13 +237,17 @@ final class BrowserModel {
         sessions[id]?.lastUsed = Date()
         ensureSession(id)
         saveSoon()
-        Task { await trimSessions() }
+        scheduleTrim()
     }
     func closeTab(_ id: UUID) {
         guard let index = archive.tabs.firstIndex(where: { $0.id == id }) else { return }
-        if let previous = lastClosed { store.removePreview(previous.id) }
+        if let previous = lastClosed {
+            store.removePreview(previous.id)
+            store.removeTabState(previous.id)
+        }
         lastClosed = archive.tabs[index]
-        sessions.removeValue(forKey: id)?.dispose()
+        // Undo close restores the page with its history, like any unloaded tab.
+        if let session = sessions[id] { unload(session) }
         archive.tabs.remove(at: index)
         if archive.tabs.isEmpty { archive.tabs = [TabRecord()] }
         if archive.selectedTabID == id { selectTab(archive.tabs[min(index, archive.tabs.count - 1)].id) }
@@ -246,10 +272,11 @@ final class BrowserModel {
 
     func previewURL(_ id: UUID) -> URL { store.previewURL(id) }
 
-    func savePreview(_ image: UIImage, for session: TabSession) {
-        guard isActive, !isClearingData, persistenceAvailable, sessions[session.id] === session else { return }
+    /// Returns false when the preview was not saved; the caller then keeps it in memory.
+    @discardableResult func savePreview(_ image: UIImage, for session: TabSession) -> Bool {
+        guard isActive, !isClearingData, persistenceAvailable, sessions[session.id] === session else { return false }
         // A preview failure must not interrupt browsing; the live thumbnail remains available.
-        try? store.savePreview(image, id: session.id)
+        do { try store.savePreview(image, id: session.id); return true } catch { return false }
     }
 
     /// Release background pages without removing their tab records or saved previews.
@@ -258,8 +285,56 @@ final class BrowserModel {
         for session in Array(sessions.values) {
             guard session.id != selectedID, session.mediaState != .playing,
                   !session.fullscreen, !session.isLoading else { continue }
-            sessions.removeValue(forKey: session.id)?.dispose()
+            unload(session)
         }
+    }
+
+    /// Release a page's web process, keeping its tab, preview and saved state.
+    private func unload(_ session: TabSession) {
+        guard sessions[session.id] === session else { return }
+        saveState(of: session)
+        sessions.removeValue(forKey: session.id)
+        session.dispose()
+    }
+
+    /// Saved state holds page history and form contents, so it follows the same rules as
+    /// previews: profile-scoped, protected, and only for addresses Harbor would restore.
+    private func saveState(of session: TabSession) {
+        guard isActive, !isClearingData, persistenceAvailable, session.hasCommitted,
+              archive.tabs.first(where: { $0.id == session.id })?.restorable.url != nil,
+              let state = session.webView.interactionState as? Data else { return }
+        try? store.saveTabState(state, id: session.id)
+    }
+
+    /// Free background pages before iOS suspends Harbor, and save the visible page so a
+    /// relaunch or a terminated page process restores its history.
+    func enteredBackground() async {
+        if let session = activeSession { saveState(of: session) }
+        await unloadBackgroundTabs()
+    }
+
+    func becameActive() async {
+        // The visible page may have been unloaded after its process ended in the background.
+        ensureSession(selectedID)
+        await refreshMedia()
+    }
+
+    /// WebKit ends page processes under memory pressure, often while Harbor is in the background.
+    func contentProcessTerminated(_ session: TabSession) {
+        guard sessions[session.id] === session else { return }
+        let visible = isActive && session.id == selectedID && UIApplication.shared.applicationState == .active
+        guard visible else {
+            // Selecting the tab, or returning to Harbor, restores it from saved state.
+            unload(session)
+            return
+        }
+        if let last = session.lastAutomaticReload, Date().timeIntervalSince(last) < 30 {
+            session.loadError = "iOS released this page to free memory. Reload to continue."
+            session.isLoading = false
+            return
+        }
+        session.lastAutomaticReload = Date()
+        reload()
     }
 
     func createPopup(configuration: WKWebViewConfiguration, url: URL?) -> WKWebView? {
@@ -422,20 +497,77 @@ final class BrowserModel {
     func refreshMedia() async {
         for session in Array(sessions.values) { await session.refreshMediaState() }
     }
+    private func refreshVisibleMedia() async {
+        guard isActive, UIApplication.shared.applicationState == .active else { return }
+        await activeSession?.refreshMediaState()
+    }
+
+    /// Live pages kept before the least recently used background tab is unloaded.
+    /// Unloaded tabs restore their history, so the budget favours memory over reload time.
+    nonisolated static func liveTabLimit(physicalMemory: UInt64, availableMemory: Int) -> Int {
+        let limit = switch physicalMemory {
+        case ..<3_500_000_000: 2
+        case ..<5_000_000_000: 3
+        case ..<7_000_000_000: 4
+        case ..<10_000_000_000: 6
+        default: 8
+        }
+        // Zero means no process limit applies, as in the simulator.
+        if availableMemory > 0 && availableMemory < 300_000_000 { return min(limit, 2) }
+        return limit
+    }
+    var liveTabLimit: Int {
+        Self.liveTabLimit(physicalMemory: ProcessInfo.processInfo.physicalMemory,
+                          availableMemory: os_proc_available_memory())
+    }
+
+    /// Called when a tab that could not be unloaded may now be, such as after loading finishes.
+    func scheduleTrim() {
+        Task { await trimSessions() }
+    }
+
     func trimSessions(memoryPressure: Bool = false) async {
-        guard !trimming else { return }
+        if memoryPressure { for session in sessions.values { session.snapshot = nil } }
+        guard !trimming else {
+            queuedTrim = (queuedTrim ?? false) || memoryPressure
+            return
+        }
         trimming = true
         defer { trimming = false }
-        await refreshMedia()
-        let limit = memoryPressure ? 1 : 5
-        let candidates = sessions.values.sorted { $0.lastUsed < $1.lastUsed }
-        for session in candidates where sessions.count > limit {
-            // Native media state is sampled, not a claim about every embedded player.
-            guard session.id != selectedID, session.mediaState != .playing, !session.fullscreen,
-                  (!session.isLoading || memoryPressure) else { continue }
-            sessions.removeValue(forKey: session.id)?.dispose()
+        var next: Bool? = memoryPressure
+        while let pressure = next {
+            await trimPass(memoryPressure: pressure)
+            next = queuedTrim
+            queuedTrim = nil
         }
-        if memoryPressure { for session in sessions.values { session.snapshot = nil } }
+    }
+
+    private func trimPass(memoryPressure: Bool) async {
+        let limit = memoryPressure ? 1 : liveTabLimit
+        guard sessions.count > limit else { return }
+        var deferred = false
+        let candidates = sessions.values.filter { $0.id != selectedID }.sorted { $0.lastUsed < $1.lastUsed }
+        for session in candidates where sessions.count > limit {
+            guard !session.fullscreen, !session.isLoading || memoryPressure else { deferred = true; continue }
+            // Sample media only for tabs about to be unloaded.
+            // Native media state is sampled, not a claim about every embedded player.
+            await session.refreshMediaState()
+            guard sessions[session.id] === session, session.id != selectedID else { continue }
+            guard session.mediaState != .playing else { deferred = true; continue }
+            unload(session)
+        }
+        // Loading and full-screen tabs recheck on their own; playing media needs a slow retry.
+        if deferred && sessions.count > limit { scheduleTrimRetry() }
+    }
+
+    private func scheduleTrimRetry() {
+        guard trimRetryTask == nil else { return }
+        trimRetryTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(20))
+            guard !Task.isCancelled, let self else { return }
+            self.trimRetryTask = nil
+            await self.trimSessions()
+        }
     }
     func clearWebsiteData(site: String? = nil) async {
         guard !isClearingData else { return }
@@ -443,6 +575,7 @@ final class BrowserModel {
         // Clear preview pixels too, including unloaded tabs and the undo-close record.
         // Clearing all previews for site deletion is deliberately conservative.
         store.prunePreviews(keeping: [])
+        store.pruneTabStates(keeping: [])
         for session in sessions.values { session.snapshot = nil }
         defer { isClearingData = false }
         // Stop affected pages first so they cannot immediately recreate deleted storage.

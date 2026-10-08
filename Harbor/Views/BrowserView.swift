@@ -73,8 +73,11 @@ struct BrowserView: View {
         .onChange(of: browser.selectedTab.url) { _, _ in if !editingAddress { syncAddress() } }
         .onChange(of: editingAddress) { _, value in if value { chromeCollapsed = false }; syncAddress() }
         .onChange(of: scenePhase) { _, phase in
-            if phase != .active { browser.saveNow() }
-            else { Task { await browser.refreshMedia() } }
+            switch phase {
+            case .active: Task { await browser.becameActive() }
+            case .background: browser.saveNow(); Task { await browser.enteredBackground() }
+            default: browser.saveNow()
+            }
         }
         .onAppear { syncAddress() }
         .sheet(item: $browser.sheet) { destination in
