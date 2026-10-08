@@ -421,11 +421,15 @@ final class HarborUITests: XCTestCase {
         let footer = web.buttons["Fixed footer action"]
         XCTAssertTrue(footer.waitForExistence(timeout: 15))
         let expandedHeight = web.frame.height
+        XCTAssertEqual(web.frame.minY, app.frame.minY, accuracy: 1,
+                       "The website viewport must extend beneath the status bar")
         app.webViews.firstMatch.swipeUp()
         let reveal = app.buttons["expandBrowserControls"]
         XCTAssertTrue(reveal.waitForExistence(timeout: 5))
         XCTAssertFalse(app.textFields["addressField"].exists)
         XCTAssertEqual(web.frame.height, expandedHeight, accuracy: 1, "Floating controls must not resize the website")
+        XCTAssertEqual(web.frame.minY, app.frame.minY, accuracy: 1,
+                       "Collapsing controls must keep the website at the screen's top edge")
         XCTAssertFalse(app.buttons["historyButton"].exists)
         XCTAssertFalse(app.buttons["settingsButton"].exists)
         for _ in 0..<5 { web.swipeUp() }

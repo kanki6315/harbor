@@ -35,7 +35,9 @@ struct BrowserView: View {
             ForEach(browser.archive.tabs) { tab in
                 if let session = browser.sessions[tab.id] {
                     WebView(webView: session.webView,
-                            contentInsets: UIEdgeInsets(top: 0, left: 0,
+                            contentInsets: UIEdgeInsets(
+                                top: browser.activeSession?.fullscreen == true ? 0 : geometry.safeAreaInsets.top,
+                                left: 0,
                                 bottom: browser.activeSession?.fullscreen == true ? 0 : chromeHeight + geometry.safeAreaInsets.bottom,
                                 right: 0),
                             onScrollDown: {
@@ -43,7 +45,9 @@ struct BrowserView: View {
                                       browser.activeSession?.fullscreen != true else { return }
                                 setChromeCollapsed(true)
                             })
-                        .ignoresSafeArea(.container, edges: .bottom)
+                        // Extend the viewport under the status bar; the scroll inset keeps
+                        // the first page controls clear while allowing content to scroll behind it.
+                        .ignoresSafeArea(.container, edges: .vertical)
                         .opacity(tab.id == browser.selectedID ? 1 : 0)
                         .allowsHitTesting(tab.id == browser.selectedID)
                         .accessibilityHidden(tab.id != browser.selectedID)
@@ -291,16 +295,13 @@ private struct BrowserAddressGlass: ViewModifier {
     let namespace: Namespace.ID
     let reduceMotion: Bool
 
-    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     @ViewBuilder private func glass(_ content: Content) -> some View {
         if reduceTransparency {
             content.background(Color(uiColor: .secondarySystemBackground), in: Capsule())
         } else {
-            content.glassEffect(
-                .regular.tint(colorScheme == .dark ? Color.black.opacity(0.65) : Color.clear),
-                in: .capsule)
+            content.glassEffect(.regular, in: .capsule)
         }
     }
 
