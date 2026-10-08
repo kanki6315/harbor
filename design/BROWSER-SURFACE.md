@@ -23,9 +23,17 @@ Empty state: omit the resume card if no page can be resumed; show a brief invita
 
 Launch or restore → enter a domain/search or resume → browse → switch/search open tabs → return to the selected page. The tab switcher is a task surface, not the start page presented on every app launch.
 
-MVP uses All Tabs with local title/domain search, recognizable previews, titles, domains and an unmistakable selected state. Search is prominent enough to make 40+ tabs manageable. Use the implemented single-column cards with shorter previews at accessibility text sizes. A tab may be selected without reordering the collection. Close supports Undo; closing the final tab opens the start page.
+The tab switcher offers All Tabs and optional named groups within the current profile, with local title/address search, recognizable previews, titles, domains and an unmistakable selected state. Search is prominent enough to make 40+ tabs manageable. Use the implemented single-column cards with shorter previews at accessibility text sizes. A tab may be selected without reordering the collection. Close supports Undo; closing the final tab opens the start page.
 
-Future groups use Collections' overview and compact in-group previews. Groups are optional, with All Tabs always available. A group count must describe its scope; distinguish “18 in Everyday” from “42 total.” Moving between groups must not require closing tabs. Group deletion must distinguish keeping from closing member tabs.
+### Tab groups
+
+The native group selector above the existing card grid offers All Tabs, each named group with its count, and New group. All Tabs includes every open tab in the profile. Selecting a group filters the grid and search, clears the previous search, and shows both the group count and total tab count. Selecting a scope does not switch the active page. Empty groups explain how to create a tab or move one from All Tabs.
+
+Create and rename use a native Form with Group name and Save/Cancel; blank or whitespace-only names cannot be saved. A tab's visible ellipsis menu and long-press menu offer Move to group, New group and, for members, Remove from group. Creating from a tab's menu moves that tab into the new group; creating from the selector starts an empty group. New tabs join the selected group; website-created popups inherit the current tab's group. A tab belongs to at most one group, and moving it preserves the page session and tab order.
+
+The selector offers Rename group and Delete group for the selected group. Deletion requires the explicit “Delete group, keep tabs” confirmation; its message says the tabs remain open in All Tabs. No close-members action is provided. Groups, membership and selected scope persist with the profile's backup-excluded session data. Older archives open without groups. Clearing all browsing data also removes the current profile's groups.
+
+This extends the incumbent Operate surface: native Menu and Form controls, SF Symbols, system headline/caption styles, semantic backgrounds and regular material for the card menu. It retains the existing card grid, preview geometry, selected border/checkmark and accessibility reflow. No new identity, tokens or artwork are introduced.
 
 ### Tab order and saved previews
 
@@ -57,7 +65,7 @@ Native transitions connect preview selection and browsing. The address capsule a
 
 ## Implementation and verification boundaries
 
-Tab groups are future scope; the selected design does not authorize implementing them now. Voice input and detailed group-management flows remain outside the implementation. There are no seeded favorites. Native light/dark and large-text variants exist; hardware accessibility checks remain in the validation checklist. The comps are image-generated references with synthetic content, not tested UI.
+The user approved the tab-group extension described above. Voice input and more advanced group-management flows remain outside the implementation. There are no seeded favorites. Native light/dark and large-text variants exist; hardware accessibility checks remain in the validation checklist. The comps are image-generated references with synthetic content, not tested UI.
 
 At accessibility Dynamic Type sizes, the decorative horizon yields to a compact navy brand header; the protection button wraps on a solid surface and chrome margins narrow. Native Reduce Transparency fallback is implemented by `HarborGlass`.
 

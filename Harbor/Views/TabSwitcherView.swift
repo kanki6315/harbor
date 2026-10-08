@@ -10,17 +10,28 @@ struct TabSwitcherView: View {
     @State private var search = ""
     @State private var showingReorder = false
     @State private var draggedTab: UUID?
+    @State private var showingGroupEditor = false
+    @State private var editingGroup: TabGroup?
+    @State private var groupName = ""
+    @State private var tabToGroup: UUID?
+    @State private var deletingGroup: TabGroup?
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private var filtered: [TabRecord] {
-        browser.archive.tabs.filter { search.isEmpty || $0.title.localizedCaseInsensitiveContains(search) || ($0.url?.absoluteString.localizedCaseInsensitiveContains(search) ?? false) }
+        browser.groupedTabs.filter { search.isEmpty || $0.title.localizedCaseInsensitiveContains(search) || ($0.url?.absoluteString.localizedCaseInsensitiveContains(search) ?? false) }
     }
     var body: some View {
         NavigationStack {
             ScrollView {
+                groupSelector.padding(.horizontal, 16).padding(.top, 8)
                 if filtered.isEmpty {
-                    ContentUnavailableView.search(text: search)
+                    if search.isEmpty {
+                        ContentUnavailableView("No tabs in this group", systemImage: "rectangle.stack",
+                                               description: Text("Create a tab here, or move one from All Tabs using its menu."))
+                    } else {
+                        ContentUnavailableView.search(text: search)
+                    }
                 } else {
                     LazyVGrid(columns: typeSize.isAccessibilitySize ? [GridItem(.flexible(), alignment: .top)] : [GridItem(.flexible(), alignment: .top), GridItem(.flexible(), alignment: .top)], spacing: 20) {
                         ForEach(filtered) { tab in
@@ -28,9 +39,21 @@ struct TabSwitcherView: View {
                                 TabCard(tab: tab, session: browser.sessions[tab.id], selected: tab.id == browser.selectedID,
                                     largeText: typeSize.isAccessibilitySize, previewURL: browser.previewURL(tab.id),
                                     select: { browser.selectTab(tab.id); dismiss() }, close: { browser.closeTab(tab.id) })
+                                .contextMenu { tabGroupActions(tab) }
+                                .overlay(alignment: .topLeading) {
+                                    Menu { tabGroupActions(tab) } label: {
+                                        Image(systemName: "ellipsis.circle")
+                                            .frame(width: 44, height: 44)
+                                            .background(.regularMaterial, in: Circle())
+                                    }
+                                    .padding(5)
+                                    .accessibilityLabel("Group options for \(tab.title)")
+                                    .accessibilityIdentifier("tabGroupOptions-\(tab.id)")
+                                }
                             }
                                 // Keep an empty insertion slot while the native preview carries the card.
                                 .opacity(draggedTab == tab.id ? 0 : 1)
+
                                 .onDrop(of: [TabDragProvider.type], delegate: TabReorderDropDelegate(
                                     target: tab.id, draggedTab: $draggedTab,
                                     browser: browser, reduceMotion: reduceMotion))
@@ -40,8 +63,8 @@ struct TabSwitcherView: View {
                     }.padding(16)
                 }
             }.background(Color(uiColor: .systemGroupedBackground))
-                .navigationTitle(browser.archive.tabs.count == 1 ? "1 tab" : "\(browser.archive.tabs.count) tabs")
-                .searchable(text: $search, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search all tabs")
+                .navigationTitle(browser.selectedTabGroup?.name ?? (browser.archive.tabs.count == 1 ? "1 tab" : "\(browser.archive.tabs.count) tabs"))
+                .searchable(text: $search, placement: .navigationBarDrawer(displayMode: .always), prompt: browser.selectedTabGroup == nil ? "Search all tabs" : "Search this group")
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
                         Button("Reorder", systemImage: "arrow.up.arrow.down") { showingReorder = true }
@@ -70,13 +93,113 @@ struct TabSwitcherView: View {
                 }
         }
         .sheet(isPresented: $showingReorder) { reorderSheet }
+        .sheet(isPresented: $showingGroupEditor) { groupEditor }
+        .confirmationDialog("Delete group?", isPresented: Binding(get: { deletingGroup != nil }, set: { if !$0 { deletingGroup = nil } }), titleVisibility: .visible) {
+            Button("Delete group, keep tabs", role: .destructive) {
+                if let group = deletingGroup { browser.deleteTabGroup(group.id) }
+                deletingGroup = nil
+            }
+        } message: {
+            Text("All tabs in this group will stay open in All Tabs.")
+        }
         .onAppear { Task { await browser.refreshMedia() } }
         .onDisappear { draggedTab = nil }
     }
     private func move(_ tab: TabRecord, by offset: Int) {
+        guard let index = filtered.firstIndex(where: { $0.id == tab.id }),
+              filtered.indices.contains(index + offset) else { return }
+        browser.moveTab(tab.id, onto: filtered[index + offset].id)
+    }
+
+    private func moveInAllTabs(_ tab: TabRecord, by offset: Int) {
         guard let index = browser.archive.tabs.firstIndex(where: { $0.id == tab.id }),
               browser.archive.tabs.indices.contains(index + offset) else { return }
         browser.moveTab(tab.id, onto: browser.archive.tabs[index + offset].id)
+    }
+
+    private var groupSelector: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Menu {
+                Button("All Tabs (\(browser.archive.tabs.count))", systemImage: "square.on.square") {
+                    browser.selectTabGroup(nil); search = ""
+                }
+                ForEach(browser.archive.tabGroups) { group in
+                    Button {
+                        browser.selectTabGroup(group.id); search = ""
+                    } label: {
+                        Label("\(group.name) (\(browser.archive.tabs.filter { $0.groupID == group.id }.count))",
+                              systemImage: group.id == browser.archive.selectedTabGroupID ? "checkmark" : "rectangle.stack")
+                    }
+                }
+                Divider()
+                Button("New group", systemImage: "plus") { editGroup() }
+                if let group = browser.selectedTabGroup {
+                    Button("Rename group", systemImage: "pencil") { editGroup(group) }
+                    Button("Delete group", systemImage: "trash", role: .destructive) { deletingGroup = group }
+                }
+            } label: {
+                HStack {
+                    Label(browser.selectedTabGroup?.name ?? "All Tabs", systemImage: "rectangle.stack")
+                        .font(.headline).multilineTextAlignment(.leading)
+                    Spacer()
+                    Image(systemName: "chevron.down").font(.caption.weight(.semibold))
+                }.frame(minHeight: 44)
+            }
+            .accessibilityLabel("Tab groups, \(browser.selectedTabGroup?.name ?? "All Tabs")")
+            .accessibilityIdentifier("tabGroupSelector")
+            if browser.selectedTabGroup != nil {
+                Text("\(browser.groupedTabs.count) in this group · \(browser.archive.tabs.count) total")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    @ViewBuilder private func tabGroupActions(_ tab: TabRecord) -> some View {
+        if let group = browser.archive.tabGroups.first(where: { $0.id == tab.groupID }) {
+            Text("In \(group.name)")
+            Button("Remove from group", systemImage: "rectangle.stack.badge.minus") {
+                browser.moveTab(tab.id, toGroup: nil)
+            }
+        }
+        Menu("Move to group", systemImage: "rectangle.stack") {
+            ForEach(browser.archive.tabGroups.filter { $0.id != tab.groupID }) { group in
+                Button(group.name) { browser.moveTab(tab.id, toGroup: group.id) }
+            }
+            Button("New group", systemImage: "plus") { editGroup(tabID: tab.id) }
+        }
+    }
+
+    private func editGroup(_ group: TabGroup? = nil, tabID: UUID? = nil) {
+        editingGroup = group
+        groupName = group?.name ?? ""
+        tabToGroup = tabID
+        showingGroupEditor = true
+    }
+
+    private var groupEditor: some View {
+        NavigationStack {
+            Form {
+                TextField("Group name", text: $groupName)
+                    .textInputAutocapitalization(.words)
+                    .accessibilityIdentifier("tabGroupName")
+            }
+            .navigationTitle(editingGroup == nil ? "New group" : "Rename group")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { showingGroupEditor = false }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        if let group = editingGroup { browser.renameTabGroup(group.id, name: groupName) }
+                        else { browser.createTabGroup(name: groupName, tabID: tabToGroup); search = "" }
+                        showingGroupEditor = false
+                    }
+                    .disabled(groupName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .accessibilityIdentifier("saveTabGroup")
+                }
+            }
+        }
     }
 
     private var reorderSheet: some View {
@@ -92,8 +215,8 @@ struct TabSwitcherView: View {
                                 Text(tab.url?.host ?? "Start page").font(.caption).foregroundStyle(.secondary)
                             }
                         }
-                        .accessibilityAction(named: "Move earlier") { move(tab, by: -1) }
-                        .accessibilityAction(named: "Move later") { move(tab, by: 1) }
+                        .accessibilityAction(named: "Move earlier") { moveInAllTabs(tab, by: -1) }
+                        .accessibilityAction(named: "Move later") { moveInAllTabs(tab, by: 1) }
                     }
                     .onMove { browser.moveTabs(from: $0, to: $1) }
                 } footer: {

@@ -8,6 +8,73 @@ import WebKit
 @testable import Harbor
 
 final class CoreTests: XCTestCase {
+    @MainActor func testTabGroupsPersistAndDeleteWithoutClosingTabs() throws {
+        let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = BrowserStore(fileURL: directory.appending(path: "browser.json"))
+        let browser = BrowserModel(store: store, isTesting: true)
+        defer { browser.deactivate() }
+        let first = browser.selectedID
+        let group = try XCTUnwrap(browser.createTabGroup(name: "  Research  ", tabID: first))
+        let second = browser.newTab()
+        XCTAssertEqual(browser.groupedTabs.map(\.id), [first, second])
+        XCTAssertEqual(browser.selectedTabGroup?.name, "Research")
+        browser.renameTabGroup(group, name: "Reading")
+        XCTAssertTrue(browser.saveNow())
+        let restored = try store.load()
+        XCTAssertEqual(restored.tabGroups, [TabGroup(id: group, name: "Reading")])
+        XCTAssertEqual(restored.selectedTabGroupID, group)
+        XCTAssertTrue(restored.tabs.allSatisfy { $0.groupID == group })
+        let otherStore = BrowserStore(fileURL: directory.appending(path: "other/browser.json"))
+        XCTAssertTrue(try otherStore.load().tabGroups.isEmpty)
+        browser.closeTab(second)
+        browser.deleteTabGroup(group)
+        browser.undoClose()
+        XCTAssertEqual(browser.archive.tabs.map(\.id), [first, second])
+        XCTAssertTrue(browser.archive.tabs.allSatisfy { $0.groupID == nil })
+        XCTAssertNil(browser.archive.selectedTabGroupID)
+        XCTAssertTrue(browser.archive.tabGroups.isEmpty)
+        XCTAssertTrue(browser.saveNow())
+        XCTAssertTrue(try store.load().tabGroups.isEmpty)
+    }
+
+    @MainActor func testTabGroupMovesAndEmptyGroupRemainUsable() throws {
+        let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let browser = BrowserModel(store: BrowserStore(fileURL: directory.appending(path: "browser.json")), isTesting: true)
+        defer { browser.deactivate() }
+        let first = browser.selectedID
+        XCTAssertNil(browser.createTabGroup(name: " \n "))
+        let group = try XCTUnwrap(browser.createTabGroup(name: "Work"))
+        XCTAssertTrue(browser.groupedTabs.isEmpty)
+        let second = browser.newTab()
+        browser.moveTab(first, toGroup: group)
+        browser.closeTab(second)
+        browser.undoClose()
+        XCTAssertEqual(browser.selectedTab.groupID, group)
+        browser.moveTab(first, toGroup: UUID())
+        XCTAssertEqual(browser.archive.tabs.first?.groupID, group)
+        browser.moveTab(first, toGroup: nil)
+        browser.closeTab(second)
+        XCTAssertEqual(browser.archive.selectedTabGroupID, group)
+        XCTAssertTrue(browser.groupedTabs.isEmpty)
+        browser.selectTabGroup(nil)
+        XCTAssertEqual(browser.groupedTabs.map(\.id), [first])
+        browser.selectTabGroup(UUID())
+        XCTAssertNil(browser.archive.selectedTabGroupID)
+    }
+
+    func testPreGroupArchivesStillDecode() throws {
+        let archive = BrowserArchive()
+        let encoded = try JSONEncoder().encode(archive)
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        json.removeValue(forKey: "tabGroups")
+        json.removeValue(forKey: "selectedTabGroupID")
+        let restored = try JSONDecoder().decode(BrowserArchive.self, from: JSONSerialization.data(withJSONObject: json))
+        XCTAssertTrue(restored.tabGroups.isEmpty)
+        XCTAssertNil(restored.tabs.first?.groupID)
+    }
+
     func testAddressResolution() {
         XCTAssertEqual(AddressResolver.resolve("example.com/path", engine: .duckDuckGo)?.absoluteString, "https://example.com/path")
         XCTAssertEqual(AddressResolver.resolve("a search & more", engine: .google)?.host, "www.google.com")

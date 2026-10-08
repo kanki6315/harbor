@@ -23,6 +23,8 @@ struct BrowserStore {
         var version = 1
         var tabs: [TabRecord]
         var selectedTabID: UUID?
+        var tabGroups: [TabGroup]?
+        var selectedTabGroupID: UUID?
         var history: [HistoryEntry]
     }
 
@@ -54,6 +56,8 @@ struct BrowserStore {
             guard session.version == 1 else { throw CocoaError(.coderReadCorrupt) }
             archive.tabs = session.tabs.map(\.restorable)
             archive.selectedTabID = session.selectedTabID
+            archive.tabGroups = session.tabGroups ?? []
+            archive.selectedTabGroupID = session.selectedTabGroupID
             archive.history = session.history
         }
         return archive
@@ -81,7 +85,7 @@ struct BrowserStore {
     func save(_ archive: BrowserArchive) throws {
         try Self.prepareDeviceOnlyDirectory(sessionDirectory)
         let encoder = JSONEncoder()
-        try encoder.encode(Session(tabs: archive.tabs.map(\.restorable), selectedTabID: archive.selectedTabID, history: archive.history))
+        try encoder.encode(Session(tabs: archive.tabs.map(\.restorable), selectedTabID: archive.selectedTabID, tabGroups: archive.tabGroups, selectedTabGroupID: archive.selectedTabGroupID, history: archive.history))
             .write(to: sessionURL, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
         try encoder.encode(Preferences(bookmarks: archive.bookmarks, bookmarkFolders: archive.bookmarkFolders, settings: archive.settings))
             .write(to: durableURL, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])

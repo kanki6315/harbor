@@ -12,7 +12,7 @@ Swift, SwiftUI, WKWebView/WebKit, Apple-native persistence and frameworks. No th
 
 ## Users
 
-Personal iPhone browser for general browsing instead of Chrome. The user expects sessions to grow beyond 40 tabs and anticipates tab groups later.
+Personal iPhone browser for general browsing instead of Chrome. The user expects sessions to grow beyond 40 tabs and uses optional named tab groups to organize them.
 
 ## Product Purpose
 
@@ -26,7 +26,7 @@ Use a separate persistent WebKit data store per profile, retaining the legacy de
 
 First usable milestone: browse, sign in, open tabs, relaunch with tabs and website sessions retained where the website allows, block common trackers, and disable blocking for a broken site.
 
-Tab groups are a future feature to accommodate in the design, not a confirmed MVP implementation requirement. Profiles include isolated browsing data and an optional inactivity-based return to a default profile. Other future features include optional private sync, Face ID, reader mode, custom lists, and iPad layout.
+Named tab groups are implemented within each profile: create, rename, move tabs, remove membership, and delete a group while keeping its tabs open. All Tabs always includes grouped and ungrouped tabs; search follows the selected scope. Groups, membership and the selected scope persist with the local tab session. Profiles include isolated browsing data and an optional inactivity-based return to a default profile. Other future features include optional private sync, Face ID, reader mode, custom lists, and iPad layout.
 
 ## Brand Commitments
 
@@ -36,7 +36,7 @@ User supplied the Harbor brand identity and requested iOS Liquid Glass patterns.
 
 ## Evidence on Hand
 
-Selected design direction: Horizon's Harbor-branded start page with Collections' approach to future tab organization. See `DESIGN.md` and `design/BROWSER-SURFACE.md`. Selection does not expand tab groups into MVP scope. The native SwiftUI/WebKit implementation now follows this identity, with a still Canvas Horizon, bundled InterVariable branding and native functional typography.
+Selected design direction: Horizon's Harbor-branded start page with Collections as the organization reference. The user subsequently approved named, profile-specific tab groups with All Tabs, tab movement and persistence. See `DESIGN.md` for the preserved visual system and `design/BROWSER-SURFACE.md` for current behavior. The native SwiftUI/WebKit implementation now follows this identity, with a still Canvas Horizon, bundled InterVariable branding and native functional typography.
 
 Detailed user-supplied browser brief and Harbor identity board. The implemented app lives in `Harbor/`, with bundle identifier `com.arjunakankipati.harbor`. First run contains no fabricated history or favorites; later content comes from local browsing and bookmarks.
 
