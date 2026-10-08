@@ -10,6 +10,7 @@ struct TabRecord: Codable, Identifiable, Equatable {
     var url: URL?
     var title = "New Tab"
     var lastUsed = Date()
+    var groupID: UUID?
 
     /// Live object/data URLs remain usable in memory but cannot be restored later.
     var restorable: TabRecord {
@@ -19,6 +20,11 @@ struct TabRecord: Codable, Identifiable, Equatable {
         tab.title = "New Tab"
         return tab
     }
+}
+
+struct TabGroup: Codable, Identifiable, Equatable {
+    var id = UUID()
+    var name: String
 }
 
 struct HistoryEntry: Codable, Identifiable, Equatable {
@@ -68,6 +74,8 @@ struct BrowserArchive: Codable {
     var version = 1
     var tabs: [TabRecord] = [TabRecord()]
     var selectedTabID: UUID?
+    var tabGroups: [TabGroup] = []
+    var selectedTabGroupID: UUID?
     var history: [HistoryEntry] = []
     var bookmarks: [Bookmark] = []
     var bookmarkFolders: [BookmarkFolder] = []
@@ -76,7 +84,7 @@ struct BrowserArchive: Codable {
     init() {}
 
     private enum CodingKeys: String, CodingKey {
-        case version, tabs, selectedTabID, history, bookmarks, bookmarkFolders, settings
+        case version, tabs, selectedTabID, tabGroups, selectedTabGroupID, history, bookmarks, bookmarkFolders, settings
     }
 
     init(from decoder: Decoder) throws {
@@ -84,6 +92,8 @@ struct BrowserArchive: Codable {
         version = try values.decode(Int.self, forKey: .version)
         tabs = try values.decode([TabRecord].self, forKey: .tabs)
         selectedTabID = try values.decodeIfPresent(UUID.self, forKey: .selectedTabID)
+        tabGroups = try values.decodeIfPresent([TabGroup].self, forKey: .tabGroups) ?? []
+        selectedTabGroupID = try values.decodeIfPresent(UUID.self, forKey: .selectedTabGroupID)
         history = try values.decode([HistoryEntry].self, forKey: .history)
         bookmarks = try values.decode([Bookmark].self, forKey: .bookmarks)
         bookmarkFolders = try values.decodeIfPresent([BookmarkFolder].self, forKey: .bookmarkFolders) ?? []

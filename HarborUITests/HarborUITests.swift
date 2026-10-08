@@ -5,6 +5,74 @@
 import XCTest
 
 final class HarborUITests: XCTestCase {
+    @MainActor func testTabGroupLifecycle() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--uitesting", "--reset", "-AppleInterfaceStyle", "Light"]
+        app.launch()
+        XCTAssertTrue(app.buttons["tabsButton"].waitForExistence(timeout: 10))
+        app.buttons["tabsButton"].tap()
+        app.buttons["tabGroupSelector"].tap()
+        app.buttons["New group"].tap()
+        app.textFields["tabGroupName"].tap()
+        app.textFields["tabGroupName"].typeText("Research")
+        app.buttons["saveTabGroup"].tap()
+        XCTAssertTrue(app.staticTexts["No tabs in this group"].waitForExistence(timeout: 5))
+        capture(app, name: "phone-group-empty")
+        app.buttons["tabSwitcherNewTab"].tap()
+        app.buttons["tabsButton"].tap()
+        XCTAssertTrue(app.navigationBars["Research"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["1 in this group · 2 total"].exists)
+        capture(app, name: "phone-group")
+        app.buttons["tabGroupSelector"].tap()
+        app.buttons["All Tabs (2)"].tap()
+        app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "tabGroupOptions-")).firstMatch.tap()
+        app.buttons["Move to group"].tap()
+        app.buttons["Research"].tap()
+        app.buttons["tabGroupSelector"].tap()
+        app.buttons["Research (2)"].tap()
+        XCTAssertTrue(app.staticTexts["2 in this group · 2 total"].exists)
+        app.buttons["tabGroupSelector"].tap()
+        capture(app, name: "phone-group-menu")
+        app.buttons["Rename group"].tap()
+        let name = app.textFields["tabGroupName"]
+        name.tap()
+        name.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 8) + "Reading")
+        app.buttons["saveTabGroup"].tap()
+        app.buttons["Done"].tap()
+        app.terminate()
+        app.launchArguments = ["--uitesting"]
+        app.launch()
+        app.buttons["tabsButton"].tap()
+        XCTAssertTrue(app.navigationBars["Reading"].waitForExistence(timeout: 5))
+        app.buttons["tabGroupSelector"].tap()
+        app.buttons["Delete group"].tap()
+        app.buttons["Delete group, keep tabs"].tap()
+        XCTAssertTrue(app.navigationBars["2 tabs"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor func testTabGroupsDarkLargeText() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--uitesting", "--reset", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL", "-AppleInterfaceStyle", "Dark"]
+        app.launch()
+        XCTAssertTrue(app.buttons["tabsButton"].waitForExistence(timeout: 10))
+        app.buttons["tabsButton"].tap()
+        app.buttons["tabGroupSelector"].tap()
+        app.buttons["New group"].tap()
+        app.textFields["tabGroupName"].tap()
+        app.textFields["tabGroupName"].typeText("Weekend reading")
+        app.buttons["saveTabGroup"].tap()
+        app.buttons["tabSwitcherNewTab"].tap()
+        app.buttons["tabsButton"].tap()
+        XCTAssertTrue(app.navigationBars["Weekend reading"].waitForExistence(timeout: 5))
+        capture(app, name: "phone-group-dark-large")
+        let options = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "tabGroupOptions-")).firstMatch
+        options.tap()
+        XCTAssertTrue(app.buttons["Remove from group"].waitForExistence(timeout: 5))
+        app.buttons["Remove from group"].tap()
+        XCTAssertTrue(app.staticTexts["No tabs in this group"].waitForExistence(timeout: 5))
+        capture(app, name: "phone-group-empty-dark-large")
+    }
+
     @MainActor func testLockDelaySetting() {
         let app = XCUIApplication()
         app.launchArguments = ["--uitesting", "--reset", "--locked-profile-fixture"]

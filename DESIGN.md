@@ -39,7 +39,7 @@ components:
 
 **Creative North Star: "Horizon"**
 
-Harbor combines a calm maritime identity with native iOS behavior. Deep blue water, reflected warm sunlight and the supplied Harbor mark establish the start page and locked profile screen; semantic content surfaces and native Liquid Glass keep everyday browsing clear. Collections remains a reference for future organization, not a second identity or an implemented groups feature.
+Harbor combines a calm maritime identity with native iOS behavior. Deep blue water, reflected warm sunlight and the supplied Harbor mark establish the start page and locked profile screen; semantic content surfaces and native Liquid Glass keep everyday browsing clear. Collections informs tab organization within the same Horizon identity; optional named tab groups now extend the native tab switcher.
 
 This is the implemented SwiftUI system, extracted from `Harbor/Views/HarborTheme.swift`, `StartPage.swift`, `BrowserView.swift`, `TabSwitcherView.swift`, `LibraryViews.swift` and `ProfilesView.swift`. The [identity board](design/brand/harbor-identity.png) remains brand authority. The Xcode project references `assets/HarborIcon/Harbor.icon` directly; the in-app mark draws the supplied SVG path geometry in a resolution-independent Canvas. Generated comp marks never replace the supplied identity. Surface behavior belongs in [the browser brief](design/BROWSER-SURFACE.md).
 

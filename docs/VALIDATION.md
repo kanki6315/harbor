@@ -1,5 +1,14 @@
 # Validation — 2026-10-07
 
+## Tab groups — October 8, 2026
+
+Added named groups within each profile, an All Tabs scope, group-scoped search, create/rename forms, move/remove actions and deletion that keeps member tabs open. Group definitions, membership and the selected scope persist in the profile's device-only session. Older archives decode without groups; undo-close handles deleted groups. All-site data clearing removes groups with the tabs.
+
+Built and tested from local main `405c61c`, including its native tab drag-preview fix. Final iPhone 17 Pro / iOS 26.5 Simulator run passed **19 tests, 0 failures**: all 16 CoreTests plus `testTabGroupLifecycle`, `testTabGroupsDarkLargeText`, and `testTabGridDragReordersInBothDirections`. Coverage includes save/load, profile-scoped storage, membership changes, empty groups, undo after group deletion, old-archive decoding, create/move/rename/delete UI, relaunch restoration and bidirectional drag ordering. Result: `/tmp/harbor-tab-groups-integrated.xcresult`.
+
+Inspected final light-mode group, empty and selector-menu captures, plus dark accessibility XXXL group and empty captures. Simulator appearance was set explicitly for reliable theme coverage. Earlier validation recovered from a killed test runner and a simulator boot-busy launch; the combined final run succeeded. Physical-device, VoiceOver, landscape, large-session performance and cross-profile movement were not verified; cross-profile group movement is not implemented.
+
+
 ## Address-bar profiles and menu appearance — October 8, 2026
 
 Restored a direct address-bar profile shortcut with the current icon and name. It replaces the shield shortcut, hides while editing the address, and keeps the full profile name in its accessibility label when the visible name truncates. Site protection remains in Browser menu. The menu now displays the profile name as a native subtitle. Browser controls use semantic primary tint; existing untinted regular Liquid Glass and the Reduce Transparency fallback remain system-managed.

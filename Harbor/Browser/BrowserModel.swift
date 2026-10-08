@@ -107,7 +107,12 @@ final class BrowserModel {
             errorMessage = "Saved browsing data could not be read. It has been left untouched. \(error.localizedDescription)"
         }
         self.isTesting = isTesting
-        if !archive.settings.restoreTabs || archive.tabs.isEmpty { archive.tabs = [TabRecord()]; archive.selectedTabID = nil }
+        let groupIDs = Set(archive.tabGroups.map(\.id))
+        for index in archive.tabs.indices {
+            if let id = archive.tabs[index].groupID, !groupIDs.contains(id) { archive.tabs[index].groupID = nil }
+        }
+        if let id = archive.selectedTabGroupID, !groupIDs.contains(id) { archive.selectedTabGroupID = nil }
+        if !archive.settings.restoreTabs || archive.tabs.isEmpty { archive.tabs = [TabRecord()]; archive.selectedTabID = nil; archive.selectedTabGroupID = nil }
         if !archive.tabs.contains(where: { $0.id == archive.selectedTabID }) { archive.selectedTabID = archive.tabs[0].id }
         if persistenceAvailable {
             store.prunePreviews(keeping: Set(archive.tabs.map(\.id)))
@@ -221,7 +226,7 @@ final class BrowserModel {
         saveSoon()
     }
     @discardableResult func newTab(url: URL? = nil) -> UUID {
-        let tab = TabRecord(url: url)
+        let tab = TabRecord(url: url, groupID: archive.selectedTabGroupID)
         archive.tabs.append(tab)
         selectTab(tab.id)
         return tab.id
@@ -233,6 +238,7 @@ final class BrowserModel {
         activeSession?.captureSnapshot()
         if id != selectedID { dialog = nil }
         archive.selectedTabID = id
+        if archive.selectedTabGroupID != nil { archive.selectedTabGroupID = archive.tabs[index].groupID }
         archive.tabs[index].lastUsed = Date()
         sessions[id]?.lastUsed = Date()
         ensureSession(id)
@@ -250,11 +256,19 @@ final class BrowserModel {
         if let session = sessions[id] { unload(session) }
         archive.tabs.remove(at: index)
         if archive.tabs.isEmpty { archive.tabs = [TabRecord()] }
-        if archive.selectedTabID == id { selectTab(archive.tabs[min(index, archive.tabs.count - 1)].id) }
+        if archive.selectedTabID == id {
+            let scope = archive.selectedTabGroupID
+            let nearby = Array(archive.tabs.dropFirst(index)) + Array(archive.tabs.prefix(index).reversed())
+            let neighbor = nearby.first { $0.groupID == lastClosed?.groupID }
+                ?? archive.tabs[min(index, archive.tabs.count - 1)]
+            selectTab(neighbor.id)
+            archive.selectedTabGroupID = scope
+        }
         saveSoon()
     }
     func undoClose() {
-        guard let tab = lastClosed else { return }
+        guard var tab = lastClosed else { return }
+        if !archive.tabGroups.contains(where: { $0.id == tab.groupID }) { tab.groupID = nil }
         archive.tabs.append(tab)
         lastClosed = nil
         selectTab(tab.id)
@@ -268,6 +282,56 @@ final class BrowserModel {
         guard let source = archive.tabs.firstIndex(where: { $0.id == id }),
               let destination = archive.tabs.firstIndex(where: { $0.id == target }), source != destination else { return }
         moveTabs(from: IndexSet(integer: source), to: destination > source ? destination + 1 : destination)
+    }
+
+    var selectedTabGroup: TabGroup? {
+        archive.tabGroups.first { $0.id == archive.selectedTabGroupID }
+    }
+
+    var groupedTabs: [TabRecord] {
+        guard let id = archive.selectedTabGroupID else { return archive.tabs }
+        return archive.tabs.filter { $0.groupID == id }
+    }
+
+    func selectTabGroup(_ id: UUID?) {
+        guard id == nil || archive.tabGroups.contains(where: { $0.id == id }) else { return }
+        archive.selectedTabGroupID = id
+        saveSoon()
+    }
+
+    @discardableResult func createTabGroup(name: String, tabID: UUID? = nil) -> UUID? {
+        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return nil }
+        let group = TabGroup(name: name)
+        archive.tabGroups.append(group)
+        if let tabID { moveTab(tabID, toGroup: group.id) }
+        selectTabGroup(group.id)
+        return group.id
+    }
+
+    func renameTabGroup(_ id: UUID, name: String) {
+        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty, let index = archive.tabGroups.firstIndex(where: { $0.id == id }) else { return }
+        archive.tabGroups[index].name = name
+        saveSoon()
+    }
+
+    /// Removing an organization container never closes its pages or interrupts media.
+    func deleteTabGroup(_ id: UUID) {
+        archive.tabGroups.removeAll { $0.id == id }
+        for index in archive.tabs.indices where archive.tabs[index].groupID == id {
+            archive.tabs[index].groupID = nil
+        }
+        if lastClosed?.groupID == id { lastClosed?.groupID = nil }
+        if archive.selectedTabGroupID == id { archive.selectedTabGroupID = nil }
+        saveSoon()
+    }
+
+    func moveTab(_ id: UUID, toGroup groupID: UUID?) {
+        guard groupID == nil || archive.tabGroups.contains(where: { $0.id == groupID }),
+              let index = archive.tabs.firstIndex(where: { $0.id == id }) else { return }
+        archive.tabs[index].groupID = groupID
+        saveSoon()
     }
 
     func previewURL(_ id: UUID) -> URL { store.previewURL(id) }
@@ -339,7 +403,7 @@ final class BrowserModel {
 
     func createPopup(configuration: WKWebViewConfiguration, url: URL?) -> WKWebView? {
         guard isActive, !isClearingData, configuration.websiteDataStore === websiteDataStore else { return nil }
-        let tab = TabRecord(url: url)
+        let tab = TabRecord(url: url, groupID: selectedTab.groupID)
         archive.tabs.append(tab)
         let session = TabSession(id: tab.id, browser: self, configuration: configuration)
         sessions[tab.id] = session
@@ -606,6 +670,8 @@ final class BrowserModel {
             await dataStore.removeData(ofTypes: types, modifiedSince: .distantPast)
             archive.history.removeAll()
             archive.tabs = [TabRecord()]
+            archive.tabGroups.removeAll()
+            archive.selectedTabGroupID = nil
             archive.selectedTabID = archive.tabs[0].id
             lastClosed = nil
             downloads.clearTemporaryFiles()

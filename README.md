@@ -22,7 +22,7 @@ xcodebuild -project Harbor.xcodeproj -scheme Harbor \
 
 - Combined address/search entry, HTTPS for entered domains, DuckDuckGo by default, Google and Bing options.
 - Back/forward gestures and buttons, reload/stop, sharing, and popup-created tabs.
-- New, close, switch, search and restore tabs; undo the most recent close; saved page previews.
+- New, close, switch, search and restore tabs; undo the most recent close; saved page previews. Named tab groups stay within each profile, with an All Tabs view, group-scoped search and saved membership.
 - Background tabs unload automatically to a memory budget scaled to the device, and restore their history, scroll position and form contents when reopened.
 - Local history with search and deletion, bookmarks, recent pages and favorites on the start page. New bookmarks keep the page title while showing “Suggesting a name…”; on-device suggestions from Apple Foundation Models appear with Use name and Keep original choices. Nothing is renamed automatically. The rename editor also offers Suggest nickname, which fills the draft only when accepted and requires Save to commit. Unavailable suggestions leave names unchanged. Create named folders, save directly into a folder, and swipe or long-press bookmarks to rename or move them. Search includes bookmark names, addresses and folder names. Deleting a folder moves its bookmarks to Unfiled. Folders are currently one level deep and stay within their profile. Naming uses only the title, hostname and URL path, with no cloud service or extra page fetch.
 - Bundled WebKit tracker rules, tracking-parameter cleaning, and persistent per-host blocking exceptions.
@@ -31,7 +31,7 @@ xcodebuild -project Harbor.xcodeproj -scheme Harbor \
 - `WKDownload` support for download links, attachment responses and unsupported MIME types; completed files open the iOS Share Sheet, including Save to Files.
 - Website JavaScript alert/confirm/prompt panels. User-activated external links require confirmation before handing off to iOS.
 
-There are no invented favorites, visit counts, or protection statistics. Tab groups are future scope.
+There are no invented favorites, visit counts, or protection statistics.
 
 ## Architecture
 
@@ -54,15 +54,23 @@ Native Codable persistence keeps this small app understandable and uses atomic w
 
 Every profile owns a persistent `WKWebsiteDataStore(forIdentifier:)`; only a migrated original profile retains `WKWebsiteDataStore.default()` to preserve existing logins. Cookies, local storage, caches and website sessions belong to WebKit; Harbor does not serialize or manually recreate cookies. Sites may expire logins, impose third-party storage restrictions or require sign-in again. A persistent store cannot promise permanent authentication.
 
-Harbor saves tab IDs, URLs, titles, recency and the selected tab, plus settings, history, bookmarks and site exceptions. Changes are coalesced for 250 ms and flushed when the scene becomes inactive. Relaunch restores the selected tab; other tabs load lazily when selected. Back/forward lists, DOM state, scroll position, unsaved forms, in-memory JavaScript and media position are not serialized.
+Harbor saves tab IDs, URLs, titles, recency, group names and membership, the selected tab and group scope, plus settings, history, bookmarks and site exceptions. Changes are coalesced for 250 ms and flushed when the scene becomes inactive. Relaunch restores the selected tab; other tabs load lazily when selected. Back/forward lists, DOM state, scroll position, unsaved forms, in-memory JavaScript and media position are not serialized.
 
 The normal target is five resident web views. Recent views are preferred; the selected view, loading pages, full-screen views and views reported as playing media are protected from ordinary eviction. Memory warnings tighten the target to one and discard previews; inactive loading views may then be released, but selected, playing and full-screen views remain protected. This is a soft target: several active players or loading pages may exceed it. iOS can still terminate content processes under pressure. Harbor offers reload after process termination instead of pretending the page survived.
 
 Resident views remain attached under the selected page and are hidden from interaction/accessibility when inactive. The tab switcher is a sheet, so opening it does not intentionally stop media. Native `requestMediaPlaybackState()` is sampled every four seconds and before eviction. The periodic check also trims idle views after loading finishes. That is a coarse observation, not a guaranteed description of every remote player. Closing a tab explicitly pauses its media. There is also Pause media in the More menu when playback is reported.
 
+## Tab groups
+
+Open the tab switcher and use **All Tabs** above the cards to select or create a group. All Tabs always includes grouped and ungrouped tabs in the current profile. Search applies to the selected view; switching groups clears the search. New tabs join the selected group, and website-created popups inherit the current tab's group.
+
+Use a card's ellipsis menu or long-press it to **Move to group**, create a **New group** with that tab, or **Remove from group**. To rename or delete a group, select it and reopen the group selector. **Delete group, keep tabs** asks for confirmation and leaves every member open in All Tabs. Moving tabs and deleting groups preserve their page sessions. Reorder continues to show all tabs, including when a group is selected.
+
+Groups, tab membership and the selected group are saved locally with each profile's session in its backup-excluded directory. Existing archives need no manual migration. Clearing all browsing data removes that profile's groups along with its tabs.
+
 ## Profiles
 
-Use the profile icon beside the address field, **More → Profiles**, or **Settings → Profiles** to create, switch, rename or delete profiles. Each owns its tabs, selected tab, recently closed tab, history, bookmarks, search/privacy settings, site exceptions, WebKit website data, and temporary downloads. Profile names and icons are editable. The last remaining profile cannot be deleted.
+Use the profile icon beside the address field, **More → Profiles**, or **Settings → Profiles** to create, switch, rename or delete profiles. Each owns its tabs, tab groups, selected tab and group scope, recently closed tab, history, bookmarks, search/privacy settings, site exceptions, WebKit website data, and temporary downloads. Profile names and icons are editable. The last remaining profile cannot be deleted.
 
 Under **Profiles → When you return**, choose a default profile and **Return after**. The initial setting is **Never**; enable it and enter 1–10,080 minutes to return to the default profile after that long in the background. Shorter absences retain the current profile. The timestamp is saved on background entry and checked on foreground return and process launch, so system eviction and manual termination follow the same elapsed-time rule. Being inactive briefly for a permission prompt does not start the timer. The setting does not switch profiles during active browsing or erase any browsing data.
 
@@ -86,11 +94,11 @@ No blocked-request counter is displayed. Public WebKit content-blocking APIs do 
 
 Tracking cleaning removes only known keys, including `utm_*` entries enumerated in the cleaner, `gclid`, `dclid`, `fbclid`, `msclkid`, `mc_cid` and `mc_eid`. It preserves remaining parameter encoding/order and fragments. Signed/tokenized URLs and recognized media extensions are left intact. Only top-level GET requests are rewritten; POSTs, subresources and popup opener requests are not rewritten. This intentionally misses some tracking to avoid breaking signatures, media and authentication.
 
-Harbor is **not an anonymity tool or a private/incognito browser**. Profiles, bookmarks, settings and site exceptions are eligible for normal device backups. Tabs, history, tab recency and the background timestamp persist locally in explicitly backup-excluded Application Support directories; they are not placed in purgeable Caches. Restoring without these files opens a new tab with no history. Website cookies and storage remain managed by WebKit; Harbor does not copy them or alter private WebKit files. Older backups may still contain browsing data. Backups do not provide cross-device sync or guarantee restored website logins. Websites and network operators can still observe activity. There is no app-operated proxy, VPN or sync service.
+Harbor is **not an anonymity tool or a private/incognito browser**. Profiles, bookmarks, settings and site exceptions are eligible for normal device backups. Tabs, tab groups, history, tab recency and the background timestamp persist locally in explicitly backup-excluded Application Support directories; they are not placed in purgeable Caches. Restoring without these files opens a new tab with no history. Website cookies and storage remain managed by WebKit; Harbor does not copy them or alter private WebKit files. Older backups may still contain browsing data. Backups do not provide cross-device sync or guarantee restored website logins. Websites and network operators can still observe activity. There is no app-operated proxy, VPN or sync service.
 
 ## Website data and security
 
-Per-site clearing asks WebKit for domain records and removes matching cookies/storage. WebKit may report registrable domains, so related subdomains can also be affected; exact-origin deletion is not guaranteed. Pages affected by deletion are stopped and require an explicit reload. All-site clearing is scoped to the current profile: it closes its tabs and removes its history, cookies, cache and website storage; bookmarks, settings and exceptions remain. Temporary downloads are removed and active downloads are cancelled. Leftover temporary downloads from an earlier process are also removed when their profile is first opened.
+Per-site clearing asks WebKit for domain records and removes matching cookies/storage. WebKit may report registrable domains, so related subdomains can also be affected; exact-origin deletion is not guaranteed. Pages affected by deletion are stopped and require an explicit reload. All-site clearing is scoped to the current profile: it closes its tabs and removes its tab groups, history, cookies, cache and website storage; bookmarks, settings and exceptions remain. Temporary downloads are removed and active downloads are cancelled. Leftover temporary downloads from an earlier process are also removed when their profile is first opened.
 
 TLS validation, App Transport Security and the standard user agent are unchanged. There is no trust-challenge bypass, arbitrary-load exception, DRM workaround, injected remote script or universal third-party cookie override. Plain HTTP sites may be restricted by platform transport policy. Unknown schemes from automatic redirects or subframes are not launched. Supported user-activated external links go through iOS after confirmation; unavailable handlers produce an error.
 
@@ -137,7 +145,7 @@ Do not enter personal credentials into an automated fixture. Use an account you 
 
 Safari extensions are not automatically available in this embedded browser. Harbor uses the system WKWebView engine; it does not bundle another renderer. Harbor registers HTTP/HTTPS URL schemes and opens incoming web links in new tabs after applying profile-return and lock rules. Links received while locked are held in memory for that profile until it is unlocked; switching profiles does not transfer them. Pending links are lost if the app is terminated. Default-browser selection still requires Apple approval and provisioning for the `com.apple.developer.web-browser` entitlement, which is not yet configured. No claim is made about eligibility for alternative-engine entitlements.
 
-Future work: tab groups and iPad layouts; encrypted/private iCloud sync; Face ID; reader mode; custom rule lists; password-manager integration; per-site JavaScript, cookies, autoplay, media permissions and user-agent settings; HTTPS-only mode; downloadable-file management; opt-in background-media policy. These are not inactive controls pretending to be implemented features.
+Future work: iPad layouts; encrypted/private iCloud sync; Face ID; reader mode; custom rule lists; password-manager integration; per-site JavaScript, cookies, autoplay, media permissions and user-agent settings; HTTPS-only mode; downloadable-file management; opt-in background-media policy. These are not inactive controls pretending to be implemented features.
 
 ### Apple/WebKit references
 
