@@ -26,6 +26,9 @@ targets:
       properties:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: com.arjunakankipati.harbor.tab-reorder
+            UTTypeConformsTo: [public.data]
         CFBundleURLTypes:
           - CFBundleURLName: com.arjunakankipati.harbor.web
             CFBundleTypeRole: Viewer

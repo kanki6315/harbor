@@ -3,13 +3,16 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct TabSwitcherView: View {
     @Bindable var browser: BrowserModel
     @State private var search = ""
     @State private var showingReorder = false
+    @State private var draggedTab: UUID?
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private var filtered: [TabRecord] {
         browser.archive.tabs.filter { search.isEmpty || $0.title.localizedCaseInsensitiveContains(search) || ($0.url?.absoluteString.localizedCaseInsensitiveContains(search) ?? false) }
     }
@@ -24,13 +27,18 @@ struct TabSwitcherView: View {
                             TabCard(tab: tab, session: browser.sessions[tab.id], selected: tab.id == browser.selectedID,
                                     largeText: typeSize.isAccessibilitySize, previewURL: browser.previewURL(tab.id),
                                     select: { browser.selectTab(tab.id); dismiss() }, close: { browser.closeTab(tab.id) })
-                                .draggable(tab.id.uuidString)
-                                .dropDestination(for: String.self) { items, _ in
-                                    guard items.count == 1, let id = UUID(uuidString: items[0]),
-                                          browser.archive.tabs.contains(where: { $0.id == id }) else { return false }
-                                    browser.moveTab(id, onto: tab.id)
-                                    return true
+                                .onDrag {
+                                    draggedTab = tab.id
+                                    let provider = NSItemProvider()
+                                    provider.registerDataRepresentation(forTypeIdentifier: TabDragProvider.type.identifier, visibility: .ownProcess) { completion in
+                                        completion(Data(tab.id.uuidString.utf8), nil)
+                                        return nil
+                                    }
+                                    return provider
                                 }
+                                .onDrop(of: [TabDragProvider.type], delegate: TabReorderDropDelegate(
+                                    target: tab.id, draggedTab: $draggedTab,
+                                    browser: browser, reduceMotion: reduceMotion))
                                 .accessibilityAction(named: "Move earlier") { move(tab, by: -1) }
                                 .accessibilityAction(named: "Move later") { move(tab, by: 1) }
                         }
@@ -68,6 +76,7 @@ struct TabSwitcherView: View {
         }
         .sheet(isPresented: $showingReorder) { reorderSheet }
         .onAppear { Task { await browser.refreshMedia() } }
+        .onDisappear { draggedTab = nil }
     }
     private func move(_ tab: TabRecord, by offset: Int) {
         guard let index = browser.archive.tabs.firstIndex(where: { $0.id == tab.id }),
@@ -101,6 +110,40 @@ struct TabSwitcherView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showingReorder = false } } }
         }
+    }
+}
+
+private enum TabDragProvider {
+    static let type = UTType(exportedAs: "com.arjunakankipati.harbor.tab-reorder")
+}
+
+private struct TabReorderDropDelegate: DropDelegate {
+    let target: UUID
+    @Binding var draggedTab: UUID?
+    let browser: BrowserModel
+    let reduceMotion: Bool
+
+    func validateDrop(info: DropInfo) -> Bool {
+        draggedTab != nil && info.hasItemsConforming(to: [TabDragProvider.type])
+    }
+
+    func dropEntered(info: DropInfo) {
+        guard validateDrop(info: info), let draggedTab, draggedTab != target else { return }
+        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.22)) {
+            browser.moveTab(draggedTab, onto: target)
+        }
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        DropProposal(operation: validateDrop(info: info) ? .move : .cancel)
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        guard validateDrop(info: info) else { return false }
+        // Ordering already follows the drag. Moving again here would undo it
+        // when the target card has shifted into the source's former position.
+        draggedTab = nil
+        return true
     }
 }
 

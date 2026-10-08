@@ -1,5 +1,13 @@
 # Validation — 2026-10-07
 
+## Live tab-grid reordering — October 7, 2026
+
+Tab previews now reorder on drag entry with a 220 ms ease-out animation; Reduce Motion disables the added layout animation. The drag payload is restricted to Harbor's process. Dropping completes the already-applied order without moving the tab a second time.
+
+The targeted ordering/selection/persistence unit test passed. The grid gesture UI test passed on an isolated iPhone 17 Pro / iOS 26.5 simulator, checking forward, backward and repeated drags plus restoration after relaunch. The test verifies actual ordering through the reorder list, avoiding unreliable accessibility geometry for clipped preview images. Inspected its light-mode screenshot; an earlier dark-mode grid capture was also inspected. Accessibility-size gestures, Reduce Motion on hardware, and long-grid autoscrolling were not verified in this change.
+
+Result: `/tmp/harbor-tab-drag-signed/Logs/Test/Test-Harbor-2026.10.07_20-20-02--0400.xcresult` (**TEST SUCCEEDED**). Earlier shared-simulator runs were affected by concurrent Harbor testing and unsuitable frame assertions. Xcode emitted a system toolbar-hosting warning; no app compiler errors occurred. Optional simulator diagnostic collection was stopped after the passing test to let Xcode finalize its result.
+
 Environment: Xcode 27.0 (27A266a), iOS 27 SDK, iPhone 18 Pro simulator running iOS 27.0. No physical-device or signing credentials were used.
 
 ## Build results

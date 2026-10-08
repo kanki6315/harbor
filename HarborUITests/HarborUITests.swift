@@ -258,6 +258,40 @@ final class HarborUITests: XCTestCase {
         return app
     }
 
+    @MainActor func testTabGridDragReordersInBothDirections() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--uitesting", "--reset", "--fixture"]
+        app.launch()
+        XCTAssertTrue(app.webViews.staticTexts["Harbor test page"].waitForExistence(timeout: 15))
+        app.buttons["tabsButton"].tap()
+        app.buttons["tabSwitcherNewTab"].tap()
+        app.buttons["tabsButton"].tap()
+        let page = app.buttons["Open Harbor test page"]
+        let newTab = app.buttons["Open New Tab"]
+        XCTAssertTrue(page.waitForExistence(timeout: 5) && newTab.exists)
+        func assertFirstTab(_ title: String) {
+            app.buttons["reorderTabs"].tap()
+            XCTAssertTrue(app.navigationBars["Reorder tabs"].waitForExistence(timeout: 5))
+            XCTAssertTrue(app.cells.element(boundBy: 0).staticTexts[title].exists)
+            app.navigationBars["Reorder tabs"].buttons["Done"].tap()
+        }
+        assertFirstTab("Harbor test page")
+        page.press(forDuration: 0.8, thenDragTo: newTab)
+        assertFirstTab("New Tab")
+        capture(app, name: "phone-tabs-grid-drag-forward")
+        page.press(forDuration: 0.8, thenDragTo: newTab)
+        assertFirstTab("Harbor test page")
+        page.press(forDuration: 0.8, thenDragTo: newTab)
+        assertFirstTab("New Tab")
+        app.buttons["Done"].tap()
+        app.terminate()
+        app.launchArguments = ["--uitesting"]
+        app.launch()
+        app.buttons["tabsButton"].tap()
+        XCTAssertTrue(newTab.waitForExistence(timeout: 5))
+        assertFirstTab("New Tab")
+    }
+
     @MainActor func testTabReorderAndUnloadedPreview() {
         let app = XCUIApplication()
         app.launchArguments = ["--uitesting", "--reset", "--fixture"]
