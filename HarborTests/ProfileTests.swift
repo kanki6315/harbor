@@ -159,17 +159,49 @@ import Network
         let manager = ProfileManager(store: store, authenticate: { _ in true })
         let id = try XCTUnwrap(manager.currentProfile?.id)
         _ = await manager.setProtection(id, enabled: true)
-        XCTAssertTrue(manager.hasPrivateContent)
+        XCTAssertFalse(manager.shouldHideAppSwitcherPreview)
         let revision = manager.activationRevision
         let start = Date(timeIntervalSince1970: 10000)
         manager.enteredBackground(at: start)
         XCTAssertEqual(manager.activationRevision, revision)
-        XCTAssertTrue(manager.hasPrivateContent)
+        XCTAssertFalse(manager.shouldHideAppSwitcherPreview)
         manager.becameActive(at: start.addingTimeInterval(1801))
         XCTAssertEqual(manager.activationRevision, revision + 1)
         XCTAssertTrue(manager.isLocked)
-        XCTAssertFalse(manager.hasPrivateContent, "The already-locked screen needs no prompt-time cover")
+        XCTAssertTrue(manager.shouldHideAppSwitcherPreview)
         XCTAssertNil(manager.browser)
+    }
+
+    func testAppSwitcherPreviewFollowsUnlockedSessionAndImmediateLock() async throws {
+        let manager = ProfileManager(store: store, authenticate: { _ in true })
+        let id = try XCTUnwrap(manager.currentProfile?.id)
+        XCTAssertFalse(manager.shouldHideAppSwitcherPreview)
+        _ = await manager.setProtection(id, enabled: true)
+        XCTAssertFalse(manager.shouldHideAppSwitcherPreview)
+
+        let start = Date(timeIntervalSince1970: 10000)
+        manager.enteredBackground(at: start)
+        XCTAssertFalse(manager.shouldHideAppSwitcherPreview)
+        manager.becameActive(at: start.addingTimeInterval(60))
+        XCTAssertFalse(manager.isLocked)
+        XCTAssertFalse(manager.shouldHideAppSwitcherPreview)
+
+        manager.enteredBackground(at: start.addingTimeInterval(120))
+        manager.becameActive(at: start.addingTimeInterval(1920))
+        XCTAssertTrue(manager.isLocked)
+        XCTAssertTrue(manager.shouldHideAppSwitcherPreview)
+        await manager.unlockSelected()
+        XCTAssertFalse(manager.shouldHideAppSwitcherPreview)
+
+        _ = await manager.setLockAfter(id, minutes: 0)
+        XCTAssertFalse(manager.isLocked)
+        XCTAssertTrue(manager.shouldHideAppSwitcherPreview, "Immediate locking must cover the outgoing snapshot before background entry")
+        manager.enteredBackground(at: start.addingTimeInterval(2000))
+        XCTAssertTrue(manager.isLocked)
+        XCTAssertTrue(manager.shouldHideAppSwitcherPreview)
+        await manager.unlockSelected()
+        _ = await manager.setProtection(id, enabled: false)
+        XCTAssertFalse(manager.shouldHideAppSwitcherPreview)
     }
 
     func testLockDelayDefaultBoundaryAndPersistence() async throws {

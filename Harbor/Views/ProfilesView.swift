@@ -147,7 +147,7 @@ private struct ProfileEditor: View {
                                 .accessibilityIdentifier("lockAfterPicker")
                         }
                     } footer: {
-                        Text("Unlock with Face ID, Touch ID, or your device passcode. The lock delay starts when you leave Harbor. Switching profiles or restarting Harbor locks immediately. Anyone with your device passcode can unlock this profile.")
+                        Text("Unlock with Face ID, Touch ID, or your device passcode. The lock delay starts when you leave Harbor. Switching profiles or restarting Harbor locks immediately. While unlocked, your page appears in the app switcher; choose Immediately to hide its preview whenever you leave Harbor. Anyone with your device passcode can unlock this profile.")
                     }
                 }
                 if profile == nil {

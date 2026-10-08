@@ -17,7 +17,7 @@ struct HarborApp: App {
     var body: some Scene {
         WindowGroup {
             Group {
-                // Lock policy and the inactive-scene privacy cover are independent.
+                // The switcher preview follows the profile's unlocked session.
                 if profiles.isLocked {
                     LockedProfileView(profiles: profiles)
                 } else if let browser = profiles.browser {
@@ -27,7 +27,7 @@ struct HarborApp: App {
                                            description: Text(profiles.errorMessage ?? "Please reopen Harbor to try again."))
                 }
             }
-            .background(ProfilePrivacyCover(enabled: profiles.hasPrivateContent,
+            .background(ProfilePrivacyCover(enabled: profiles.shouldHideAppSwitcherPreview,
                                             activationRevision: profiles.activationRevision))
             .onOpenURL { profiles.openIncomingURL($0) }
         }
