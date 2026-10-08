@@ -14,10 +14,11 @@ final class CoreTests: XCTestCase {
         XCTAssertNil(AddressResolver.resolve("  ", engine: .bing))
     }
     func testDottedSearchTermsAndExplicitAddresses() {
-        for term in ["node.js", "3.14", "v1.2", "999.999.999.999"] {
+        for term in ["node.js", "3.14", "v1.2", "999.999.999.999", "notlan", "router.internalish", "corp"] {
             XCTAssertEqual(AddressResolver.resolve(term, engine: .google), SearchEngine.google.searchURL(term))
         }
-        for address in ["example.com/path", "example.dev", "localhost:8080", "192.168.1.1", "[::1]:8080", "例え.みんな"] {
+        for address in ["example.com/path", "example.dev", "localhost:8080", "192.168.1.1", "[::1]:8080", "例え.みんな", "münchen.de", "例子.中国", "[::1]",
+                        "nas.lan", "router.internal", "host.corp", "server.home.arpa", "nas.lan:8080/files"] {
             XCTAssertEqual(AddressResolver.resolve(address, engine: .google), URL(string: "https://" + address))
         }
         XCTAssertEqual(AddressResolver.resolve("https://node.js", engine: .google), URL(string: "https://node.js"))
