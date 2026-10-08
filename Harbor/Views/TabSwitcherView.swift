@@ -24,18 +24,13 @@ struct TabSwitcherView: View {
                 } else {
                     LazyVGrid(columns: typeSize.isAccessibilitySize ? [GridItem(.flexible(), alignment: .top)] : [GridItem(.flexible(), alignment: .top), GridItem(.flexible(), alignment: .top)], spacing: 20) {
                         ForEach(filtered) { tab in
-                            TabCard(tab: tab, session: browser.sessions[tab.id], selected: tab.id == browser.selectedID,
+                            TabDragSource(id: tab.id, draggedTab: $draggedTab) {
+                                TabCard(tab: tab, session: browser.sessions[tab.id], selected: tab.id == browser.selectedID,
                                     largeText: typeSize.isAccessibilitySize, previewURL: browser.previewURL(tab.id),
                                     select: { browser.selectTab(tab.id); dismiss() }, close: { browser.closeTab(tab.id) })
-                                .onDrag {
-                                    draggedTab = tab.id
-                                    let provider = NSItemProvider()
-                                    provider.registerDataRepresentation(forTypeIdentifier: TabDragProvider.type.identifier, visibility: .ownProcess) { completion in
-                                        completion(Data(tab.id.uuidString.utf8), nil)
-                                        return nil
-                                    }
-                                    return provider
-                                }
+                            }
+                                // Keep an empty insertion slot while the native preview carries the card.
+                                .opacity(draggedTab == tab.id ? 0 : 1)
                                 .onDrop(of: [TabDragProvider.type], delegate: TabReorderDropDelegate(
                                     target: tab.id, draggedTab: $draggedTab,
                                     browser: browser, reduceMotion: reduceMotion))
@@ -115,6 +110,83 @@ struct TabSwitcherView: View {
 
 private enum TabDragProvider {
     static let type = UTType(exportedAs: "com.arjunakankipati.harbor.tab-reorder")
+}
+
+// UIKit supplies a drag-end callback on iOS 26, including cancellation and
+// releases outside a drop target. Keep the hosting controller alive while its
+// card moves through the grid so the source always receives that callback.
+private struct TabDragSource<Content: View>: UIViewControllerRepresentable {
+    let id: UUID
+    @Binding var draggedTab: UUID?
+    @ViewBuilder var content: () -> Content
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    func makeUIViewController(context: Context) -> UIHostingController<Content> {
+        let controller = UIHostingController(rootView: content())
+        controller.view.backgroundColor = .clear
+        let interaction = UIDragInteraction(delegate: context.coordinator)
+        interaction.isEnabled = true
+        controller.view.addInteraction(interaction)
+        return controller
+    }
+
+    func updateUIViewController(_ controller: UIHostingController<Content>, context: Context) {
+        context.coordinator.source = self
+        controller.rootView = content()
+    }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, uiViewController: UIHostingController<Content>, context: Context) -> CGSize? {
+        uiViewController.sizeThatFits(in: CGSize(width: proposal.width ?? 0, height: proposal.height ?? .greatestFiniteMagnitude))
+    }
+
+    final class Coordinator: NSObject, UIDragInteractionDelegate {
+        var source: TabDragSource
+
+        init(_ source: TabDragSource) { self.source = source }
+
+        func dragInteraction(_ interaction: UIDragInteraction, itemsForBeginning session: any UIDragSession) -> [UIDragItem] {
+            guard source.draggedTab == nil, let view = interaction.view else { return [] }
+            let id = source.id
+            let provider = NSItemProvider()
+            provider.registerDataRepresentation(forTypeIdentifier: TabDragProvider.type.identifier, visibility: .ownProcess) { completion in
+                completion(Data(id.uuidString.utf8), nil)
+                return nil
+            }
+            let item = UIDragItem(itemProvider: provider)
+            // Capture before hiding the source; the floating preview stays visible.
+            let image = UIGraphicsImageRenderer(size: view.bounds.size).image { _ in
+                view.drawHierarchy(in: view.bounds, afterScreenUpdates: false)
+            }
+            item.localObject = image
+            item.previewProvider = {
+                let parameters = UIDragPreviewParameters()
+                parameters.backgroundColor = .clear
+                return UIDragPreview(view: UIImageView(image: image), parameters: parameters)
+            }
+            return [item]
+        }
+
+        func dragInteraction(_ interaction: UIDragInteraction, previewForLifting item: UIDragItem, session: any UIDragSession) -> UITargetedDragPreview? {
+            guard let view = interaction.view, let image = item.localObject as? UIImage else { return nil }
+            let parameters = UIDragPreviewParameters()
+            parameters.backgroundColor = .clear
+            let target = UIDragPreviewTarget(container: view, center: CGPoint(x: view.bounds.midX, y: view.bounds.midY))
+            return UITargetedDragPreview(view: UIImageView(image: image), parameters: parameters, target: target)
+        }
+
+        func dragInteraction(_ interaction: UIDragInteraction, sessionWillBegin session: any UIDragSession) {
+            source.draggedTab = source.id
+        }
+
+        func dragInteraction(_ interaction: UIDragInteraction, session: any UIDragSession, didEndWith operation: UIDropOperation) {
+            if source.draggedTab == source.id { source.draggedTab = nil }
+        }
+
+        func dragInteraction(_ interaction: UIDragInteraction, sessionIsRestrictedToDraggingApplication session: any UIDragSession) -> Bool {
+            true
+        }
+    }
 }
 
 private struct TabReorderDropDelegate: DropDelegate {
