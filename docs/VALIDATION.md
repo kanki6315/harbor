@@ -189,3 +189,11 @@ On an isolated iPhone 17 Pro / iOS 26.5 simulator, all 47 unit tests and two UI 
 Earlier attempts were superseded: the initial iOS 27 run stalled in an existing WebKit unload test; invalid test-only WKFrameInfo construction crashed during deallocation; parser edge cases and scrolling/collapsed-controls UI selectors were corrected before the passing run. Physical-device app-switcher snapshots and performance profiling remain unverified. Explicit save/teardown flushes intentionally wait for durable writes; routine page metadata saves do not block the UI thread.
 
 Two additional existing UI tests passed on the same simulator: filtered history selection/persistence and start-page tabs/settings/restoration. Result: `/tmp/harbor-bug-fixes/Logs/Test/Test-Harbor-2026.10.07_22-53-11--0400.xcresult` (**TEST EXECUTE SUCCEEDED**). Final coverage is 47 passing unit tests plus four passing UI cases.
+
+## Download feedback, local hosts and privacy-cover ordering — October 7, 2026
+
+Blocked iframe/automatic-new-window downloads now set a user-visible download error. A main-page link with a nil target frame can download into a new window; embedded-frame and non-link nil-target actions remain blocked. Unschemed local addresses accept `.lan`, `.internal`, `.home.arpa` and `.corp`, while dotted search terms still search.
+
+The privacy cover stays in place after UIKit activation until SwiftUI receives the activation revision published after `ProfileManager.becameActive()` completes its lock/return policy. Regression tests exercise both event orders. Already-locked profiles no longer need an inactive cover; unlocked private pages still receive one during system interruptions, deliberately preserving snapshot protection. After obtaining the current compiled tracker list, cleanup removes only obsolete `Harbor.trackers.*` identifiers, including the legacy v1 list, and preserves unrelated lists.
+
+All 50 unit tests and the locked-profile appearance/switching UI test passed on iPhone 17 Pro / iOS 26.5 Simulator. Result: `/tmp/harbor-followup-fixes/Logs/Test/Test-Harbor-2026.10.07_23-47-06--0400.xcresult` (**TEST SUCCEEDED**). Physical-device prompt transitions and frame-by-frame app-switcher snapshots remain unverified.

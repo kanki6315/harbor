@@ -119,7 +119,9 @@ extension TabSession: WKNavigationDelegate {
             return
         }
         if navigationAction.shouldPerformDownload {
-            decisionHandler(Self.downloadPolicy(isMainFrame: navigationAction.targetFrame?.isMainFrame == true))
+            decisionHandler(downloadPolicy(isMainFrame: navigationAction.targetFrame?.isMainFrame,
+                                           sourceIsMainFrame: navigationAction.sourceFrame.isMainFrame,
+                                           navigationType: navigationAction.navigationType))
             return
         }
         if topLevel {
@@ -146,19 +148,31 @@ extension TabSession: WKNavigationDelegate {
                  decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void) {
         let disposition = (navigationResponse.response as? HTTPURLResponse)?
             .value(forHTTPHeaderField: "Content-Disposition")?.lowercased() ?? ""
-        decisionHandler(Self.responsePolicy(isMainFrame: navigationResponse.isForMainFrame,
-                                            canShowMIMEType: navigationResponse.canShowMIMEType,
-                                            disposition: disposition))
+        decisionHandler(responsePolicy(isMainFrame: navigationResponse.isForMainFrame,
+                                       canShowMIMEType: navigationResponse.canShowMIMEType,
+                                       disposition: disposition))
     }
 
-    static func downloadPolicy(isMainFrame: Bool) -> WKNavigationActionPolicy {
-        isMainFrame ? .download : .cancel
+    func downloadPolicy(isMainFrame: Bool?, sourceIsMainFrame: Bool = false,
+                        navigationType: WKNavigationType = .other) -> WKNavigationActionPolicy {
+        // A main-page link may download into a new window without a target frame.
+        if isMainFrame == true || (isMainFrame == nil && sourceIsMainFrame && navigationType == .linkActivated) {
+            return .download
+        }
+        reportBlockedDownload()
+        return .cancel
     }
 
-    static func responsePolicy(isMainFrame: Bool, canShowMIMEType: Bool,
-                               disposition: String) -> WKNavigationResponsePolicy {
+    func responsePolicy(isMainFrame: Bool, canShowMIMEType: Bool,
+                        disposition: String) -> WKNavigationResponsePolicy {
         if canShowMIMEType && !disposition.hasPrefix("attachment") { return .allow }
-        return isMainFrame ? .download : .cancel
+        if isMainFrame { return .download }
+        reportBlockedDownload()
+        return .cancel
+    }
+
+    private func reportBlockedDownload() {
+        browser?.downloads.errorMessage = "Harbor blocked a download from an embedded page or automatic new window. Try opening the download link in a new tab."
     }
 
     static func canRewriteTrackingParameters(method: String?, type: WKNavigationType, isMainFrame: Bool) -> Bool {

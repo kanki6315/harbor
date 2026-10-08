@@ -28,17 +28,31 @@ final class ContentBlocker {
                         return ("Harbor.trackers." + digest, String(decoding: data, as: UTF8.self))
                     }.value
                     let store = WKContentRuleListStore.default()!
-                    if let cached = try? await store.contentRuleList(forIdentifier: identifier) { return cached }
-                    guard let compiled = try await store.compileContentRuleList(forIdentifier: identifier, encodedContentRuleList: rules) else {
-                        throw CocoaError(.coderReadCorrupt)
+                    let current: WKContentRuleList
+                    if let cached = try? await store.contentRuleList(forIdentifier: identifier) {
+                        current = cached
+                    } else {
+                        guard let compiled = try await store.compileContentRuleList(forIdentifier: identifier, encodedContentRuleList: rules) else {
+                            throw CocoaError(.coderReadCorrupt)
+                        }
+                        current = compiled
                     }
-                    return compiled
+                    await Self.pruneObsoleteRules(in: store, keeping: identifier)
+                    return current
                 }
             }
             ruleList = try await Self.sharedRules!.value
         } catch {
             Self.sharedRules = nil
             failure = "Tracker rules could not load. Browsing remains available. \(error.localizedDescription)"
+        }
+    }
+
+    static func pruneObsoleteRules(in store: WKContentRuleListStore, keeping identifier: String) async {
+        // Only remove Harbor tracker caches, and only after the replacement is usable.
+        let identifiers = await store.availableIdentifiers() ?? []
+        for old in identifiers where old.hasPrefix("Harbor.trackers.") && old != identifier {
+            try? await store.removeContentRuleList(forIdentifier: old)
         }
     }
 

@@ -52,6 +52,53 @@ import WebKit
         XCTAssertTrue(cover.isHidden)
     }
 
+    func testPrivacyCoverWaitsForRenderedActivationEvenAfterUIKitResumes() throws {
+        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+        let window = UIWindow(windowScene: scene)
+        window.rootViewController = UIViewController()
+        window.isHidden = false
+        defer { window.isHidden = true }
+        let host = ProfilePrivacyCover.HostView()
+        window.rootViewController!.view.addSubview(host)
+        host.enabled = true
+        host.activationRevision = 10
+        host.refresh(inactive: true)
+        let cover = try XCTUnwrap(scene.windows.first { $0.accessibilityIdentifier == "profilePrivacyCover" && !$0.isHidden })
+        defer { host.removeCover() }
+        NotificationCenter.default.post(name: UIScene.didActivateNotification, object: scene)
+        host.refresh(inactive: false)
+        XCTAssertFalse(cover.isHidden, "UIKit activation must not bypass the pending SwiftUI lock check")
+        host.activationRevision = 11
+        host.refresh(inactive: false)
+        XCTAssertTrue(cover.isHidden)
+
+        // Also support policy/rendering completing before UIKit reports an active scene.
+        host.refresh(inactive: true)
+        let nextCover = try XCTUnwrap(scene.windows.first { $0.accessibilityIdentifier == "profilePrivacyCover" && !$0.isHidden })
+        host.activationRevision = 12
+        host.refresh(inactive: true)
+        XCTAssertFalse(nextCover.isHidden)
+        host.refresh(inactive: false)
+        XCTAssertTrue(nextCover.isHidden)
+    }
+
+    func testObsoleteTrackerCachesAreRemovedWithoutTouchingOtherLists() async throws {
+        let folder = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let store = try XCTUnwrap(WKContentRuleListStore(url: folder))
+        let rules = #"[{"trigger":{"url-filter":"example.invalid"},"action":{"type":"block"}}]"#
+        let current = "Harbor.trackers.current"
+        for identifier in [current, "Harbor.trackers.v1", "Harbor.trackers.oldhash", "Other.rules"] {
+            _ = try await store.compileContentRuleList(forIdentifier: identifier, encodedContentRuleList: rules)
+        }
+        await ContentBlocker.pruneObsoleteRules(in: store, keeping: current)
+        let remaining = await store.availableIdentifiers() ?? []
+        XCTAssertEqual(Set(remaining), [current, "Other.rules"])
+        let retained = try await store.contentRuleList(forIdentifier: current)
+        XCTAssertNotNil(retained)
+    }
+
     func testRulesCompileAndConfigurationIsPersistent() async throws {
         let blocker = ContentBlocker()
         await blocker.prepare()
@@ -200,14 +247,30 @@ import WebKit
 
 extension WebKitTests {
     func testDownloadsRequireMainFrameAndOtherNavigationsAreNotRewritten() {
+        let folder = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let browser = BrowserModel(store: BrowserStore(fileURL: folder.appending(path: "state.json")))
+        defer { browser.deactivate() }
+        let session = TabSession(id: browser.selectedID, browser: browser)
+        defer { session.dispose() }
+        XCTAssertEqual(session.downloadPolicy(isMainFrame: nil, sourceIsMainFrame: true, navigationType: .linkActivated), .download)
+        XCTAssertNil(browser.downloads.errorMessage)
+        XCTAssertEqual(session.downloadPolicy(isMainFrame: nil, sourceIsMainFrame: false, navigationType: .linkActivated), .cancel)
+        XCTAssertNotNil(browser.downloads.errorMessage)
+        browser.downloads.errorMessage = nil
+        XCTAssertEqual(session.downloadPolicy(isMainFrame: nil, sourceIsMainFrame: true, navigationType: .other), .cancel)
+        XCTAssertNotNil(browser.downloads.errorMessage)
+        browser.downloads.errorMessage = nil
+        XCTAssertEqual(session.responsePolicy(isMainFrame: false, canShowMIMEType: false, disposition: ""), .cancel)
+        XCTAssertNotNil(browser.downloads.errorMessage)
         for main in [false, true] {
-            XCTAssertEqual(TabSession.downloadPolicy(isMainFrame: main), main ? .download : .cancel)
-            XCTAssertEqual(TabSession.responsePolicy(isMainFrame: main, canShowMIMEType: false, disposition: ""),
+            XCTAssertEqual(session.downloadPolicy(isMainFrame: main), main ? .download : .cancel)
+            XCTAssertEqual(session.responsePolicy(isMainFrame: main, canShowMIMEType: false, disposition: ""),
                            main ? .download : .cancel)
-            XCTAssertEqual(TabSession.responsePolicy(isMainFrame: main, canShowMIMEType: true,
+            XCTAssertEqual(session.responsePolicy(isMainFrame: main, canShowMIMEType: true,
                                                       disposition: "attachment; filename=test.txt"),
                            main ? .download : .cancel)
-            XCTAssertEqual(TabSession.responsePolicy(isMainFrame: main, canShowMIMEType: true, disposition: ""), .allow)
+            XCTAssertEqual(session.responsePolicy(isMainFrame: main, canShowMIMEType: true, disposition: ""), .allow)
             for type in [WKNavigationType.other, .backForward, .reload, .formSubmitted, .formResubmitted, .linkActivated] {
                 for method in ["GET", "POST"] {
                     XCTAssertEqual(TabSession.canRewriteTrackingParameters(method: method, type: type, isMainFrame: main),

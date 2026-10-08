@@ -15,7 +15,8 @@ enum AddressResolver {
 
     private static func isAddressHost(_ host: String) -> Bool {
         let host = host.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: "."))
-        if host == "localhost" || host.hasSuffix(".localhost") || host.hasSuffix(".local") { return true }
+        let localSuffixes = ["localhost", "local", "lan", "internal", "home.arpa", "corp"]
+        if host == "localhost" || localSuffixes.contains(where: { host.hasSuffix("." + $0) }) { return true }
         let components = host.split(separator: ".", omittingEmptySubsequences: false)
         if components.count == 4, components.allSatisfy({ !$0.isEmpty && $0.allSatisfy(\.isNumber) }),
            IPv4Address(host) != nil { return true }
