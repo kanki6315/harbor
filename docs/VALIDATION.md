@@ -1,5 +1,11 @@
 # Validation — 2026-10-07
 
+## App-switcher previews during unlocked sessions — October 8, 2026
+
+The inactive-scene cover now applies to locked profiles and profiles configured to lock immediately. Unlocked profiles with a nonzero lock delay show their page in the app switcher. This supersedes the unconditional masking of unlocked protected profiles described below. The lock editor and README explain the preview behavior. iOS may retain an unlocked snapshot beyond the delay while Harbor is suspended; expiration is enforced before browsing resumes.
+
+All 26 profile tests and both privacy-window tests passed on iPhone 17 Pro / iOS 26.5 Simulator (**28 tests, 0 failures**). Coverage includes unlocked departures, short returns, timeout/re-authentication, immediate locking, disabling protection, window layering and activation ordering. Result: `/tmp/harbor-switcher-preview/Logs/Test/Test-Harbor-2026.10.08_00-39-23--0400.xcresult`. Physical-device app-switcher capture and Face ID transitions remain unverified. No archive or upload was performed.
+
 ## UI test expectations — October 8, 2026
 
 Updated the two stale UI assertions without changing production code. `testLocalVideoAcrossBrowserUI` now expects the viewport to extend beneath the status bar, matching the floating-controls layout, and still checks playback and live-page preservation across tab switches. `testTabReorderAndUnloadedPreview` checks that reordering keeps the page unloaded, selecting it reopens it, and relaunch converts the local file-URL tab to a start page under the HTTP(S)-only restoration policy. The earlier claim that the local fixture preview survives relaunch no longer applies.

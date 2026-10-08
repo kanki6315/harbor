@@ -23,7 +23,12 @@ final class ProfileManager {
     private(set) var isAuthenticating = false
     // The privacy cover waits for SwiftUI to render the result of this activation.
     private(set) var activationRevision: UInt = 0
-    var hasPrivateContent: Bool { currentProfile?.isProtected == true && !isLocked }
+    var shouldHideAppSwitcherPreview: Bool {
+        guard let profile = currentProfile, profile.isProtected else { return false }
+        // Cover immediate-lock profiles before UIKit captures the outgoing scene.
+        // A delayed lock keeps the page preview visible during the unlocked session.
+        return isLocked || profile.effectiveLockAfterMinutes == 0
+    }
     private let authenticate: (@MainActor (String) async throws -> Bool)?
     var isLocked: Bool { currentProfile?.isProtected == true && unlockedProfileID != currentProfile?.id }
 
