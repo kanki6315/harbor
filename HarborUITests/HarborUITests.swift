@@ -324,6 +324,10 @@ final class HarborUITests: XCTestCase {
             app.navigationBars["Reorder tabs"].buttons["Done"].tap()
         }
         assertFirstTab("Harbor test page")
+        // Releasing outside the grid must restore the source and allow another drag.
+        page.press(forDuration: 0.8, thenDragTo: app.navigationBars.staticTexts["2 tabs"])
+        XCTAssertTrue(page.isHittable)
+        assertFirstTab("Harbor test page")
         page.press(forDuration: 0.8, thenDragTo: newTab)
         assertFirstTab("New Tab")
         capture(app, name: "phone-tabs-grid-drag-forward")
