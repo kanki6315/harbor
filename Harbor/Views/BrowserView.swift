@@ -169,6 +169,9 @@ struct BrowserView: View {
             .padding(.top, chromeCollapsed ? 0 : 4)
             .padding(.bottom, chromeCollapsed ? -min(12, max(0, bottomInset - 20)) : 4)
         }
+        // Navigation controls use semantic tint; the native glass material manages
+        // its own appearance, including the user's Liquid Glass preference.
+        .tint(.primary)
         .animation(reduceMotion ? .easeOut(duration: 0.12) : .spring(response: 0.38, dampingFraction: 0.86), value: editingAddress)
     }
 
@@ -184,9 +187,24 @@ struct BrowserView: View {
 
     private var addressControl: some View {
         HStack(spacing: 0) {
-            if !typeSize.isAccessibilitySize && !editingAddress {
-                Button { browser.sheet = .privacy } label: { chromeIcon("shield.lefthalf.filled") }
-                    .accessibilityLabel(browser.protectionStatus)
+            if !editingAddress {
+                Button { browser.sheet = .profiles } label: {
+                    VStack(spacing: 2) {
+                        Image(systemName: profiles.currentProfile?.symbol ?? "person.crop.circle")
+                            .font(.body)
+                        Text(browser.profileName)
+                            .font(.caption2.weight(.medium))
+                            .lineLimit(1).truncationMode(.tail)
+                    }
+                    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                    .padding(.horizontal, 4)
+                    .frame(width: 72)
+                    .frame(minHeight: 48)
+                    .contentShape(Rectangle())
+                }
+                .accessibilityLabel("Profiles, \(browser.profileName)")
+                .accessibilityHint("Switch or manage profiles")
+                .accessibilityIdentifier("addressProfileButton")
             }
             TextField("Address", text: $address,
                       prompt: Text("Search or address").foregroundStyle(Color.primary.opacity(0.72)))
@@ -197,7 +215,7 @@ struct BrowserView: View {
                 .accessibilityLabel("Search or enter address")
                 .accessibilityIdentifier("addressField")
                 .frame(minWidth: 30, minHeight: 48)
-                .padding(.leading, editingAddress || typeSize.isAccessibilitySize ? 14 : 0)
+                .padding(.leading, editingAddress ? 14 : 0)
             if editingAddress {
                 Button(action: submit) { chromeIcon("arrow.right.circle.fill") }
                     .accessibilityLabel("Go")
@@ -241,8 +259,13 @@ struct BrowserView: View {
             }
             Section {
                 Button("Site protection", systemImage: "shield.lefthalf.filled") { browser.sheet = .privacy }
-                Button("Profiles, \(browser.profileName)", systemImage: profiles.currentProfile?.symbol ?? "person.crop.circle") { browser.sheet = .profiles }
-                    .accessibilityIdentifier("profilesButton")
+                Button { browser.sheet = .profiles } label: {
+                    Text("Profiles")
+                    Text(browser.profileName)
+                    Image(systemName: profiles.currentProfile?.symbol ?? "person.crop.circle")
+                }
+                .accessibilityLabel("Profiles, \(browser.profileName)")
+                .accessibilityIdentifier("profilesButton")
                 Button("Settings", systemImage: "gearshape") { browser.sheet = .settings }
                     .accessibilityIdentifier("settingsButton")
             }

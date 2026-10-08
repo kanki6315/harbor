@@ -1,5 +1,11 @@
 # Validation — 2026-10-07
 
+## Address-bar profiles and menu appearance — October 8, 2026
+
+Restored a direct address-bar profile shortcut with the current icon and name. It replaces the shield shortcut, hides while editing the address, and keeps the full profile name in its accessibility label when the visible name truncates. Site protection remains in Browser menu. The menu now displays the profile name as a native subtitle. Browser controls use semantic primary tint; existing untinted regular Liquid Glass and the Reduce Transparency fallback remain system-managed.
+
+Final iPhone 18 Pro / iOS 27.0 Simulator run: `testUnifiedMenuOnStartPage` and `testBrowserDestinationsDarkLarge` passed (**2 tests, 0 failures**), including opening Profiles from the address bar and scrolling the native menu at accessibility text sizes. Result: `/tmp/harbor-profile-address.xcresult`. Inspected the final dark start-page shortcut and accessibility-size website controls. The earlier light navigation/menu checks also passed before restoring the address shortcut. The large-text test initially failed because its helper did not scroll to offscreen native menu items; the helper now performs bounded scrolling and the rerun passed. Physical-device Liquid Glass preference changes, Reduce Transparency, VoiceOver, and landscape were not verified in this refinement.
+
 ## App-switcher previews during unlocked sessions — October 8, 2026
 
 The inactive-scene cover now applies to locked profiles and profiles configured to lock immediately. Unlocked profiles with a nonzero lock delay show their page in the app switcher. This supersedes the unconditional masking of unlocked protected profiles described below. The lock editor and README explain the preview behavior. iOS may retain an unlocked snapshot beyond the delay while Harbor is suspended; expiration is enforced before browsing resumes.
