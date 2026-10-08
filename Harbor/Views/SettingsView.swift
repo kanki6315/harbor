@@ -29,16 +29,6 @@ struct SettingsView: View {
                         }.overlay { if browser.archive.settings.siteExceptions.isEmpty { ContentUnavailableView("No website exceptions", systemImage: "shield") } }
                             .navigationTitle("Website exceptions")
                     }
-                    NavigationLink("Backup") {
-                        Form {
-                            Section {
-                                Text("Device backups can include profiles, bookmarks, settings and website exceptions.")
-                                Text("Tabs, history and activity timestamps are excluded from new backups. Older backups may still contain them.")
-                                Text("Backup does not sync Harbor across devices. Website logins and storage are managed by iOS and may not be restored.")
-                            }
-                        }
-                        .navigationTitle("Backup")
-                    }
                     Button("Clear browsing data…", role: .destructive) { confirmClear = true }.disabled(browser.isClearingData)
                     if browser.isClearingData { ProgressView("Clearing browsing data…") }
                 }
