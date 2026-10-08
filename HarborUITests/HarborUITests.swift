@@ -45,6 +45,13 @@ final class HarborUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["--uitesting", "--reset"]
         app.launch()
+        let profile = app.buttons["addressProfileButton"]
+        XCTAssertTrue(profile.waitForExistence(timeout: 10))
+        XCTAssertEqual(profile.label, "Profiles, Personal")
+        capture(app, name: "address-profile")
+        profile.tap()
+        XCTAssertTrue(app.navigationBars["Profiles"].waitForExistence(timeout: 5))
+        app.buttons["Done"].tap()
         let menu = app.descendants(matching: .any)["browserMenuButton"]
         XCTAssertTrue(menu.waitForExistence(timeout: 10))
         menu.tap()
@@ -797,6 +804,18 @@ final class HarborUITests: XCTestCase {
 
     @MainActor private func openBrowserDestination(_ app: XCUIApplication, _ identifier: String) {
         if !menuDestination(app, identifier).exists { revealBrowserMenu(app) }
+        // Native menus scroll at accessibility text sizes and only expose nearby rows.
+        let menuItems = app.collectionViews.firstMatch
+        for _ in 0..<5 {
+            let item = menuDestination(app, identifier)
+            if item.exists && item.isHittable { break }
+            guard menuItems.exists else { break }
+            let visibleFrame = menuItems.frame.intersection(app.frame)
+            let origin = app.coordinate(withNormalizedOffset: .zero)
+            origin.withOffset(CGVector(dx: visibleFrame.midX, dy: visibleFrame.minY + visibleFrame.height * 0.7))
+                .press(forDuration: 0.05, thenDragTo: origin.withOffset(
+                    CGVector(dx: visibleFrame.midX, dy: visibleFrame.minY + visibleFrame.height * 0.25)))
+        }
         let destination = menuDestination(app, identifier)
         XCTAssertTrue(destination.waitForExistence(timeout: 5))
         destination.tap()

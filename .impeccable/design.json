@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-08T00:21:42.620432+00:00",
+  "generatedAt": "2026-10-08T04:51:34.177431+00:00",
   "title": "Design System: Harbor",
   "extensions": {
     "colorMeta": {
@@ -105,9 +105,9 @@
     {
       "name": "Address capsule",
       "kind": "input",
-      "description": "Documentation-only approximation of the native address field. Display host until focused; edit the full URL. Privacy and reload controls move to the menu at accessibility sizes. Native address glass uses 65% black tint in dark appearance, clear tint in light appearance, and opaque secondarySystemBackground under Reduce Transparency. Shared identity morphs into the compact site pill.",
-      "html": "<label class=\"ds-address\">Search or enter address<input aria-label=\"Search or enter address\" placeholder=\"Search or enter address\"></label>",
-      "css": ".ds-address{display:block;font:14px system-ui;color:CanvasText}.ds-address input{display:block;border:1px solid GrayText;border-radius:99px;padding:0 18px;min-height:48px;background:Canvas;color:CanvasText;font:16px system-ui}.ds-address input::placeholder{color:CanvasText;opacity:.72}.ds-address input:focus-visible{outline:2px solid Highlight;outline-offset:3px}",
+      "description": "Documentation-only approximation of the native address capsule. A 72pt-wide shortcut stacks the current profile icon and name and opens Profiles. Hide it while editing the full URL; otherwise display the host. Long profile names truncate visually but retain their full accessible label. Site protection lives in the menu; reload moves there at accessibility sizes. Untinted native regular glass follows system appearance; Reduce Transparency uses opaque secondarySystemBackground. Validate native rendering on iOS.",
+      "html": "<div class=\"ds-address\"><button aria-label=\"Profiles, Personal\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><circle cx=\"12\" cy=\"9\" r=\"3\"/><path d=\"M5 19c1-7 13-7 14 0\"/></svg><span>Personal</span></button><input aria-label=\"Search or enter address\" placeholder=\"Search or address\"></div>",
+      "css": ".ds-address{display:flex;align-items:center;border-radius:99px;background:ButtonFace;color:ButtonText;font:15px system-ui}.ds-address button{display:flex;flex:0 0 72px;min-width:0;min-height:48px;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:0 4px;box-sizing:border-box;border:0;background:transparent;color:inherit;font:500 11px system-ui}.ds-address span{max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.ds-address input{min-width:30px;width:100%;min-height:48px;border:0;background:transparent;color:inherit;font:inherit;padding:0 10px 0 0}.ds-address input::placeholder{color:CanvasText;opacity:.72}.ds-address button:hover{opacity:.8}.ds-address button:active{opacity:.6}.ds-address :focus-visible{outline:2px solid Highlight;outline-offset:2px;border-radius:20px}",
       "refersTo": "address-field"
     },
     {
@@ -130,16 +130,16 @@
       "name": "Selected tab preview",
       "kind": "card",
       "description": "Documentation-only HTML approximation of native SwiftUI structure; native semantic colors, SF Symbols, Dynamic Type and Liquid Glass must be evaluated in iOS. Example labels are not production user data.",
-      "html": "<button class=\"ds-tab\" aria-label=\"Selected tab: Harbor\"><span>Harbor</span><strong>Selected \u00b7 Harbor</strong><small>Start page</small></button>",
+      "html": "<button class=\"ds-tab\" aria-label=\"Selected tab: Harbor\"><span>Harbor</span><strong>Selected · Harbor</strong><small>Start page</small></button>",
       "css": ".ds-tab{border:0;background:Canvas;color:CanvasText;font:14px system-ui;text-align:left}.ds-tab span{display:grid;place-items:center;width:170px;height:205px;border:4px solid Highlight;border-radius:18px;background:#0D2747;color:white;font-weight:600}.ds-tab strong,.ds-tab small{display:block;margin-top:8px}.ds-tab:hover{opacity:.92}.ds-tab:focus-visible{outline:2px solid Highlight;outline-offset:3px}.ds-tab:active{opacity:.7}",
       "refersTo": "tab-preview"
     },
     {
       "name": "Unified browser row",
       "kind": "nav",
-      "description": "Documentation-only structural approximation of native SwiftUI. Back, address, tabs and menu share one row of separate glass capsules. Native glass, SF Symbols and Dynamic Type require iOS verification. Address editing occupies the row; secondary actions live in the menu.",
-      "html": "<nav class=\"ds-nav\" aria-label=\"Browser\"><button aria-label=\"Back\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"m15 5-7 7 7 7\"/></svg></button><input aria-label=\"Search or enter address\" placeholder=\"Search or address\"><button aria-label=\"Tabs, 1 open\"><span>1</span></button><button aria-label=\"Browser menu\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"currentColor\"><circle cx=\"4\" cy=\"12\" r=\"2\"/><circle cx=\"12\" cy=\"12\" r=\"2\"/><circle cx=\"20\" cy=\"12\" r=\"2\"/></svg></button></nav>",
-      "css": ".ds-nav{display:flex;gap:6px;padding:4px 12px;font:15px system-ui}.ds-nav button,.ds-nav input{min-height:48px;border:0;border-radius:99px;background:ButtonFace;color:ButtonText;font:inherit}.ds-nav button{flex:0 0 44px;padding:0}.ds-nav input{min-width:30px;width:100%;padding:0 14px}.ds-nav span{display:inline-grid;place-items:center;width:24px;height:24px;border:1.8px solid currentColor;border-radius:5px;font-variant-numeric:tabular-nums}.ds-nav button:hover{opacity:.8}.ds-nav button:active{opacity:.6}.ds-nav :focus-visible{outline:2px solid Highlight;outline-offset:2px}"
+      "description": "Documentation-only structural approximation of native SwiftUI. Back, address, tabs and menu share one row of separate glass capsules. Native glass, SF Symbols and Dynamic Type require iOS verification. Address editing occupies the row; secondary actions live in the menu. The address capsule includes the active profile icon/name shortcut, hidden while typing. Browser controls use semantic primary tint with system-managed untinted glass.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Browser\"><button aria-label=\"Back\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"m15 5-7 7 7 7\"/></svg></button><div class=\"ds-address\"><button aria-label=\"Profiles, Personal\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><circle cx=\"12\" cy=\"9\" r=\"3\"/><path d=\"M5 19c1-7 13-7 14 0\"/></svg><span>Personal</span></button><input aria-label=\"Search or enter address\" placeholder=\"Search or address\"></div><button aria-label=\"Tabs, 1 open\"><span>1</span></button><button aria-label=\"Browser menu\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"currentColor\"><circle cx=\"4\" cy=\"12\" r=\"2\"/><circle cx=\"12\" cy=\"12\" r=\"2\"/><circle cx=\"20\" cy=\"12\" r=\"2\"/></svg></button></nav>",
+      "css": ".ds-nav{display:flex;gap:6px;padding:4px 12px;font:15px system-ui}.ds-nav button,.ds-nav input{min-height:48px;border:0;border-radius:99px;background:ButtonFace;color:ButtonText;font:inherit}.ds-nav button{flex:0 0 44px;padding:0}.ds-nav input{min-width:30px;width:100%;padding:0 14px}.ds-nav span{display:inline-grid;place-items:center;width:24px;height:24px;border:1.8px solid currentColor;border-radius:5px;font-variant-numeric:tabular-nums}.ds-nav button:hover{opacity:.8}.ds-nav button:active{opacity:.6}.ds-nav :focus-visible{outline:2px solid Highlight;outline-offset:2px}.ds-address{display:flex;align-items:center;border-radius:99px;background:ButtonFace;color:ButtonText;font:15px system-ui}.ds-address button{display:flex;flex:0 0 72px;min-width:0;min-height:48px;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:0 4px;box-sizing:border-box;border:0;background:transparent;color:inherit;font:500 11px system-ui}.ds-address span{max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.ds-address input{min-width:30px;width:100%;min-height:48px;border:0;background:transparent;color:inherit;font:inherit;padding:0 10px 0 0}.ds-address input::placeholder{color:CanvasText;opacity:.72}.ds-address button:hover{opacity:.8}.ds-address button:active{opacity:.6}.ds-address :focus-visible{outline:2px solid Highlight;outline-offset:2px;border-radius:20px}.ds-nav .ds-address{flex:1;min-width:0}.ds-nav .ds-address button{flex:0 0 72px}.ds-nav .ds-address span{display:block;width:auto;height:auto;border:0;border-radius:0}.ds-nav .ds-address input{padding:0 10px 0 0}"
     },
     {
       "name": "Profile unlock action",
@@ -151,9 +151,9 @@
     {
       "name": "Browser menu",
       "kind": "nav",
-      "description": "Documentation-only content approximation of the native bottom-right Menu. Share appears only for a URL; media and download actions appear when available. Forward and Reload can be disabled. Native menu owns presentation, scrolling and dismissal.",
-      "html": "<div class=\"ds-menu\" role=\"group\" aria-label=\"Browser menu\"><button>Share page</button><button>Bookmarks</button><button>History</button><hr><button>New tab</button><button disabled>Forward</button><button>Reload</button><hr><button>Site protection</button><button>Profiles, Personal</button><button>Settings</button></div>",
-      "css": ".ds-menu{display:grid;max-width:280px;padding:8px;border-radius:24px;background:Canvas;color:CanvasText;font:16px system-ui}.ds-menu button{min-height:44px;text-align:left;padding:8px 16px;border:0;background:transparent;color:inherit;font:inherit}.ds-menu hr{width:90%;border:0;border-top:1px solid GrayText}.ds-menu button:hover:not(:disabled){background:ButtonFace;border-radius:12px}.ds-menu button:active:not(:disabled){opacity:.7}.ds-menu button:focus-visible{outline:2px solid Highlight}.ds-menu button:disabled{opacity:.4}"
+      "description": "Documentation-only content approximation of the native bottom-right Menu. Share appears only for a URL; media and download actions appear when available. Forward and Reload can be disabled. Native menu owns presentation, scrolling and dismissal. Profiles uses a native title and current-name subtitle, with a combined accessible label.",
+      "html": "<div class=\"ds-menu\" role=\"group\" aria-label=\"Browser menu\"><button>Share page</button><button>Bookmarks</button><button>History</button><hr><button>New tab</button><button disabled>Forward</button><button>Reload</button><hr><button>Site protection</button><button aria-label=\"Profiles, Personal\">Profiles<small>Personal</small></button><button>Settings</button></div>",
+      "css": ".ds-menu{display:grid;max-width:280px;padding:8px;border-radius:24px;background:Canvas;color:CanvasText;font:16px system-ui}.ds-menu button{min-height:44px;text-align:left;padding:8px 16px;border:0;background:transparent;color:inherit;font:inherit}.ds-menu hr{width:90%;border:0;border-top:1px solid GrayText}.ds-menu button:hover:not(:disabled){background:ButtonFace;border-radius:12px}.ds-menu button:active:not(:disabled){opacity:.7}.ds-menu button:focus-visible{outline:2px solid Highlight}.ds-menu button:disabled{opacity:.4}.ds-menu small{display:block;font-size:.8em;opacity:.72;margin-top:2px}"
     },
     {
       "name": "Bookmark name suggestion",
@@ -165,7 +165,7 @@
     {
       "name": "Compact site pill",
       "kind": "button",
-      "description": "Documentation-only native restore control approximation. Caption2 medium capped at xxxLarge, 10pt horizontal and 3pt vertical padding, maximum width 112pt (180pt at accessibility sizes), minimum 44pt target extending upward. Bottom lowering is min(12, max(0, safeAreaBottom - 20)). Tap restores controls without focusing the address. Native dark tint is 65% black; Reduce Transparency uses opaque semantic background.",
+      "description": "Documentation-only native restore control approximation. Caption2 medium capped at xxxLarge, 10pt horizontal and 3pt vertical padding, maximum width 112pt (180pt at accessibility sizes), minimum 44pt target extending upward. Bottom lowering is min(12, max(0, safeAreaBottom - 20)). Tap restores controls without focusing the address. Native regular glass is untinted and system-managed; Reduce Transparency uses opaque semantic background.",
       "html": "<button class=\"ds-compact\" aria-label=\"Show browser controls for example.org\"><span>example.org</span></button>",
       "css": ".ds-compact{display:flex;align-items:flex-end;min-height:44px;border:0;background:transparent;padding:0;color:CanvasText;font:500 11px system-ui}.ds-compact span{width:92px;padding:3px 10px;border-radius:99px;background:ButtonFace;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.ds-compact:hover span{filter:brightness(.96)}.ds-compact:active span{opacity:.7}.ds-compact:focus-visible{outline:2px solid Highlight;outline-offset:3px}"
     }
@@ -187,7 +187,7 @@
       },
       {
         "name": "The Brand Type Rule",
-        "body": "Reserve Inter for Harbor branding; use Dynamic Type system styles for working controls and content. Toolbar symbols are capped at `.xxxLarge` while text and accessible names remain available.",
+        "body": "Reserve Inter for Harbor branding; use Dynamic Type system styles for working controls and content. Toolbar symbols and the compact profile shortcut are capped at `.xxxLarge`; the profile name truncates visually while its full accessible name remains available.",
         "section": "typography"
       },
       {
