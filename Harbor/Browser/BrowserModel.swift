@@ -5,6 +5,25 @@
 import SwiftUI
 import WebKit
 
+/// All browser sheets share one presentation slot, including website dialogs.
+enum BrowserSheet: Identifiable {
+    case tabs, history, bookmarks, settings, privacy, profiles
+    case share(ShareItem), webDialog(WebDialog)
+
+    var id: String {
+        switch self {
+        case .tabs: "tabs"
+        case .history: "history"
+        case .bookmarks: "bookmarks"
+        case .settings: "settings"
+        case .privacy: "privacy"
+        case .profiles: "profiles"
+        case .share(let item): "share-\(item.id)"
+        case .webDialog(let dialog): "dialog-\(dialog.id)"
+        }
+    }
+}
+
 @MainActor @Observable
 final class BrowserModel {
     var archive: BrowserArchive
@@ -17,10 +36,32 @@ final class BrowserModel {
     private(set) var isActive = true
     var errorMessage: String?
     var externalURL: URL?
-    var dialog: WebDialog?
+    var sheet: BrowserSheet? {
+        didSet {
+            if case .webDialog(let previous) = oldValue, previous.id != dialog?.id {
+                previous.finish(nil)
+            }
+        }
+    }
+    var dialog: WebDialog? {
+        get {
+            if case .webDialog(let dialog) = sheet { return dialog }
+            return nil
+        }
+        set {
+            if let newValue { sheet = .webDialog(newValue) }
+            else if dialog != nil { sheet = nil }
+        }
+    }
+
+    func canPresentDialog(from tabID: UUID) -> Bool {
+        isActive && !isClearingData && selectedID == tabID && sheet == nil
+            && externalURL == nil && errorMessage == nil && downloads.errorMessage == nil
+    }
     var lastClosed: TabRecord?
     var isClearingData = false
     private let store: BrowserStore
+    private let writer: BrowserArchiveWriter
     private var persistTask: Task<Void, Never>?
     enum BookmarkNameState: Equatable {
         case generating
@@ -50,6 +91,7 @@ final class BrowserModel {
     init(store: BrowserStore = BrowserStore(), profileID: UUID = UUID(), profileName: String = "Personal",
          websiteDataStore: WKWebsiteDataStore? = nil, isTesting: Bool = false) {
         self.store = store
+        self.writer = BrowserArchiveWriter(store: store)
         self.profileID = profileID
         self.profileName = profileName
         self.websiteDataStore = websiteDataStore ?? .nonPersistent()
@@ -99,12 +141,18 @@ final class BrowserModel {
         persistTask = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(250))
             guard !Task.isCancelled else { return }
-            self?.saveNow()
+            guard let self, self.persistenceAvailable else { return }
+            do { try await self.writer.saveInBackground(self.archive) }
+            catch {
+                guard !Task.isCancelled else { return }
+                self.errorMessage = "Harbor could not save your session. \(error.localizedDescription)"
+            }
         }
     }
     @discardableResult func saveNow() -> Bool {
+        persistTask?.cancel()
         guard persistenceAvailable else { return false }
-        do { try store.save(archive); return true }
+        do { try writer.save(archive); return true }
         catch { errorMessage = "Harbor could not save your session. \(error.localizedDescription)"; return false }
     }
 
@@ -119,8 +167,8 @@ final class BrowserModel {
         bookmarkNameTasks.removeAll()
         bookmarkNameStates.removeAll()
         persistTask?.cancel()
-        dialog?.finish(nil)
-        dialog = nil
+        writer.flush()
+        sheet = nil
         externalURL = nil
         for session in sessions.values { session.dispose() }
         sessions.removeAll()
@@ -161,6 +209,7 @@ final class BrowserModel {
     func selectTab(_ id: UUID) {
         guard let index = archive.tabs.firstIndex(where: { $0.id == id }) else { return }
         activeSession?.captureSnapshot()
+        if id != selectedID { dialog = nil }
         archive.selectedTabID = id
         archive.tabs[index].lastUsed = Date()
         sessions[id]?.lastUsed = Date()
@@ -226,8 +275,10 @@ final class BrowserModel {
     }
     func updateTab(_ id: UUID, url: URL, title: String?) {
         guard let index = archive.tabs.firstIndex(where: { $0.id == id }) else { return }
+        let updatedTitle = title.flatMap { $0.isEmpty ? nil : $0 } ?? archive.tabs[index].title
+        guard archive.tabs[index].url != url || archive.tabs[index].title != updatedTitle else { return }
         archive.tabs[index].url = url
-        if let title, !title.isEmpty { archive.tabs[index].title = title }
+        archive.tabs[index].title = updatedTitle
         saveSoon()
     }
     func recordVisit(url: URL, title: String) {
@@ -424,9 +475,9 @@ final class BrowserModel {
             archive.tabs = [TabRecord()]
             archive.selectedTabID = archive.tabs[0].id
             lastClosed = nil
-            persistenceAvailable = true
             downloads.clearTemporaryFiles()
         }
+        // Preserve the save guard after a failed load; the fallback archive is incomplete.
         saveNow()
     }
     #if DEBUG

@@ -86,6 +86,7 @@ final class TabSession: NSObject, Identifiable {
 
     func dispose() {
         isDisposed = true
+        if browser?.selectedID == id { browser?.dialog = nil }
         browser = nil
         webView.stopLoading()
         webView.pauseAllMediaPlayback(completionHandler: nil)
@@ -117,12 +118,16 @@ extension TabSession: WKNavigationDelegate {
             decisionHandler(.cancel)
             return
         }
-        if navigationAction.shouldPerformDownload { decisionHandler(.download); return }
+        if navigationAction.shouldPerformDownload {
+            decisionHandler(Self.downloadPolicy(isMainFrame: navigationAction.targetFrame?.isMainFrame == true))
+            return
+        }
         if topLevel {
-            // Do not rewrite POST bodies or popup navigations, whose WebKit configuration carries opener state.
+            // Only rewrite explicit links. Script navigations and redirects must retain WebKit history and request semantics.
             if browser.archive.settings.stripTrackingParameters,
-               navigationAction.request.httpMethod == "GET", navigationAction.targetFrame != nil,
-               [WKNavigationType.linkActivated, .other].contains(navigationAction.navigationType) {
+               Self.canRewriteTrackingParameters(method: navigationAction.request.httpMethod,
+                                                 type: navigationAction.navigationType,
+                                                 isMainFrame: navigationAction.targetFrame?.isMainFrame == true) {
                 let cleaned = TrackingParameterCleaner.clean(url)
                 if cleaned != url {
                     var request = navigationAction.request
@@ -141,7 +146,23 @@ extension TabSession: WKNavigationDelegate {
                  decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void) {
         let disposition = (navigationResponse.response as? HTTPURLResponse)?
             .value(forHTTPHeaderField: "Content-Disposition")?.lowercased() ?? ""
-        decisionHandler(navigationResponse.canShowMIMEType && !disposition.hasPrefix("attachment") ? .allow : .download)
+        decisionHandler(Self.responsePolicy(isMainFrame: navigationResponse.isForMainFrame,
+                                            canShowMIMEType: navigationResponse.canShowMIMEType,
+                                            disposition: disposition))
+    }
+
+    static func downloadPolicy(isMainFrame: Bool) -> WKNavigationActionPolicy {
+        isMainFrame ? .download : .cancel
+    }
+
+    static func responsePolicy(isMainFrame: Bool, canShowMIMEType: Bool,
+                               disposition: String) -> WKNavigationResponsePolicy {
+        if canShowMIMEType && !disposition.hasPrefix("attachment") { return .allow }
+        return isMainFrame ? .download : .cancel
+    }
+
+    static func canRewriteTrackingParameters(method: String?, type: WKNavigationType, isMainFrame: Bool) -> Bool {
+        isMainFrame && method == "GET" && type == .linkActivated
     }
 
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
@@ -218,18 +239,18 @@ extension TabSession: WKUIDelegate {
 
     func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String,
                  initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping () -> Void) {
-        guard let browser, browser.dialog == nil else { completionHandler(); return }
+        guard !isDisposed, let browser, browser.canPresentDialog(from: id) else { completionHandler(); return }
         browser.dialog = WebDialog(title: frame.securityOrigin.host, message: message, kind: .alert) { _ in completionHandler() }
     }
     func webView(_ webView: WKWebView, runJavaScriptConfirmPanelWithMessage message: String,
                  initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (Bool) -> Void) {
-        guard let browser, browser.dialog == nil else { completionHandler(false); return }
+        guard !isDisposed, let browser, browser.canPresentDialog(from: id) else { completionHandler(false); return }
         browser.dialog = WebDialog(title: frame.securityOrigin.host, message: message, kind: .confirm) { completionHandler($0 != nil) }
     }
     func webView(_ webView: WKWebView, runJavaScriptTextInputPanelWithPrompt prompt: String,
                  defaultText: String?, initiatedByFrame frame: WKFrameInfo,
                  completionHandler: @escaping (String?) -> Void) {
-        guard let browser, browser.dialog == nil else { completionHandler(nil); return }
+        guard !isDisposed, let browser, browser.canPresentDialog(from: id) else { completionHandler(nil); return }
         browser.dialog = WebDialog(title: frame.securityOrigin.host, message: prompt, kind: .prompt,
                                    defaultText: defaultText ?? "", completion: completionHandler)
     }
@@ -247,5 +268,9 @@ extension TabSession: WKUIDelegate {
         self.title = title; self.message = message; self.kind = kind
         self.defaultText = defaultText; self.completion = completion
     }
-    func finish(_ value: String?) { completion?(value); completion = nil }
+    func finish(_ value: String?) {
+        let callback = completion
+        completion = nil
+        callback?(value)
+    }
 }

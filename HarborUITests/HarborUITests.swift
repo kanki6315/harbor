@@ -58,6 +58,28 @@ final class HarborUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
     }
 
+    @MainActor func testWebsiteDialogsCanBeAnsweredRepeatedly() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--uitesting", "--reset", "--fixture"]
+        app.launch()
+        let alertButton = app.webViews.buttons["Show alert"]
+        XCTAssertTrue(alertButton.waitForExistence(timeout: 15))
+        app.webViews.firstMatch.swipeUp()
+        for _ in 0..<2 {
+            alertButton.tap()
+            XCTAssertTrue(app.staticTexts["Native dialog works"].waitForExistence(timeout: 5))
+            app.buttons["OK"].tap()
+            XCTAssertTrue(alertButton.waitForExistence(timeout: 5))
+        }
+        if app.buttons["expandBrowserControls"].exists { app.buttons["expandBrowserControls"].tap() }
+        openBrowserDestination(app, "settingsButton")
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
+        app.buttons["Done"].tap()
+        alertButton.tap()
+        XCTAssertTrue(app.staticTexts["Native dialog works"].waitForExistence(timeout: 5))
+        app.buttons["OK"].tap()
+    }
+
     @MainActor func testBrowserDestinations() {
         checkBrowserDestinations(darkLarge: false)
     }

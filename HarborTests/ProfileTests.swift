@@ -8,6 +8,32 @@ import Network
 @testable import Harbor
 
 @MainActor final class ProfileTests: XCTestCase {
+    func testLockedProfileEditsRequireAuthentication() async throws {
+        var authenticated = true
+        var attempts = 0
+        let setup = ProfileManager(store: store, authenticate: { _ in true })
+        let id = try XCTUnwrap(setup.currentProfile?.id)
+        _ = await setup.setProtection(id, enabled: true)
+        let manager = ProfileManager(store: store, authenticate: { _ in
+            attempts += 1
+            return authenticated
+        })
+        XCTAssertTrue(manager.isLocked)
+        let original = try XCTUnwrap(manager.currentProfile)
+        authenticated = false
+        let denied = await manager.rename(id, name: "Changed", symbol: "book")
+        XCTAssertFalse(denied)
+        XCTAssertEqual(manager.currentProfile?.name, original.name)
+        XCTAssertEqual(manager.currentProfile?.symbol, original.symbol)
+        authenticated = true
+        let allowed = await manager.rename(id, name: "Private", symbol: "book")
+        XCTAssertTrue(allowed)
+        XCTAssertEqual(manager.currentProfile?.name, "Private")
+        XCTAssertEqual(attempts, 2)
+        XCTAssertTrue(manager.isLocked, "Editing authorization does not unlock browsing")
+        setup.browser?.deactivate()
+    }
+
     func testIncomingLinkOpensNewTabAndRejectsUnsupportedURLs() throws {
         let manager = ProfileManager(store: store)
         let browser = try XCTUnwrap(manager.browser)
@@ -313,7 +339,7 @@ import Network
         XCTAssertEqual(try Data(contentsOf: store.browserStore(for: personal).fileURL), bytes)
     }
 
-    func testProfilesSeparateAllArchiveStateAndRestore() throws {
+    func testProfilesSeparateAllArchiveStateAndRestore() async throws {
         let manager = ProfileManager(store: store)
         let personal = try XCTUnwrap(manager.browser)
         let personalID = personal.profileID
@@ -333,7 +359,8 @@ import Network
         XCTAssertTrue(work.archive.settings.siteExceptions.isEmpty)
         XCTAssertNil(work.lastClosed)
         work.newTab()
-        XCTAssertTrue(manager.rename(workID, name: "Office", symbol: "book"))
+        let renamed = await manager.rename(workID, name: "Office", symbol: "book")
+        XCTAssertTrue(renamed)
         XCTAssertEqual(work.profileName, "Office")
         XCTAssertTrue(manager.select(personalID))
         personal.undoClose()

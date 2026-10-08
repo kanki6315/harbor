@@ -10,6 +10,15 @@ struct TabRecord: Codable, Identifiable, Equatable {
     var url: URL?
     var title = "New Tab"
     var lastUsed = Date()
+
+    /// Live object/data URLs remain usable in memory but cannot be restored later.
+    var restorable: TabRecord {
+        guard let url, !["http", "https"].contains(url.scheme?.lowercased() ?? "") else { return self }
+        var tab = self
+        tab.url = nil
+        tab.title = "New Tab"
+        return tab
+    }
 }
 
 struct HistoryEntry: Codable, Identifiable, Equatable {

@@ -17,8 +17,7 @@ struct HarborApp: App {
     var body: some Scene {
         WindowGroup {
             Group {
-                // Use the actual lock state for both browsing and presented sheets.
-                // An inactive scene (such as the app switcher) can still be unlocked.
+                // Lock policy and the inactive-scene privacy cover are independent.
                 if profiles.isLocked {
                     LockedProfileView(profiles: profiles)
                 } else if let browser = profiles.browser {
@@ -28,6 +27,7 @@ struct HarborApp: App {
                                            description: Text(profiles.errorMessage ?? "Please reopen Harbor to try again."))
                 }
             }
+            .background(ProfilePrivacyCover(enabled: profiles.currentProfile?.isProtected == true))
             .onOpenURL { profiles.openIncomingURL($0) }
         }
         .onChange(of: scenePhase) { _, phase in
@@ -36,6 +36,74 @@ struct HarborApp: App {
             case .active: profiles.becameActive()
             default: profiles.browser?.saveNow()
             }
+        }
+    }
+}
+
+/// A separate, non-key window covers sheets and native full-screen content too.
+/// UIKit's scene notification arrives before the system takes its switcher snapshot.
+struct ProfilePrivacyCover: UIViewRepresentable {
+    var enabled: Bool
+
+    func makeUIView(context: Context) -> HostView { HostView() }
+    func updateUIView(_ view: HostView, context: Context) {
+        view.enabled = enabled
+        view.refresh()
+    }
+    static func dismantleUIView(_ view: HostView, coordinator: ()) { view.removeCover() }
+
+    final class HostView: UIView {
+        var enabled = false
+        private var cover: UIWindow?
+        private var observers: [NSObjectProtocol] = []
+
+        override init(frame: CGRect) {
+            super.init(frame: frame)
+            observers = [
+                NotificationCenter.default.addObserver(forName: UIScene.willDeactivateNotification, object: nil, queue: .main) { [weak self] note in
+                    MainActor.assumeIsolated {
+                        guard let self, let scene = note.object as? UIWindowScene, scene === self.window?.windowScene else { return }
+                        self.refresh(inactive: true)
+                    }
+                },
+                NotificationCenter.default.addObserver(forName: UIScene.didActivateNotification, object: nil, queue: .main) { [weak self] note in
+                    MainActor.assumeIsolated {
+                        guard let self, let scene = note.object as? UIWindowScene, scene === self.window?.windowScene else { return }
+                        // Let the app apply its expired-lock policy before uncovering content.
+                        DispatchQueue.main.async { [weak self] in self?.refresh() }
+                    }
+                }
+            ]
+        }
+        required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+        isolated deinit { observers.forEach(NotificationCenter.default.removeObserver) }
+        override func didMoveToWindow() { super.didMoveToWindow(); refresh() }
+
+        func refresh(inactive: Bool? = nil) {
+            guard enabled, let scene = window?.windowScene,
+                  inactive ?? (scene.activationState != .foregroundActive) else { removeCover(); return }
+            guard cover == nil else { return }
+            let controller = UIViewController()
+            controller.view.backgroundColor = .systemBackground
+            let label = UILabel()
+            label.text = "Harbor"
+            label.font = .preferredFont(forTextStyle: .title1)
+            label.textAlignment = .center
+            label.frame = scene.effectiveGeometry.coordinateSpace.bounds
+            label.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            controller.view.addSubview(label)
+            let shield = UIWindow(windowScene: scene)
+            shield.frame = scene.effectiveGeometry.coordinateSpace.bounds
+            shield.windowLevel = .alert + 1
+            shield.rootViewController = controller
+            shield.accessibilityIdentifier = "profilePrivacyCover"
+            shield.isHidden = false
+            cover = shield
+        }
+
+        func removeCover() {
+            cover?.isHidden = true
+            cover = nil
         }
     }
 }

@@ -195,7 +195,12 @@ private struct TabCard: View {
                                 }
                             }.accessibilityElement(children: .contain)
                                 .task(id: session == nil) {
-                                    savedPreview = UIImage(contentsOfFile: previewURL.path)
+                                    let url = previewURL
+                                    let image = await Task.detached(priority: .utility) {
+                                        UIImage(contentsOfFile: url.path)?.preparingForDisplay()
+                                    }.value
+                                    guard !Task.isCancelled else { return }
+                                    savedPreview = image
                                 }
     }
 }

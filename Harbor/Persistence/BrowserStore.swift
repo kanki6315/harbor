@@ -33,7 +33,8 @@ struct BrowserStore {
     func load() throws -> BrowserArchive {
         if FileManager.default.fileExists(atPath: fileURL.path) {
             // The original remains authoritative after an interrupted migration.
-            let archive = try Self.readLegacy(fileURL)
+            var archive = try Self.readLegacy(fileURL)
+            archive.tabs = archive.tabs.map(\.restorable)
             try save(archive)
             return archive
         }
@@ -51,7 +52,7 @@ struct BrowserStore {
         if FileManager.default.fileExists(atPath: sessionURL.path) {
             let session = try JSONDecoder().decode(Session.self, from: Data(contentsOf: sessionURL))
             guard session.version == 1 else { throw CocoaError(.coderReadCorrupt) }
-            archive.tabs = session.tabs
+            archive.tabs = session.tabs.map(\.restorable)
             archive.selectedTabID = session.selectedTabID
             archive.history = session.history
         }
@@ -80,7 +81,7 @@ struct BrowserStore {
     func save(_ archive: BrowserArchive) throws {
         try Self.prepareDeviceOnlyDirectory(sessionDirectory)
         let encoder = JSONEncoder()
-        try encoder.encode(Session(tabs: archive.tabs, selectedTabID: archive.selectedTabID, history: archive.history))
+        try encoder.encode(Session(tabs: archive.tabs.map(\.restorable), selectedTabID: archive.selectedTabID, history: archive.history))
             .write(to: sessionURL, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
         try encoder.encode(Preferences(bookmarks: archive.bookmarks, bookmarkFolders: archive.bookmarkFolders, settings: archive.settings))
             .write(to: durableURL, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
@@ -114,4 +115,28 @@ extension BrowserStore {
             try? FileManager.default.removeItem(at: file)
         }
     }
+}
+
+/// Serialize routine writes off the UI thread. Explicit flushes join the same queue,
+/// so an older autosave cannot overwrite a newer user action or recreate deleted data.
+final class BrowserArchiveWriter: @unchecked Sendable {
+    private let queue = DispatchQueue(label: "Harbor.archive-writer", qos: .utility)
+    private let store: BrowserStore
+
+    init(store: BrowserStore) { self.store = store }
+
+    func save(_ archive: BrowserArchive) throws {
+        try queue.sync { try store.save(archive) }
+    }
+
+    @MainActor func saveInBackground(_ archive: BrowserArchive) async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            queue.async { [self] in
+                do { try store.save(archive); continuation.resume() }
+                catch { continuation.resume(throwing: error) }
+            }
+        }
+    }
+
+    func flush() { queue.sync {} }
 }
