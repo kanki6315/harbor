@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-07T22:50:25.711290+00:00",
+  "generatedAt": "2026-10-08T00:21:42.620432+00:00",
   "title": "Design System: Harbor",
   "extensions": {
     "colorMeta": {
@@ -75,18 +75,23 @@
     "motion": [
       {
         "name": "browser-controls-collapse",
-        "value": "Animation.smooth(duration: 0.24, extraBounce: 0)",
-        "purpose": "Collapse browser chrome to the URL pill; shared native glass identity, action-row opacity and 12pt vertical offset."
+        "value": "Animation.spring(response: 0.34, dampingFraction: 0.86)",
+        "purpose": "Collapse the unified row into the lowered site pill using shared native address glass; action controls scale to 0.7 from the bottom and fade."
       },
       {
         "name": "browser-controls-expand",
-        "value": "Animation.smooth(duration: 0.32, extraBounce: 0)",
-        "purpose": "Restore the address capsule and browser actions."
+        "value": "Animation.spring(response: 0.42, dampingFraction: 0.86)",
+        "purpose": "Restore Back, address, tabs and menu without focusing the address field."
+      },
+      {
+        "name": "browser-address-edit",
+        "value": "Animation.spring(response: 0.38, dampingFraction: 0.86)",
+        "purpose": "Expand the address field across the row while editing."
       },
       {
         "name": "browser-controls-reduced-motion",
         "value": "Animation.easeOut(duration: 0.12)",
-        "purpose": "Opacity transition without shared-glass morph or action-row offset when Reduce Motion is enabled."
+        "purpose": "Fade without shared-glass morph or action scaling when Reduce Motion is enabled."
       }
     ],
     "breakpoints": [
@@ -100,7 +105,7 @@
     {
       "name": "Address capsule",
       "kind": "input",
-      "description": "Documentation-only HTML approximation of native SwiftUI structure; native semantic colors, SF Symbols, Dynamic Type and Liquid Glass must be evaluated in iOS. Example labels are not production user data.",
+      "description": "Documentation-only approximation of the native address field. Display host until focused; edit the full URL. Privacy and reload controls move to the menu at accessibility sizes. Native address glass uses 65% black tint in dark appearance, clear tint in light appearance, and opaque secondarySystemBackground under Reduce Transparency. Shared identity morphs into the compact site pill.",
       "html": "<label class=\"ds-address\">Search or enter address<input aria-label=\"Search or enter address\" placeholder=\"Search or enter address\"></label>",
       "css": ".ds-address{display:block;font:14px system-ui;color:CanvasText}.ds-address input{display:block;border:1px solid GrayText;border-radius:99px;padding:0 18px;min-height:48px;background:Canvas;color:CanvasText;font:16px system-ui}.ds-address input::placeholder{color:CanvasText;opacity:.72}.ds-address input:focus-visible{outline:2px solid Highlight;outline-offset:3px}",
       "refersTo": "address-field"
@@ -125,16 +130,16 @@
       "name": "Selected tab preview",
       "kind": "card",
       "description": "Documentation-only HTML approximation of native SwiftUI structure; native semantic colors, SF Symbols, Dynamic Type and Liquid Glass must be evaluated in iOS. Example labels are not production user data.",
-      "html": "<button class=\"ds-tab\" aria-label=\"Selected tab: Harbor\"><span>Harbor</span><strong>Selected · Harbor</strong><small>Start page</small></button>",
+      "html": "<button class=\"ds-tab\" aria-label=\"Selected tab: Harbor\"><span>Harbor</span><strong>Selected \u00b7 Harbor</strong><small>Start page</small></button>",
       "css": ".ds-tab{border:0;background:Canvas;color:CanvasText;font:14px system-ui;text-align:left}.ds-tab span{display:grid;place-items:center;width:170px;height:205px;border:4px solid Highlight;border-radius:18px;background:#0D2747;color:white;font-weight:600}.ds-tab strong,.ds-tab small{display:block;margin-top:8px}.ds-tab:hover{opacity:.92}.ds-tab:focus-visible{outline:2px solid Highlight;outline-offset:3px}.ds-tab:active{opacity:.7}",
       "refersTo": "tab-preview"
     },
     {
-      "name": "Browser action row",
+      "name": "Unified browser row",
       "kind": "nav",
-      "description": "Documentation-only HTML approximation of native SwiftUI structure; native semantic colors, SF Symbols, Dynamic Type and Liquid Glass must be evaluated in iOS. Example labels are not production user data. Native outer chrome is transparent over website content; capsule materials remain system-rendered.",
-      "html": "<nav class=\"ds-nav\" aria-label=\"Browser\"><button>Back</button><button>Forward</button><button>New tab</button><button aria-label=\"Tabs, 1 open\"><span class=\"ds-tab-count\">1</span></button><button>Bookmarks</button></nav>",
-      "css": ".ds-nav{display:flex;border-radius:99px;background:ButtonFace;padding:0 8px}.ds-nav button{min-height:48px;border:0;background:transparent;color:ButtonText;padding:0 10px;font:14px system-ui}.ds-nav button:hover{opacity:.8}.ds-nav button:focus-visible{outline:2px solid Highlight;border-radius:99px}.ds-nav button:active{opacity:.6} .ds-nav .ds-tab-count{display:grid;place-items:center;width:27px;height:27px;border:1.8px solid currentColor;border-radius:5px;font:700 12px system-ui;font-variant-numeric:tabular-nums}"
+      "description": "Documentation-only structural approximation of native SwiftUI. Back, address, tabs and menu share one row of separate glass capsules. Native glass, SF Symbols and Dynamic Type require iOS verification. Address editing occupies the row; secondary actions live in the menu.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Browser\"><button aria-label=\"Back\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"m15 5-7 7 7 7\"/></svg></button><input aria-label=\"Search or enter address\" placeholder=\"Search or address\"><button aria-label=\"Tabs, 1 open\"><span>1</span></button><button aria-label=\"Browser menu\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"currentColor\"><circle cx=\"4\" cy=\"12\" r=\"2\"/><circle cx=\"12\" cy=\"12\" r=\"2\"/><circle cx=\"20\" cy=\"12\" r=\"2\"/></svg></button></nav>",
+      "css": ".ds-nav{display:flex;gap:6px;padding:4px 12px;font:15px system-ui}.ds-nav button,.ds-nav input{min-height:48px;border:0;border-radius:99px;background:ButtonFace;color:ButtonText;font:inherit}.ds-nav button{flex:0 0 44px;padding:0}.ds-nav input{min-width:30px;width:100%;padding:0 14px}.ds-nav span{display:inline-grid;place-items:center;width:24px;height:24px;border:1.8px solid currentColor;border-radius:5px;font-variant-numeric:tabular-nums}.ds-nav button:hover{opacity:.8}.ds-nav button:active{opacity:.6}.ds-nav :focus-visible{outline:2px solid Highlight;outline-offset:2px}"
     },
     {
       "name": "Profile unlock action",
@@ -144,11 +149,11 @@
       "css": ".ds-unlock-actions{display:grid;gap:12px;font:17px system-ui}.ds-unlock-actions button{font:inherit;min-height:44px;padding:8px 20px;border:0;cursor:pointer}.ds-unlock{border-radius:999px;background:Highlight;color:HighlightText}.ds-switch{background:transparent;color:LinkText}.ds-unlock-actions button:hover:not(:disabled){filter:brightness(.96)}.ds-unlock-actions button:focus-visible{outline:2px solid Highlight;outline-offset:3px}.ds-unlock-actions button:active:not(:disabled){opacity:.7}.ds-unlock-actions button:disabled{opacity:.5;cursor:default}"
     },
     {
-      "name": "Top browser controls",
+      "name": "Browser menu",
       "kind": "nav",
-      "description": "Documentation-only native control approximation. Page actions floats at the leading edge only for media/download actions; Share, History and Settings float at the trailing edge. Share appears for a page with a URL. The outer surround is transparent over content, without a reserved row. Hidden when scrolling, editing the address or viewing fullscreen media.",
-      "html": "<nav class=\"ds-top\" aria-label=\"Browser utilities\"><button>Page actions</button><span></span><button>Share</button><button>History</button><button>Settings</button></nav>",
-      "css": ".ds-top{display:flex;gap:8px;color:CanvasText}.ds-top span{flex:1}.ds-top button{min-width:48px;min-height:48px;border:0;border-radius:99px;background:ButtonFace;color:ButtonText;font:14px system-ui}.ds-top button:hover{opacity:.8}.ds-top button:active{opacity:.6}.ds-top button:focus-visible{outline:2px solid Highlight;outline-offset:2px}"
+      "description": "Documentation-only content approximation of the native bottom-right Menu. Share appears only for a URL; media and download actions appear when available. Forward and Reload can be disabled. Native menu owns presentation, scrolling and dismissal.",
+      "html": "<div class=\"ds-menu\" role=\"group\" aria-label=\"Browser menu\"><button>Share page</button><button>Bookmarks</button><button>History</button><hr><button>New tab</button><button disabled>Forward</button><button>Reload</button><hr><button>Site protection</button><button>Profiles, Personal</button><button>Settings</button></div>",
+      "css": ".ds-menu{display:grid;max-width:280px;padding:8px;border-radius:24px;background:Canvas;color:CanvasText;font:16px system-ui}.ds-menu button{min-height:44px;text-align:left;padding:8px 16px;border:0;background:transparent;color:inherit;font:inherit}.ds-menu hr{width:90%;border:0;border-top:1px solid GrayText}.ds-menu button:hover:not(:disabled){background:ButtonFace;border-radius:12px}.ds-menu button:active:not(:disabled){opacity:.7}.ds-menu button:focus-visible{outline:2px solid Highlight}.ds-menu button:disabled{opacity:.4}"
     },
     {
       "name": "Bookmark name suggestion",
@@ -156,6 +161,13 @@
       "description": "Documentation-only HTML approximation of the native inline suggestion. SwiftUI uses subheadline text, a 10pt vertical stack, 4pt vertical padding and borderless actions with a 44pt minimum height. Generating shows progress; unavailable keeps the name unchanged and offers Dismiss. Use name requires explicit acceptance; in the rename form it fills the draft until Save. Example content is not production user data. Validate semantic colors and Dynamic Type on iOS.",
       "html": "<div class=\"ds-suggestion\"><span>Suggested name: Example bookmark</span><button>Use name</button><button>Keep original</button></div>",
       "css": ".ds-suggestion{display:flex;flex-direction:column;gap:10px;padding:4px 0;color:CanvasText;font:15px system-ui}.ds-suggestion button{min-height:44px;text-align:left;border:0;padding:0;background:transparent;color:LinkText;font:inherit}.ds-suggestion button:hover{opacity:.8}.ds-suggestion button:active{opacity:.6}.ds-suggestion button:focus-visible{outline:2px solid Highlight;outline-offset:2px}"
+    },
+    {
+      "name": "Compact site pill",
+      "kind": "button",
+      "description": "Documentation-only native restore control approximation. Caption2 medium capped at xxxLarge, 10pt horizontal and 3pt vertical padding, maximum width 112pt (180pt at accessibility sizes), minimum 44pt target extending upward. Bottom lowering is min(12, max(0, safeAreaBottom - 20)). Tap restores controls without focusing the address. Native dark tint is 65% black; Reduce Transparency uses opaque semantic background.",
+      "html": "<button class=\"ds-compact\" aria-label=\"Show browser controls for example.org\"><span>example.org</span></button>",
+      "css": ".ds-compact{display:flex;align-items:flex-end;min-height:44px;border:0;background:transparent;padding:0;color:CanvasText;font:500 11px system-ui}.ds-compact span{width:92px;padding:3px 10px;border-radius:99px;background:ButtonFace;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.ds-compact:hover span{filter:brightness(.96)}.ds-compact:active span{opacity:.7}.ds-compact:focus-visible{outline:2px solid Highlight;outline-offset:3px}"
     }
   ],
   "narrative": {

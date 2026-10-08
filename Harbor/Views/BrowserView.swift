@@ -17,7 +17,7 @@ struct BrowserView: View {
     @State private var sheet: BrowserSheet?
     @State private var share: ShareItem?
     @State private var chromeCollapsed = false
-    @State private var chromeHeight: CGFloat = 117
+    @State private var chromeHeight: CGFloat = 56
     @Namespace private var chromeNamespace
     @FocusState private var editingAddress: Bool
     @Environment(\.scenePhase) private var scenePhase
@@ -67,19 +67,14 @@ struct BrowserView: View {
                 ProgressView("Preparing browser…")
             }
         }
-        .overlay(alignment: .top) {
-            if browser.activeSession?.fullscreen != true && !chromeCollapsed && !editingAddress {
-                topChrome.transition(.opacity)
-            }
-        }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if browser.activeSession?.fullscreen != true {
-                chrome.onGeometryChange(for: CGFloat.self) { $0.size.height } action: { chromeHeight = $0 }
+                chrome(bottomInset: geometry.safeAreaInsets.bottom).onGeometryChange(for: CGFloat.self) { $0.size.height } action: { chromeHeight = $0 }
             }
         }
         .onChange(of: browser.selectedID) { _, _ in editingAddress = false; chromeCollapsed = false; syncAddress() }
         .onChange(of: browser.selectedTab.url) { _, _ in if !editingAddress { syncAddress() } }
-        .onChange(of: editingAddress) { _, value in if value { chromeCollapsed = false; syncAddress() } }
+        .onChange(of: editingAddress) { _, value in if value { chromeCollapsed = false }; syncAddress() }
         .onChange(of: scenePhase) { _, phase in
             if phase != .active { browser.saveNow() }
             else { Task { await browser.refreshMedia() } }
@@ -119,66 +114,19 @@ struct BrowserView: View {
         } message: { Text(browser.errorMessage ?? browser.downloads.errorMessage ?? profiles.errorMessage ?? "") }
     }
 
-    private var topChrome: some View {
+    private func chrome(bottomInset: CGFloat) -> some View {
         GlassEffectContainer(spacing: 8) {
-            HStack {
-                if browser.activeSession?.mediaState == .playing || browser.downloads.completed != nil || browser.downloads.activeCount > 0 {
-                    Menu {
-                        if browser.activeSession?.mediaState == .playing {
-                            Button("Pause media", systemImage: "pause.fill") { browser.activeSession?.webView.pauseAllMediaPlayback(completionHandler: nil) }
-                        }
-                        if let download = browser.downloads.completed {
-                            Button("Save or share download", systemImage: "arrow.down.doc") { share = download }
-                        }
-                        if browser.downloads.activeCount > 0 { Text("Downloading \(browser.downloads.activeCount) file(s)…") }
-                    } label: {
-                        Image(systemName: "ellipsis")
-                            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-                            .frame(width: 48, height: 48)
-                    }
-                    .harborGlass()
-                    .accessibilityLabel("Page actions")
-                    .accessibilityIdentifier("pageActionsButton")
-                }
-                Spacer(minLength: 8)
-                HStack(spacing: 0) {
-                    if let url = browser.selectedTab.url {
-                        Button { share = ShareItem(url: url) } label: {
-                            Image(systemName: "square.and.arrow.up").frame(width: 48, height: 48)
-                        }
-                        .accessibilityLabel("Share page")
-                        .accessibilityIdentifier("sharePageButton")
-                    }
-                    Button { sheet = .history } label: {
-                        Image(systemName: "clock").frame(width: 48, height: 48)
-                    }
-                    .accessibilityLabel("History")
-                    .accessibilityIdentifier("historyButton")
-                    Button { sheet = .settings } label: {
-                        Image(systemName: "gearshape").frame(width: 48, height: 48)
-                    }
-                    .accessibilityLabel("Settings")
-                    .accessibilityIdentifier("settingsButton")
-                }
-                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-                .harborGlass()
-            }
-            .padding(.horizontal, typeSize.isAccessibilitySize ? 8 : 16)
-            .padding(.vertical, 4)
-        }
-    }
-
-    private var chrome: some View {
-        GlassEffectContainer(spacing: 8) {
-            VStack(spacing: 8) {
+            Group {
                 if chromeCollapsed && !editingAddress {
                     Button { setChromeCollapsed(false) } label: {
-                        Label(compactAddress, systemImage: profiles.currentProfile?.symbol ?? "person.crop.circle")
-                            .font(.subheadline.weight(.medium))
+                        Text(compactAddress)
+                            .font(.caption2.weight(.medium))
+                            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                             .lineLimit(1).truncationMode(.middle)
-                            .padding(.horizontal, 18).padding(.vertical, 8)
+                            .padding(.horizontal, 10).padding(.vertical, 3)
+                            .frame(maxWidth: typeSize.isAccessibilitySize ? 180 : 112)
                             .modifier(BrowserAddressGlass(namespace: chromeNamespace, reduceMotion: reduceMotion))
-                            .frame(minHeight: 44)
+                            .frame(minHeight: 44, alignment: .bottom)
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
@@ -186,79 +134,147 @@ struct BrowserView: View {
                     .accessibilityIdentifier("expandBrowserControls")
                     .frame(maxWidth: .infinity)
                     .transition(.opacity)
-
                 } else {
-                    HStack(spacing: 0) {
-                        Button { editingAddress = false; sheet = .privacy } label: {
-                            Image(systemName: "shield.lefthalf.filled").dynamicTypeSize(...DynamicTypeSize.xxxLarge).frame(width: 44, height: 48)
-                        }.accessibilityLabel(browser.protectionStatus)
-                        Button { editingAddress = false; sheet = .profiles } label: {
-                            Image(systemName: profiles.currentProfile?.symbol ?? "person.crop.circle")
-                                .dynamicTypeSize(...DynamicTypeSize.xxxLarge).frame(width: 44, height: 48)
-                        }.accessibilityLabel("Profiles, \(browser.profileName)")
-                            .accessibilityIdentifier("profilesButton")
-                        TextField("Search or enter address", text: $address,
-                                  prompt: Text(typeSize.isAccessibilitySize ? "Address" : "Search or enter address")
-                                    .foregroundStyle(Color.primary.opacity(0.72)))
-                            .textInputAutocapitalization(.never).autocorrectionDisabled()
-                            .keyboardType(.webSearch).submitLabel(.go)
-                            .focused($editingAddress).onSubmit(submit)
-                            .accessibilityIdentifier("addressField")
-                            .frame(minHeight: 48)
-                        if editingAddress {
-                            Button(action: submit) { Image(systemName: "arrow.right.circle.fill").dynamicTypeSize(...DynamicTypeSize.xxxLarge).frame(width: 44, height: 48) }
-                                .accessibilityLabel("Go")
-                        } else if browser.selectedTab.url != nil {
-                            Button {
-                                if browser.activeSession?.isLoading == true { browser.activeSession?.webView.stopLoading() }
-                                else { browser.reload() }
-                            } label: {
-                                Image(systemName: browser.activeSession?.isLoading == true ? "xmark" : "arrow.clockwise").dynamicTypeSize(...DynamicTypeSize.xxxLarge).frame(width: 44, height: 48)
-                            }.accessibilityLabel(browser.activeSession?.isLoading == true ? "Stop loading" : "Reload")
-                        }
-
-                    }.padding(.horizontal, 4)
-                        .modifier(BrowserAddressGlass(namespace: chromeNamespace, reduceMotion: reduceMotion))
-                        .transition(.opacity)
-                        .overlay(alignment: .bottom) {
-                            if browser.activeSession?.isLoading == true {
-                                ProgressView(value: browser.activeSession?.progress ?? 0)
-                                    .tint(.harborBlue).padding(.horizontal, 24)
-                                    .accessibilityLabel("Page loading")
+                    HStack(spacing: 6) {
+                        if !editingAddress {
+                            Button { browser.activeSession?.webView.goBack() } label: {
+                                chromeIcon("chevron.left")
                             }
+                            .disabled(browser.activeSession?.canGoBack != true)
+                            .accessibilityLabel("Back")
+                            .harborGlass()
+                            .transition(controlTransition)
                         }
-                    if !editingAddress {
-                        HStack(spacing: 0) {
-                            action("Back", symbol: "chevron.left") { browser.activeSession?.webView.goBack() }
-                                .disabled(browser.activeSession?.canGoBack != true)
-                            action("Forward", symbol: "chevron.right") { browser.activeSession?.webView.goForward() }
-                                .disabled(browser.activeSession?.canGoForward != true)
-                            action("New tab", symbol: "plus") { browser.newTab(); editingAddress = true }
+                        addressControl
+                        if !editingAddress {
                             Button { browser.activeSession?.captureSnapshot(); sheet = .tabs } label: {
                                 ZStack {
                                     RoundedRectangle(cornerRadius: 5).strokeBorder(lineWidth: 1.8)
                                     Text("\(browser.archive.tabs.count)")
-                                        .font(.system(size: 12, weight: .bold, design: .rounded))
-                                        .monospacedDigit().lineLimit(1).minimumScaleFactor(0.5)
+                                        .font(.caption2.bold()).monospacedDigit()
+                                        .lineLimit(1).minimumScaleFactor(0.5)
                                         .padding(.horizontal, 3)
-                                }.frame(width: 27, height: 27)
-                                    .frame(maxWidth: .infinity, minHeight: 48)
-                            }.accessibilityLabel("Tabs, \(browser.archive.tabs.count) open").accessibilityIdentifier("tabsButton")
-                            action("Bookmarks", symbol: "book") { sheet = .bookmarks }
-                                .accessibilityIdentifier("bookmarksButton")
-                        }.harborGlass()
-                            .transition(reduceMotion ? .opacity :
-                                .offset(y: 12).combined(with: .opacity))
+                                }.frame(width: 24, height: 24)
+                                    .frame(width: 44, height: 48)
+                            }
+                            .accessibilityLabel("Tabs, \(browser.archive.tabs.count) open")
+                            .accessibilityIdentifier("tabsButton")
+                            .harborGlass()
+                            .transition(controlTransition)
+                            browserMenu
+                                .transition(controlTransition)
+                        }
                     }
                 }
             }
-            .padding(.horizontal, typeSize.isAccessibilitySize ? 8 : 16).padding(.top, 8).padding(.bottom, 5)
+            .padding(.horizontal, typeSize.isAccessibilitySize ? 8 : 12)
+            .padding(.top, chromeCollapsed ? 0 : 4)
+            .padding(.bottom, chromeCollapsed ? -min(12, max(0, bottomInset - 20)) : 4)
         }
+        .animation(reduceMotion ? .easeOut(duration: 0.12) : .spring(response: 0.38, dampingFraction: 0.86), value: editingAddress)
     }
+
+    private var controlTransition: AnyTransition {
+        reduceMotion ? .opacity : .scale(scale: 0.7, anchor: .bottom).combined(with: .opacity)
+    }
+
+    private func chromeIcon(_ symbol: String) -> some View {
+        Image(systemName: symbol)
+            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+            .frame(width: 44, height: 48)
+    }
+
+    private var addressControl: some View {
+        HStack(spacing: 0) {
+            if !typeSize.isAccessibilitySize && !editingAddress {
+                Button { sheet = .privacy } label: { chromeIcon("shield.lefthalf.filled") }
+                    .accessibilityLabel(browser.protectionStatus)
+            }
+            TextField("Address", text: $address,
+                      prompt: Text("Search or address").foregroundStyle(Color.primary.opacity(0.72)))
+                .font(.subheadline)
+                .textInputAutocapitalization(.never).autocorrectionDisabled()
+                .keyboardType(.webSearch).submitLabel(.go)
+                .focused($editingAddress).onSubmit(submit)
+                .accessibilityLabel("Search or enter address")
+                .accessibilityIdentifier("addressField")
+                .frame(minWidth: 30, minHeight: 48)
+                .padding(.leading, editingAddress || typeSize.isAccessibilitySize ? 14 : 0)
+            if editingAddress {
+                Button(action: submit) { chromeIcon("arrow.right.circle.fill") }
+                    .accessibilityLabel("Go")
+            } else if browser.selectedTab.url != nil && !typeSize.isAccessibilitySize {
+                Button(action: reloadOrStop) {
+                    chromeIcon(browser.activeSession?.isLoading == true ? "xmark" : "arrow.clockwise")
+                }.accessibilityLabel(browser.activeSession?.isLoading == true ? "Stop loading" : "Reload")
+            }
+        }
+        .modifier(BrowserAddressGlass(namespace: chromeNamespace, reduceMotion: reduceMotion))
+        .overlay(alignment: .bottom) {
+            if browser.activeSession?.isLoading == true {
+                ProgressView(value: browser.activeSession?.progress ?? 0)
+                    .tint(.harborBlue).padding(.horizontal, 20)
+                    .accessibilityLabel("Page loading")
+            }
+        }
+        .transition(.opacity)
+    }
+
+    private var browserMenu: some View {
+        Menu {
+            Section {
+                if let url = browser.selectedTab.url {
+                    Button("Share page", systemImage: "square.and.arrow.up") { share = ShareItem(url: url) }
+                        .accessibilityIdentifier("sharePageButton")
+                }
+                Button("Bookmarks", systemImage: "book") { sheet = .bookmarks }
+                    .accessibilityIdentifier("bookmarksButton")
+                Button("History", systemImage: "clock") { sheet = .history }
+                    .accessibilityIdentifier("historyButton")
+            }
+            Section {
+                Button("New tab", systemImage: "plus") { browser.newTab(); editingAddress = true }
+                Button("Forward", systemImage: "chevron.right") { browser.activeSession?.webView.goForward() }
+                    .disabled(browser.activeSession?.canGoForward != true)
+                Button(browser.activeSession?.isLoading == true ? "Stop loading" : "Reload",
+                       systemImage: browser.activeSession?.isLoading == true ? "xmark" : "arrow.clockwise",
+                       action: reloadOrStop)
+                    .disabled(browser.selectedTab.url == nil)
+            }
+            Section {
+                Button("Site protection", systemImage: "shield.lefthalf.filled") { sheet = .privacy }
+                Button("Profiles, \(browser.profileName)", systemImage: profiles.currentProfile?.symbol ?? "person.crop.circle") { sheet = .profiles }
+                    .accessibilityIdentifier("profilesButton")
+                Button("Settings", systemImage: "gearshape") { sheet = .settings }
+                    .accessibilityIdentifier("settingsButton")
+            }
+            if browser.activeSession?.mediaState == .playing || browser.downloads.completed != nil || browser.downloads.activeCount > 0 {
+                Section {
+                    if browser.activeSession?.mediaState == .playing {
+                        Button("Pause media", systemImage: "pause.fill") { browser.activeSession?.webView.pauseAllMediaPlayback(completionHandler: nil) }
+                    }
+                    if let download = browser.downloads.completed {
+                        Button("Save or share download", systemImage: "arrow.down.doc") { share = download }
+                    }
+                    if browser.downloads.activeCount > 0 { Text("Downloading \(browser.downloads.activeCount) file(s)…") }
+                }
+            }
+        } label: { chromeIcon("ellipsis") }
+            .menuOrder(.fixed)
+            .harborGlass()
+            .accessibilityLabel("Browser menu")
+            .accessibilityIdentifier("browserMenuButton")
+    }
+
+    private func reloadOrStop() {
+        if browser.activeSession?.isLoading == true { browser.activeSession?.webView.stopLoading() }
+        else { browser.reload() }
+    }
+
     private func setChromeCollapsed(_ collapsed: Bool) {
         guard chromeCollapsed != collapsed else { return }
         let animation: Animation = reduceMotion ? .easeOut(duration: 0.12) :
-            .smooth(duration: collapsed ? 0.24 : 0.32, extraBounce: 0)
+            .spring(response: collapsed ? 0.34 : 0.42, dampingFraction: 0.86)
         withAnimation(animation) { chromeCollapsed = collapsed }
     }
 
@@ -267,22 +283,32 @@ struct BrowserView: View {
         return url.host ?? (url.isFileURL ? "Local page" : url.absoluteString)
     }
 
-    private func action(_ name: String, symbol: String, perform: @escaping () -> Void) -> some View {
-        Button(action: perform) { Image(systemName: symbol).dynamicTypeSize(...DynamicTypeSize.xxxLarge).frame(maxWidth: .infinity, minHeight: 48) }.accessibilityLabel(name)
-    }
-    private func submit() { browser.navigate(address); editingAddress = false }
-    private func syncAddress() { address = browser.selectedTab.url?.absoluteString ?? "" }
+    private func submit() { browser.navigate(address); editingAddress = false; syncAddress() }
+    private func syncAddress() { address = editingAddress ? (browser.selectedTab.url?.absoluteString ?? "") : (browser.selectedTab.url == nil ? "" : compactAddress) }
 }
 
 private struct BrowserAddressGlass: ViewModifier {
     let namespace: Namespace.ID
     let reduceMotion: Bool
 
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    @ViewBuilder private func glass(_ content: Content) -> some View {
+        if reduceTransparency {
+            content.background(Color(uiColor: .secondarySystemBackground), in: Capsule())
+        } else {
+            content.glassEffect(
+                .regular.tint(colorScheme == .dark ? Color.black.opacity(0.65) : Color.clear),
+                in: .capsule)
+        }
+    }
+
     @ViewBuilder func body(content: Content) -> some View {
         if reduceMotion {
-            content.harborGlass()
+            glass(content)
         } else {
-            content.harborGlass().glassEffectID("browserAddress", in: namespace)
+            glass(content).glassEffectID("browserAddress", in: namespace)
         }
     }
 }
