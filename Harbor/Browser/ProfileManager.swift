@@ -235,7 +235,11 @@ final class ProfileManager {
         return commit(candidate)
     }
 
-    @discardableResult func rename(_ id: UUID, name: String, symbol: String) -> Bool {
+    @discardableResult func rename(_ id: UUID, name: String, symbol: String) async -> Bool {
+        guard let profile = profiles.first(where: { $0.id == id }) else { return false }
+        if profile.isProtected && unlockedProfileID != id {
+            guard await verifyOwner(reason: "Edit \(profile.name) in Harbor.") else { return false }
+        }
         guard var candidate = registry, let index = candidate.profiles.firstIndex(where: { $0.id == id }) else { return false }
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { return false }

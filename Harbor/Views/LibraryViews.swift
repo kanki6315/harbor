@@ -19,9 +19,9 @@ struct HistoryView: View {
         browser.archive.history.filter {
             query.isEmpty || $0.title.localizedCaseInsensitiveContains(query) ||
                 $0.url.absoluteString.localizedCaseInsensitiveContains(query)
-        }.sorted { $0.visitedAt > $1.visitedAt }
+        }
     }
-    private var days: [(date: Date, entries: [HistoryEntry])] {
+    private func days(for entries: [HistoryEntry]) -> [(date: Date, entries: [HistoryEntry])] {
         Dictionary(grouping: entries) { Calendar.current.startOfDay(for: $0.visitedAt) }
             .map { (date: $0.key, entries: $0.value) }
             .sorted { $0.date > $1.date }
@@ -29,6 +29,8 @@ struct HistoryView: View {
     private var editing: Bool { editMode.isEditing }
 
     var body: some View {
+        let entries = entries
+        let days = days(for: entries)
         NavigationStack {
             List(selection: $selection) {
                 ForEach(days, id: \.date) { day in

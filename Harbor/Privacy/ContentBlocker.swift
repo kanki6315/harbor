@@ -4,6 +4,7 @@
 
 import Foundation
 import WebKit
+import CryptoKit
 
 @MainActor @Observable
 final class ContentBlocker {
@@ -11,16 +12,34 @@ final class ContentBlocker {
     private(set) var failure: String?
     private(set) var ready = false
 
+    private static var sharedRules: Task<WKContentRuleList, Error>?
+
     func prepare() async {
         defer { ready = true }
         do {
-            guard let url = Bundle.main.url(forResource: "tracker-rules", withExtension: "json") else {
-                throw CocoaError(.fileNoSuchFile)
+            if Self.sharedRules == nil {
+                Self.sharedRules = Task<WKContentRuleList, Error> {
+                    let (identifier, rules) = try await Task.detached(priority: .utility) {
+                        guard let url = Bundle.main.url(forResource: "tracker-rules", withExtension: "json") else {
+                            throw CocoaError(.fileNoSuchFile)
+                        }
+                        let data = try Data(contentsOf: url)
+                        let digest = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+                        return ("Harbor.trackers." + digest, String(decoding: data, as: UTF8.self))
+                    }.value
+                    let store = WKContentRuleListStore.default()!
+                    if let cached = try? await store.contentRuleList(forIdentifier: identifier) { return cached }
+                    guard let compiled = try await store.compileContentRuleList(forIdentifier: identifier, encodedContentRuleList: rules) else {
+                        throw CocoaError(.coderReadCorrupt)
+                    }
+                    return compiled
+                }
             }
-            let rules = try String(contentsOf: url, encoding: .utf8)
-            ruleList = try await WKContentRuleListStore.default().compileContentRuleList(
-                forIdentifier: "Harbor.trackers.v1", encodedContentRuleList: rules)
-        } catch { failure = "Tracker rules could not load. Browsing remains available. \(error.localizedDescription)" }
+            ruleList = try await Self.sharedRules!.value
+        } catch {
+            Self.sharedRules = nil
+            failure = "Tracker rules could not load. Browsing remains available. \(error.localizedDescription)"
+        }
     }
 
     func apply(to webView: WKWebView, url: URL?, settings: BrowserSettings) {

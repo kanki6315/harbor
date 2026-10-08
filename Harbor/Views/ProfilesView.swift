@@ -168,7 +168,7 @@ private struct ProfileEditor: View {
                             Task {
                                 let saved: Bool
                                 if let profile {
-                                    saved = profiles.rename(profile.id, name: name, symbol: symbol)
+                                    saved = await profiles.rename(profile.id, name: name, symbol: symbol)
                                 } else {
                                     saved = await profiles.create(name: name, symbol: symbol,
                                                                   requiresAuthentication: requiresAuthentication)

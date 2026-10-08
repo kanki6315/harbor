@@ -7,6 +7,51 @@ import WebKit
 @testable import Harbor
 
 @MainActor final class WebKitTests: XCTestCase {
+    func testTrackerRulesAreSharedAcrossProfiles() async {
+        let first = ContentBlocker()
+        let second = ContentBlocker()
+        await first.prepare()
+        await second.prepare()
+        XCTAssertNotNil(first.ruleList)
+        XCTAssertTrue(first.ruleList === second.ruleList)
+    }
+
+    func testAutosaveAndExplicitFlushKeepNewestState() async throws {
+        let folder = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let store = BrowserStore(fileURL: folder.appending(path: "state.json"))
+        let browser = BrowserModel(store: store)
+        defer { browser.deactivate() }
+        browser.updateTab(browser.selectedID, url: URL(string: "https://example.com/old")!, title: "Old")
+        try await Task.sleep(for: .milliseconds(300))
+        browser.updateTab(browser.selectedID, url: URL(string: "https://example.com/new")!, title: "New")
+        XCTAssertTrue(browser.saveNow())
+        try await Task.sleep(for: .milliseconds(300))
+        XCTAssertEqual(try store.load().tabs.first?.title, "New")
+        browser.updateTab(browser.selectedID, url: URL(string: "https://example.com/latest")!, title: "Latest")
+        try await Task.sleep(for: .milliseconds(500))
+        browser.deactivate()
+        XCTAssertEqual(try store.load().tabs.first?.title, "Latest")
+    }
+
+    func testPrivacyCoverIsAboveSheetsAndRemovedWhenDisabled() throws {
+        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+        let window = UIWindow(windowScene: scene)
+        window.rootViewController = UIViewController()
+        window.isHidden = false
+        defer { window.isHidden = true }
+        let host = ProfilePrivacyCover.HostView()
+        window.rootViewController!.view.addSubview(host)
+        host.enabled = true
+        host.refresh(inactive: true)
+        let cover = try XCTUnwrap(scene.windows.first { $0.accessibilityIdentifier == "profilePrivacyCover" && !$0.isHidden })
+        XCTAssertGreaterThan(cover.windowLevel, window.windowLevel)
+        XCTAssertNotNil(cover.rootViewController?.view.backgroundColor)
+        host.enabled = false
+        host.refresh(inactive: true)
+        XCTAssertTrue(cover.isHidden)
+    }
+
     func testRulesCompileAndConfigurationIsPersistent() async throws {
         let blocker = ContentBlocker()
         await blocker.prepare()
@@ -150,5 +195,86 @@ import WebKit
         let cookies = await second.configuration.websiteDataStore.httpCookieStore.allCookies()
         XCTAssertTrue(cookies.contains { $0.name == "harbor-test" && $0.value == "persistent" })
         await second.configuration.websiteDataStore.httpCookieStore.deleteCookie(cookie)
+    }
+}
+
+extension WebKitTests {
+    func testDownloadsRequireMainFrameAndOtherNavigationsAreNotRewritten() {
+        for main in [false, true] {
+            XCTAssertEqual(TabSession.downloadPolicy(isMainFrame: main), main ? .download : .cancel)
+            XCTAssertEqual(TabSession.responsePolicy(isMainFrame: main, canShowMIMEType: false, disposition: ""),
+                           main ? .download : .cancel)
+            XCTAssertEqual(TabSession.responsePolicy(isMainFrame: main, canShowMIMEType: true,
+                                                      disposition: "attachment; filename=test.txt"),
+                           main ? .download : .cancel)
+            XCTAssertEqual(TabSession.responsePolicy(isMainFrame: main, canShowMIMEType: true, disposition: ""), .allow)
+            for type in [WKNavigationType.other, .backForward, .reload, .formSubmitted, .formResubmitted, .linkActivated] {
+                for method in ["GET", "POST"] {
+                    XCTAssertEqual(TabSession.canRewriteTrackingParameters(method: method, type: type, isMainFrame: main),
+                                   main && type == .linkActivated && method == "GET")
+                }
+            }
+        }
+    }
+
+    func testClearDataPreservesUnreadableArchives() async throws {
+        for corruptedFile in ["preferences", "session", "legacy"] {
+            let folder = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+            defer { try? FileManager.default.removeItem(at: folder) }
+            let store = BrowserStore(fileURL: folder.appending(path: "browser.json"))
+            var archive = BrowserArchive()
+            archive.bookmarks = [Bookmark(url: URL(string: "https://example.com")!, title: "Keep me")]
+            archive.settings.siteExceptions.insert("example.com")
+            try store.save(archive)
+            let corruptURL = corruptedFile == "preferences" ? store.durableURL :
+                (corruptedFile == "session" ? store.sessionURL : store.fileURL)
+            try Data("unreadable archive".utf8).write(to: corruptURL)
+            let preferences = try Data(contentsOf: store.durableURL)
+            let corrupt = try Data(contentsOf: corruptURL)
+            let browser = BrowserModel(store: store)
+            defer { browser.deactivate() }
+            XCTAssertFalse(browser.persistenceAvailable)
+            await browser.clearWebsiteData()
+            XCTAssertFalse(browser.persistenceAvailable)
+            XCTAssertFalse(browser.saveNow())
+            XCTAssertEqual(try Data(contentsOf: store.durableURL), preferences)
+            XCTAssertEqual(try Data(contentsOf: corruptURL), corrupt)
+        }
+    }
+
+    func testDialogsAreCancelledWhenBusyBackgroundedOrDisposed() throws {
+        let folder = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let browser = BrowserModel(store: BrowserStore(fileURL: folder.appending(path: "state.json")))
+        defer { browser.deactivate() }
+        let session = TabSession(id: browser.selectedID, browser: browser)
+        defer { session.dispose() }
+        XCTAssertTrue(browser.canPresentDialog(from: session.id))
+        for sheet in [BrowserSheet.tabs, .settings, .history, .share(ShareItem(url: URL(string: "https://example.com")!))] {
+            browser.sheet = sheet
+            XCTAssertFalse(browser.canPresentDialog(from: session.id))
+            XCTAssertNil(browser.dialog)
+        }
+        browser.sheet = nil
+        var replies = 0
+        let dialog = WebDialog(title: "example.com", message: "Confirm", kind: .confirm) { value in
+            XCTAssertNil(value); replies += 1
+        }
+        browser.dialog = dialog
+        XCTAssertFalse(browser.canPresentDialog(from: session.id))
+        browser.newTab()
+        XCTAssertNil(browser.dialog)
+        XCTAssertEqual(replies, 1)
+        dialog.finish(nil)
+        XCTAssertEqual(replies, 1)
+        XCTAssertFalse(browser.canPresentDialog(from: session.id))
+        browser.selectTab(session.id)
+        browser.dialog = WebDialog(title: "example.com", message: "Alert", kind: .alert) { _ in replies += 1 }
+        session.dispose()
+        XCTAssertNil(browser.dialog)
+        XCTAssertEqual(replies, 2)
+        browser.dialog = WebDialog(title: "example.com", message: "Dismiss", kind: .alert) { _ in replies += 1 }
+        browser.sheet = nil
+        XCTAssertEqual(replies, 3)
     }
 }

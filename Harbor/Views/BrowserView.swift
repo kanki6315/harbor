@@ -5,17 +5,10 @@
 import SwiftUI
 import WebKit
 
-private enum BrowserSheet: String, Identifiable {
-    case tabs, history, bookmarks, settings, privacy, profiles
-    var id: String { rawValue }
-}
-
 struct BrowserView: View {
     @Bindable var browser: BrowserModel
     @Bindable var profiles: ProfileManager
     @State private var address = ""
-    @State private var sheet: BrowserSheet?
-    @State private var share: ShareItem?
     @State private var chromeCollapsed = false
     @State private var chromeHeight: CGFloat = 56
     @Namespace private var chromeNamespace
@@ -54,7 +47,7 @@ struct BrowserView: View {
                 }
             }
             if browser.selectedTab.url == nil {
-                StartPage(browser: browser, focusAddress: { editingAddress = true }, showPrivacy: { sheet = .privacy })
+                StartPage(browser: browser, focusAddress: { editingAddress = true }, showPrivacy: { browser.sheet = .privacy })
             } else if let error = browser.activeSession?.loadError {
                 ContentUnavailableView {
                     Label("This page couldn’t load", systemImage: "wifi.exclamationmark")
@@ -84,7 +77,7 @@ struct BrowserView: View {
             else { Task { await browser.refreshMedia() } }
         }
         .onAppear { syncAddress() }
-        .sheet(item: $sheet) { destination in
+        .sheet(item: $browser.sheet) { destination in
             switch destination {
             case .tabs: TabSwitcherView(browser: browser)
             case .history: HistoryView(browser: browser)
@@ -92,15 +85,13 @@ struct BrowserView: View {
             case .settings: SettingsView(browser: browser, profiles: profiles)
             case .profiles: ProfilesView(profiles: profiles)
             case .privacy: PrivacyView(browser: browser)
+            case .share(let item): ShareSheet(url: item.url)
+            case .webDialog(let dialog): WebDialogView(dialog: dialog)
             }
-        }
-        .sheet(item: $share) { item in ShareSheet(url: item.url) }
-        .sheet(item: Binding(get: { browser.dialog }, set: { browser.dialog = $0 })) { dialog in
-            WebDialogView(dialog: dialog)
         }
         .onChange(of: browser.downloads.completed?.id) { _, _ in
             // Downloads are offered in the menu if a browser sheet is already open.
-            if sheet == nil { share = browser.downloads.completed }
+            if browser.sheet == nil, let item = browser.downloads.completed { browser.sheet = .share(item) }
         }
         .alert("Open another app?", isPresented: Binding(get: { browser.externalURL != nil }, set: { if !$0 { browser.externalURL = nil } })) {
             Button("Cancel", role: .cancel) { browser.externalURL = nil }
@@ -151,7 +142,7 @@ struct BrowserView: View {
                         }
                         addressControl
                         if !editingAddress {
-                            Button { browser.activeSession?.captureSnapshot(); sheet = .tabs } label: {
+                            Button { browser.activeSession?.captureSnapshot(); browser.sheet = .tabs } label: {
                                 ZStack {
                                     RoundedRectangle(cornerRadius: 5).strokeBorder(lineWidth: 1.8)
                                     Text("\(browser.archive.tabs.count)")
@@ -191,7 +182,7 @@ struct BrowserView: View {
     private var addressControl: some View {
         HStack(spacing: 0) {
             if !typeSize.isAccessibilitySize && !editingAddress {
-                Button { sheet = .privacy } label: { chromeIcon("shield.lefthalf.filled") }
+                Button { browser.sheet = .privacy } label: { chromeIcon("shield.lefthalf.filled") }
                     .accessibilityLabel(browser.protectionStatus)
             }
             TextField("Address", text: $address,
@@ -228,12 +219,12 @@ struct BrowserView: View {
         Menu {
             Section {
                 if let url = browser.selectedTab.url {
-                    Button("Share page", systemImage: "square.and.arrow.up") { share = ShareItem(url: url) }
+                    Button("Share page", systemImage: "square.and.arrow.up") { browser.sheet = .share(ShareItem(url: url)) }
                         .accessibilityIdentifier("sharePageButton")
                 }
-                Button("Bookmarks", systemImage: "book") { sheet = .bookmarks }
+                Button("Bookmarks", systemImage: "book") { browser.sheet = .bookmarks }
                     .accessibilityIdentifier("bookmarksButton")
-                Button("History", systemImage: "clock") { sheet = .history }
+                Button("History", systemImage: "clock") { browser.sheet = .history }
                     .accessibilityIdentifier("historyButton")
             }
             Section {
@@ -246,10 +237,10 @@ struct BrowserView: View {
                     .disabled(browser.selectedTab.url == nil)
             }
             Section {
-                Button("Site protection", systemImage: "shield.lefthalf.filled") { sheet = .privacy }
-                Button("Profiles, \(browser.profileName)", systemImage: profiles.currentProfile?.symbol ?? "person.crop.circle") { sheet = .profiles }
+                Button("Site protection", systemImage: "shield.lefthalf.filled") { browser.sheet = .privacy }
+                Button("Profiles, \(browser.profileName)", systemImage: profiles.currentProfile?.symbol ?? "person.crop.circle") { browser.sheet = .profiles }
                     .accessibilityIdentifier("profilesButton")
-                Button("Settings", systemImage: "gearshape") { sheet = .settings }
+                Button("Settings", systemImage: "gearshape") { browser.sheet = .settings }
                     .accessibilityIdentifier("settingsButton")
             }
             if browser.activeSession?.mediaState == .playing || browser.downloads.completed != nil || browser.downloads.activeCount > 0 {
@@ -258,7 +249,7 @@ struct BrowserView: View {
                         Button("Pause media", systemImage: "pause.fill") { browser.activeSession?.webView.pauseAllMediaPlayback(completionHandler: nil) }
                     }
                     if let download = browser.downloads.completed {
-                        Button("Save or share download", systemImage: "arrow.down.doc") { share = download }
+                        Button("Save or share download", systemImage: "arrow.down.doc") { browser.sheet = .share(download) }
                     }
                     if browser.downloads.activeCount > 0 { Text("Downloading \(browser.downloads.activeCount) file(s)…") }
                 }

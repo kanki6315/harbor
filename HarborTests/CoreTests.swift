@@ -13,6 +13,38 @@ final class CoreTests: XCTestCase {
         XCTAssertEqual(AddressResolver.resolve("a search & more", engine: .google)?.host, "www.google.com")
         XCTAssertNil(AddressResolver.resolve("  ", engine: .bing))
     }
+    func testDottedSearchTermsAndExplicitAddresses() {
+        for term in ["node.js", "3.14", "v1.2", "999.999.999.999"] {
+            XCTAssertEqual(AddressResolver.resolve(term, engine: .google), SearchEngine.google.searchURL(term))
+        }
+        for address in ["example.com/path", "example.dev", "localhost:8080", "192.168.1.1", "[::1]:8080", "例え.みんな"] {
+            XCTAssertEqual(AddressResolver.resolve(address, engine: .google), URL(string: "https://" + address))
+        }
+        XCTAssertEqual(AddressResolver.resolve("https://node.js", engine: .google), URL(string: "https://node.js"))
+    }
+
+    func testTransientTabURLsAreNotSavedOrRestored() throws {
+        let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = BrowserStore(fileURL: directory.appending(path: "browser.json"))
+        var archive = BrowserArchive()
+        archive.tabs = ["data:text/plain," + String(repeating: "x", count: 100_000),
+                        "blob:https://example.com/id", "about:blank", "https://example.com"].map {
+            TabRecord(url: URL(string: $0)!, title: "Live page")
+        }
+        archive.selectedTabID = archive.tabs[1].id
+        try store.save(archive)
+        XCTAssertNotNil(archive.tabs[0].url, "Saving must not replace live in-memory addresses")
+        XCTAssertLessThan(try Data(contentsOf: store.sessionURL).count, 3000)
+        let restored = try store.load()
+        XCTAssertTrue(restored.tabs.prefix(3).allSatisfy { $0.url == nil && $0.title == "New Tab" })
+        XCTAssertEqual(restored.tabs.last?.url, archive.tabs.last?.url)
+        XCTAssertEqual(restored.selectedTabID, archive.selectedTabID)
+        // Existing mixed archives also get sanitized during migration.
+        try JSONEncoder().encode(archive).write(to: store.fileURL)
+        XCTAssertTrue(try store.load().tabs.prefix(3).allSatisfy { $0.url == nil })
+    }
+
     func testCleanerPreservesEncodingAndSignedMedia() {
         let plain = URL(string: "https://example.com/?q=a%20b&utm_source=test&x=%2F#part")!
         XCTAssertEqual(TrackingParameterCleaner.clean(plain).absoluteString, "https://example.com/?q=a%20b&x=%2F#part")

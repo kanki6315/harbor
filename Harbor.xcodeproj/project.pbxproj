@@ -32,6 +32,7 @@
 		9CB7C083AC9180B532A03549 /* InterVariable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 972E653A7AA6FC8D8ACC2D7A /* InterVariable.ttf */; };
 		9D90C803E6DD9A9A2A9FA2EF /* WebKitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02DC065BCECE9277F46E29CA /* WebKitTests.swift */; };
 		A841BD0DA056BC35DC174995 /* BrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0928CBCE6B2B8CF9A1C8E101 /* BrowserView.swift */; };
+		B58E4BC93C3CC89EB7F1450C /* tlds-alpha-by-domain.txt in Resources */ = {isa = PBXBuildFile; fileRef = 54453BE16705C190D63B28F6 /* tlds-alpha-by-domain.txt */; };
 		B6D68FBA64C5330947E1DC3B /* CoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AADA16BCB66DBB857A8CFA9C /* CoreTests.swift */; };
 		C5F37BA449A84561F9583C31 /* HarborUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEB597BFC3B9E427A655C383 /* HarborUITests.swift */; };
 		D5983386CFE1F86C9DC51D9C /* HarborTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF415426D1F950B003AB2566 /* HarborTheme.swift */; };
@@ -71,6 +72,7 @@
 		38799E22E8C2BA260619954C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		45AA0FFDCD1A6FA52AB31421 /* media-fixture.mp4 */ = {isa = PBXFileReference; path = "media-fixture.mp4"; sourceTree = "<group>"; };
 		460B5BEE1267E94874C9C1D1 /* ASSET-PROVENANCE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "ASSET-PROVENANCE.md"; sourceTree = "<group>"; };
+		54453BE16705C190D63B28F6 /* tlds-alpha-by-domain.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "tlds-alpha-by-domain.txt"; sourceTree = "<group>"; };
 		5F28B32FF2AAAC119B3AE99C /* BrowserModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserModel.swift; sourceTree = "<group>"; };
 		5FDF236211F428FA2F29F1EB /* LibraryViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryViews.swift; sourceTree = "<group>"; };
 		65AF98241E93DEBF36C42323 /* BrowserModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserModels.swift; sourceTree = "<group>"; };
@@ -243,6 +245,7 @@
 				AFD32DACEA1436F9062A389A /* Inter-LICENSE.txt */,
 				972E653A7AA6FC8D8ACC2D7A /* InterVariable.ttf */,
 				45AA0FFDCD1A6FA52AB31421 /* media-fixture.mp4 */,
+				54453BE16705C190D63B28F6 /* tlds-alpha-by-domain.txt */,
 				76EDDF40AF0F4C9AAFE65857 /* tracker-rules.json */,
 			);
 			path = Resources;
@@ -361,6 +364,7 @@
 				9CB7C083AC9180B532A03549 /* InterVariable.ttf in Resources */,
 				27D61E0450E6E5112C3E9F4C /* browser-fixture.html in Resources */,
 				8CC8F1E36E6EB8A482C225C9 /* media-fixture.mp4 in Resources */,
+				B58E4BC93C3CC89EB7F1450C /* tlds-alpha-by-domain.txt in Resources */,
 				E7B3228F79201E1FB567453A /* tracker-rules.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -613,7 +617,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1.11;
+				MARKETING_VERSION = 0.1.12;
 				PRODUCT_BUNDLE_IDENTIFIER = com.arjunakankipati.harbor;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -675,7 +679,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1.11;
+				MARKETING_VERSION = 0.1.12;
 				PRODUCT_BUNDLE_IDENTIFIER = com.arjunakankipati.harbor;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
