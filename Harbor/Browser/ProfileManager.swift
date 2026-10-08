@@ -21,6 +21,9 @@ final class ProfileManager {
     private var authenticationGeneration = 0
     private var authenticationContext: LAContext?
     private(set) var isAuthenticating = false
+    // The privacy cover waits for SwiftUI to render the result of this activation.
+    private(set) var activationRevision: UInt = 0
+    var hasPrivateContent: Bool { currentProfile?.isProtected == true && !isLocked }
     private let authenticate: (@MainActor (String) async throws -> Bool)?
     var isLocked: Bool { currentProfile?.isProtected == true && unlockedProfileID != currentProfile?.id }
 
@@ -278,6 +281,7 @@ final class ProfileManager {
     }
 
     func becameActive(at date: Date = Date()) {
+        defer { activationRevision &+= 1 }
         // Check before displaying retained content; iOS may suspend background timers.
         lockIfExpired(at: date)
         lockBackgroundedAt = nil

@@ -27,7 +27,8 @@ struct HarborApp: App {
                                            description: Text(profiles.errorMessage ?? "Please reopen Harbor to try again."))
                 }
             }
-            .background(ProfilePrivacyCover(enabled: profiles.currentProfile?.isProtected == true))
+            .background(ProfilePrivacyCover(enabled: profiles.hasPrivateContent,
+                                            activationRevision: profiles.activationRevision))
             .onOpenURL { profiles.openIncomingURL($0) }
         }
         .onChange(of: scenePhase) { _, phase in
@@ -44,16 +45,20 @@ struct HarborApp: App {
 /// UIKit's scene notification arrives before the system takes its switcher snapshot.
 struct ProfilePrivacyCover: UIViewRepresentable {
     var enabled: Bool
+    var activationRevision: UInt
 
     func makeUIView(context: Context) -> HostView { HostView() }
     func updateUIView(_ view: HostView, context: Context) {
         view.enabled = enabled
+        view.activationRevision = activationRevision
         view.refresh()
     }
     static func dismantleUIView(_ view: HostView, coordinator: ()) { view.removeCover() }
 
     final class HostView: UIView {
         var enabled = false
+        var activationRevision: UInt = 0
+        private var coveredAtRevision: UInt?
         private var cover: UIWindow?
         private var observers: [NSObjectProtocol] = []
 
@@ -69,8 +74,9 @@ struct ProfilePrivacyCover: UIViewRepresentable {
                 NotificationCenter.default.addObserver(forName: UIScene.didActivateNotification, object: nil, queue: .main) { [weak self] note in
                     MainActor.assumeIsolated {
                         guard let self, let scene = note.object as? UIWindowScene, scene === self.window?.windowScene else { return }
-                        // Let the app apply its expired-lock policy before uncovering content.
-                        DispatchQueue.main.async { [weak self] in self?.refresh() }
+                        // UIKit activation alone cannot uncover private content. A rendered
+                        // activationRevision from becameActive() must authorize it too.
+                        self.refresh()
                     }
                 }
             ]
@@ -80,8 +86,10 @@ struct ProfilePrivacyCover: UIViewRepresentable {
         override func didMoveToWindow() { super.didMoveToWindow(); refresh() }
 
         func refresh(inactive: Bool? = nil) {
-            guard enabled, let scene = window?.windowScene,
-                  inactive ?? (scene.activationState != .foregroundActive) else { removeCover(); return }
+            guard enabled, let scene = window?.windowScene else { removeCover(); return }
+            let inactive = inactive ?? (scene.activationState != .foregroundActive)
+            if inactive && coveredAtRevision == nil { coveredAtRevision = activationRevision }
+            guard inactive || coveredAtRevision == activationRevision else { removeCover(); return }
             guard cover == nil else { return }
             let controller = UIViewController()
             controller.view.backgroundColor = .systemBackground
@@ -102,6 +110,7 @@ struct ProfilePrivacyCover: UIViewRepresentable {
         }
 
         func removeCover() {
+            coveredAtRevision = nil
             cover?.isHidden = true
             cover = nil
         }

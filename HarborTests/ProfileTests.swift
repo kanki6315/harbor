@@ -155,6 +155,23 @@ import Network
         XCTAssertNil(relaunched.browser)
     }
 
+    func testPrivacyActivationRevisionFollowsLockPolicy() async throws {
+        let manager = ProfileManager(store: store, authenticate: { _ in true })
+        let id = try XCTUnwrap(manager.currentProfile?.id)
+        _ = await manager.setProtection(id, enabled: true)
+        XCTAssertTrue(manager.hasPrivateContent)
+        let revision = manager.activationRevision
+        let start = Date(timeIntervalSince1970: 10000)
+        manager.enteredBackground(at: start)
+        XCTAssertEqual(manager.activationRevision, revision)
+        XCTAssertTrue(manager.hasPrivateContent)
+        manager.becameActive(at: start.addingTimeInterval(1801))
+        XCTAssertEqual(manager.activationRevision, revision + 1)
+        XCTAssertTrue(manager.isLocked)
+        XCTAssertFalse(manager.hasPrivateContent, "The already-locked screen needs no prompt-time cover")
+        XCTAssertNil(manager.browser)
+    }
+
     func testLockDelayDefaultBoundaryAndPersistence() async throws {
         let manager = ProfileManager(store: store, authenticate: { _ in true })
         let id = try XCTUnwrap(manager.currentProfile?.id)
