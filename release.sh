@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 # Build, archive and upload Harbor to TestFlight in one command.
 # Setup: copy .release.env.example to .release.env and fill in your team ID.
 # Create the Harbor app in App Store Connect with the bundle ID in project.yml.

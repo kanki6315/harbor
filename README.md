@@ -151,3 +151,11 @@ The initial Harbor release includes persistent tabs and website storage, tracker
 To archive and upload to TestFlight, configure the git-ignored `.release.env` using `.release.env.example`, then run `./release.sh` from a clean checkout. The script regenerates the Xcode project, runs tests, archives, uploads, and creates a build-specific Git tag after a successful upload. Use `./release.sh --no-upload` to export locally. The local `v0.1.0` tag identifies the source release; TestFlight availability requires a successful upload and App Store Connect processing.
 
 If simulator tests fail before launching with `Unknown application display identifier` or `No such process`, select another installed simulator using `TEST_DESTINATION='platform=iOS Simulator,id=<UDID>'` in `.release.env`. List available IDs with `xcrun simctl list devices available`. An interrupted test run may leave an incomplete result bundle; it does not imply that an archive or upload succeeded.
+
+## License
+
+All first-party code in this repository is licensed under the [Mozilla Public License 2.0](LICENSE), including the app, tests, scripts, website source, and build and configuration files. See [NOTICE](NOTICE) for scope and third-party exceptions.
+
+When distributing modified MPL-covered code, make the covered source available under MPL 2.0. Separate files containing no MPL-covered code may use other licenses.
+
+The Inter font retains its [SIL Open Font License 1.1](Harbor/Resources/Inter-LICENSE.txt). The Harbor name, logos, and brand artwork are not covered by the code license.

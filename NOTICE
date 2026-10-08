@@ -1,0 +1,16 @@
+Harbor licensing notice
+
+This Source Code Form is subject to the terms of the Mozilla Public
+License, v. 2.0. If a copy of the MPL was not distributed with this
+file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+MPL 2.0 applies to all first-party code in this repository, including the
+application, tests, scripts, website source, and build and configuration
+files. This notice also covers those files whose formats do not support
+inline license comments. See LICENSE for the full license text.
+
+Third-party materials retain their own licenses. The bundled Inter font
+is licensed under the SIL Open Font License 1.1; see
+Harbor/Resources/Inter-LICENSE.txt and site/public/assets/Inter-LICENSE.txt.
+
+This code license does not license the Harbor name, logos, or brand artwork.
