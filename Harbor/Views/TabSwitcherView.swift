@@ -194,7 +194,7 @@ private struct TabCard: View {
                                         .accessibilityLabel("Unloaded. Opens again when selected.")
                                 }
                             }.accessibilityElement(children: .contain)
-                                .task(id: session == nil) {
+                                .task(id: session?.previewRevision ?? -1) {
                                     let url = previewURL
                                     let image = await Task.detached(priority: .utility) {
                                         UIImage(contentsOfFile: url.path)?.preparingForDisplay()

@@ -204,4 +204,26 @@ final class CoreTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: browser.previewURL(id).path))
     }
 
+    func testLiveTabLimitScalesWithDeviceAndHeadroom() {
+        let gigabyte: UInt64 = 1_000_000_000
+        XCTAssertEqual(BrowserModel.liveTabLimit(physicalMemory: 4 * gigabyte, availableMemory: 0), 3)
+        XCTAssertEqual(BrowserModel.liveTabLimit(physicalMemory: 6 * gigabyte, availableMemory: 0), 4)
+        XCTAssertEqual(BrowserModel.liveTabLimit(physicalMemory: 8 * gigabyte, availableMemory: 0), 6)
+        XCTAssertEqual(BrowserModel.liveTabLimit(physicalMemory: 16 * gigabyte, availableMemory: 2_000_000_000), 8)
+        XCTAssertEqual(BrowserModel.liveTabLimit(physicalMemory: 16 * gigabyte, availableMemory: 200_000_000), 2)
+    }
+
+    func testSavedTabStatesArePrunedWithTheirTabs() throws {
+        let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = BrowserStore(fileURL: directory.appending(path: "browser.json"))
+        let kept = UUID(), removed = UUID(), closed = UUID()
+        for id in [kept, removed, closed] { try store.saveTabState(Data(id.uuidString.utf8), id: id) }
+        store.removeTabState(closed)
+        XCTAssertNil(store.loadTabState(closed))
+        store.pruneTabStates(keeping: [kept])
+        XCTAssertEqual(store.loadTabState(kept), Data(kept.uuidString.utf8))
+        XCTAssertNil(store.loadTabState(removed))
+    }
+
 }

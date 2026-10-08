@@ -88,6 +88,55 @@ import WebKit
         XCTAssertLessThanOrEqual(restored.sessions.count, 1, "Restoration must be lazy")
     }
 
+    func testUnloadedTabsRestoreHistoryAndReleaseEndedProcesses() async throws {
+        let folder = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let store = BrowserStore(fileURL: folder.appending(path: "state.json"))
+        let browser = BrowserModel(store: store, isTesting: true)
+        defer { browser.deactivate() }
+        let configuration = WKWebViewConfiguration()
+        configuration.websiteDataStore = browser.websiteDataStore
+        _ = browser.createPopup(configuration: configuration, url: nil)
+        let id = browser.selectedID
+        let session = try XCTUnwrap(browser.sessions[id])
+        let first = try XCTUnwrap(URL(string: "https://example.com/first"))
+        let second = try XCTUnwrap(URL(string: "https://example.com/second"))
+        // Simulated responses are real navigations with history entries, without network access.
+        for url in [first, second] {
+            session.webView.loadSimulatedRequest(URLRequest(url: url), responseHTML: "<p>\(url.path)</p>")
+            try await waitUntil { !session.isLoading && browser.selectedTab.url == url }
+        }
+
+        browser.newTab()
+        await browser.unloadBackgroundTabs()
+        XCTAssertNil(browser.sessions[id])
+        try await waitUntil { browser.blocker.ready }
+        browser.selectTab(id)
+        let restored = try XCTUnwrap(browser.sessions[id])
+        XCTAssertFalse(restored === session)
+        XCTAssertEqual(restored.webView.url, second)
+        XCTAssertEqual(restored.webView.backForwardList.backList.map(\.url), [first])
+
+        // A page process that ends in the background unloads its tab instead of holding a slot.
+        browser.newTab()
+        browser.contentProcessTerminated(restored)
+        XCTAssertNil(browser.sessions[id])
+        XCTAssertTrue(browser.archive.tabs.contains { $0.id == id })
+
+        // Closing removes the saved state once undo is no longer possible.
+        browser.closeTab(id)
+        browser.closeTab(browser.selectedID)
+        XCTAssertNil(store.loadTabState(id))
+    }
+
+    private func waitUntil(timeout: Duration = .seconds(10), _ condition: () -> Bool) async throws {
+        let deadline = ContinuousClock.now + timeout
+        while !condition() {
+            guard ContinuousClock.now < deadline else { XCTFail("Timed out"); return }
+            try await Task.sleep(for: .milliseconds(50))
+        }
+    }
+
     func testRestoreDisabledKeepsBookmarksAndSettings() throws {
         let folder = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: folder) }
