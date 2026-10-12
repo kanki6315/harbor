@@ -21,6 +21,10 @@ targets:
     sources:
       - path: Harbor
       - path: assets/HarborIcon/Harbor.icon
+    entitlements:
+      path: Harbor/Harbor.entitlements
+      properties:
+        com.apple.developer.web-browser: true
     info:
       path: Harbor/Info.plist
       properties:

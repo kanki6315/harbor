@@ -3,10 +3,13 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 import SwiftUI
+import UIKit
 
 struct SettingsView: View {
     @Bindable var browser: BrowserModel
     @Bindable var profiles: ProfileManager
+    @Environment(\.openURL) private var openURL
+    @State private var showDefaultBrowserHelp = false
     @State private var confirmClear = false
     @State private var path: [String]
 
@@ -50,12 +53,40 @@ struct SettingsView: View {
                 Section("About Harbor") {
                     LabeledContent("Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Unknown")
                 }
+                Section {
+                    Button {
+                        guard let url = URL(string: UIApplication.openDefaultApplicationsSettingsURLString) else {
+                            showDefaultBrowserHelp = true
+                            return
+                        }
+                        openURL(url) { accepted in
+                            showDefaultBrowserHelp = !accepted
+                        }
+                    } label: {
+                        HStack {
+                            Text("Default browser")
+                            Spacer()
+                            Image(systemName: "arrow.up.right")
+                                .foregroundStyle(.secondary)
+                                .accessibilityHidden(true)
+                        }
+                    }
+                    .accessibilityIdentifier("defaultBrowserSettings")
+                    .accessibilityHint("Opens iOS Settings to choose your default browser")
+                } footer: {
+                    Text("Choose Harbor as your default browser in iOS Settings. This applies to all profiles.")
+                }
             }.navigationTitle("Settings")
                 .navigationDestination(for: String.self) { _ in
                     ProfileList(profiles: profiles)
                 }
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
                 .onChange(of: browser.archive.settings) { _, _ in browser.settingsChanged() }
+                .alert("Open iOS Settings", isPresented: $showDefaultBrowserHelp) {
+                    Button("OK", role: .cancel) { }
+                } message: {
+                    Text("Go to Apps → Default Apps → Browser App and select Harbor.")
+                }
                 .confirmationDialog("Clear browsing data for \(browser.profileName)?", isPresented: $confirmClear, titleVisibility: .visible) {
                     Button("Clear data and close tabs", role: .destructive) { Task { await browser.clearWebsiteData() } }
                 } message: {
