@@ -106,7 +106,7 @@ Camera and microphone usage descriptions support websites that request permissio
 
 ## Media
 
-Configuration explicitly enables inline playback, native Picture in Picture and AirPlay. All media types require user interaction. Websites must also use suitable markup/player APIs; configuration alone cannot force inline playback, PiP, AirPlay or autoplay. Native video controls and system routes are preserved. Browser chrome hides while WebKit reports native full-screen mode.
+Configuration explicitly enables inline playback, native Picture in Picture and AirPlay. Muted videos and videos without audio tracks can autoplay, including GIF-style clips; audible media requires user interaction. Websites must also use suitable markup/player APIs; configuration alone cannot force inline playback, PiP, AirPlay or autoplay. Native video controls and system routes are preserved. Browser chrome hides while WebKit reports native full-screen mode.
 
 No custom player, audio session override, user-agent spoof or background-audio entitlement is installed. Background/lock behavior is therefore governed by iOS/WebKit and may pause audio/video. Adding `UIBackgroundModes = audio` would require a deliberate product decision, legitimate background-audio use, device testing and consideration of battery/resource behavior; it would still not guarantee that every website continues playback.
 
