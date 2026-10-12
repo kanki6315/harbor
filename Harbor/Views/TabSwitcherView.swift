@@ -19,14 +19,29 @@ struct TabSwitcherView: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private var filtered: [TabRecord] {
-        browser.groupedTabs.filter { search.isEmpty || $0.title.localizedCaseInsensitiveContains(search) || ($0.url?.absoluteString.localizedCaseInsensitiveContains(search) ?? false) }
+        browser.groupedTabs.filter { tab in
+            (browser.selectedTabGroup != nil || tab.groupID == nil) && matchesSearch(tab)
+        }
     }
+    private func matchesSearch(_ tab: TabRecord) -> Bool {
+        search.isEmpty || tab.title.localizedCaseInsensitiveContains(search)
+            || (tab.url?.absoluteString.localizedCaseInsensitiveContains(search) ?? false)
+    }
+
+    private var filteredGroups: [TabGroup] {
+        guard browser.selectedTabGroup == nil else { return [] }
+        return browser.archive.tabGroups.filter { group in
+            search.isEmpty || group.name.localizedCaseInsensitiveContains(search)
+                || browser.archive.tabs.contains { $0.groupID == group.id && matchesSearch($0) }
+        }
+    }
+
     var body: some View {
         NavigationStack {
             ScrollViewReader { proxy in
                 ScrollView {
                     groupSelector.padding(.horizontal, 16).padding(.top, 8)
-                    if filtered.isEmpty {
+                    if filtered.isEmpty && filteredGroups.isEmpty {
                         if search.isEmpty {
                             ContentUnavailableView("No tabs in this group", systemImage: "rectangle.stack",
                                                    description: Text("Create a tab here, or move one from All Tabs using its menu."))
@@ -35,6 +50,9 @@ struct TabSwitcherView: View {
                         }
                     } else {
                         LazyVGrid(columns: typeSize.isAccessibilitySize ? [GridItem(.flexible(), alignment: .top)] : [GridItem(.flexible(), alignment: .top), GridItem(.flexible(), alignment: .top)], spacing: 20) {
+                            ForEach(filteredGroups) { group in
+                                groupCard(group).id(group.id)
+                            }
                             ForEach(filtered) { tab in
                                 TabDragSource(id: tab.id, draggedTab: $draggedTab) {
                                     TabCard(tab: tab, session: browser.sessions[tab.id], selected: tab.id == browser.selectedID,
@@ -68,6 +86,9 @@ struct TabSwitcherView: View {
                 .onAppear {
                     if filtered.contains(where: { $0.id == browser.selectedID }) {
                         proxy.scrollTo(browser.selectedID, anchor: .center)
+                    } else if let groupID = browser.archive.tabs.first(where: { $0.id == browser.selectedID })?.groupID,
+                              filteredGroups.contains(where: { $0.id == groupID }) {
+                        proxy.scrollTo(groupID, anchor: .center)
                     }
                 }
                 .background(Color(uiColor: .systemGroupedBackground))
@@ -160,6 +181,52 @@ struct TabSwitcherView: View {
                 Text("\(browser.groupedTabs.count) in this group · \(browser.archive.tabs.count) total")
                     .font(.caption).foregroundStyle(.secondary)
             }
+        }
+    }
+
+    private func groupCard(_ group: TabGroup) -> some View {
+        let tabs = browser.archive.tabs.filter { $0.groupID == group.id }
+        let containsSelected = tabs.contains { $0.id == browser.selectedID }
+        return VStack(alignment: .leading, spacing: 6) {
+            Button {
+                browser.selectTabGroup(group.id)
+                search = ""
+            } label: {
+                VStack(alignment: .leading, spacing: 12) {
+                    Image(systemName: "rectangle.stack.fill")
+                        .font(.title).foregroundStyle(.tint)
+                    if !typeSize.isAccessibilitySize {
+                        ForEach(tabs.prefix(3)) { tab in
+                            Text(tab.title).font(.subheadline).lineLimit(1)
+                        }
+                        if tabs.isEmpty {
+                            Text("No tabs yet").font(.subheadline).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                .padding(16)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                .frame(height: typeSize.isAccessibilitySize ? 130 : 205)
+                .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18))
+                .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(containsSelected ? Color.accentColor : .clear, lineWidth: 4))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Open group \(group.name), \(tabs.count) tabs")
+            .accessibilityIdentifier("tabGroupCard-\(group.id)")
+            HStack(alignment: .firstTextBaseline, spacing: 5) {
+                if containsSelected {
+                    Image(systemName: "checkmark.circle.fill").foregroundStyle(.tint)
+                        .accessibilityLabel("Contains selected tab")
+                }
+                Text(group.name).font(.subheadline.weight(.semibold)).lineLimit(2)
+            }
+            Text(tabs.count == 1 ? "1 tab" : "\(tabs.count) tabs")
+                .font(.caption).foregroundStyle(.secondary)
+        }
+        .accessibilityElement(children: .contain)
+        .contextMenu {
+            Button("Rename group", systemImage: "pencil") { editGroup(group) }
+            Button("Delete group", systemImage: "trash", role: .destructive) { deletingGroup = group }
         }
     }
 

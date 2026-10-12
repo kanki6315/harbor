@@ -27,7 +27,7 @@ The tab switcher offers All Tabs and optional named groups within the current pr
 
 ### Tab groups
 
-The native group selector above the existing card grid offers All Tabs, each named group with its count, and New group. All Tabs includes every open tab in the profile. Selecting a group filters the grid and search, clears the previous search, and shows both the group count and total tab count. Selecting a scope does not switch the active page. Empty groups explain how to create a tab or move one from All Tabs.
+The native group selector above the existing card grid offers All Tabs, each named group with its count, and New group. All Tabs shows one card per named group, including empty groups, followed by individual ungrouped tabs. Group cards show the name, tab count, up to three member titles at standard text sizes, and whether they contain the selected tab. Tapping a group card opens its scope. Search matches group names and member titles/addresses as well as ungrouped tabs. Selecting a group filters the grid and search, clears the previous search, and shows both the group count and total tab count. Selecting a scope does not switch the active page. Empty groups explain how to create a tab or move one from All Tabs.
 
 Create and rename use a native Form with Group name and Save/Cancel; blank or whitespace-only names cannot be saved. A tab's visible ellipsis menu and long-press menu offer Move to group, New group and, for members, Remove from group. Creating from a tab's menu moves that tab into the new group; creating from the selector starts an empty group. New tabs join the selected group; website-created popups inherit the current tab's group. A tab belongs to at most one group, and moving it preserves the page session and tab order.
 

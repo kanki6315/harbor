@@ -26,7 +26,7 @@ Use a separate persistent WebKit data store per profile, retaining the legacy de
 
 First usable milestone: browse, sign in, open tabs, relaunch with tabs and website sessions retained where the website allows, block common trackers, and disable blocking for a broken site.
 
-Named tab groups are implemented within each profile: create, rename, move tabs, remove membership, and delete a group while keeping its tabs open. All Tabs always includes grouped and ungrouped tabs; search follows the selected scope. Groups, membership and the selected scope persist with the local tab session. Profiles include isolated browsing data and an optional inactivity-based return to a default profile. Other future features include optional private sync, Face ID, reader mode, custom lists, and iPad layout.
+Named tab groups are implemented within each profile: create, rename, move tabs, remove membership, and delete a group while keeping its tabs open. All Tabs represents each group as one card alongside ungrouped tabs; opening a group shows its individual tabs. Search follows the selected scope and finds group cards by name or matching members. Groups, membership and the selected scope persist with the local tab session. Profiles include isolated browsing data and an optional inactivity-based return to a default profile. Other future features include optional private sync, Face ID, reader mode, custom lists, and iPad layout.
 
 ## Brand Commitments
 
