@@ -9,6 +9,7 @@ struct BrowserView: View {
     @Bindable var browser: BrowserModel
     @Bindable var profiles: ProfileManager
     @State private var address = ""
+    @State private var openProfileSettingsAfterDismissal = false
     @State private var chromeCollapsed = false
     @State private var chromeHeight: CGFloat = 56
     @Namespace private var chromeNamespace
@@ -80,13 +81,23 @@ struct BrowserView: View {
             }
         }
         .onAppear { syncAddress() }
-        .sheet(item: $browser.sheet) { destination in
+        .sheet(item: $browser.sheet, onDismiss: {
+            if openProfileSettingsAfterDismissal {
+                openProfileSettingsAfterDismissal = false
+                browser.sheet = .profileSettings
+            }
+        }) { destination in
             switch destination {
             case .tabs: TabSwitcherView(browser: browser)
             case .history: HistoryView(browser: browser)
             case .bookmarks: BookmarksView(browser: browser)
             case .settings: SettingsView(browser: browser, profiles: profiles)
-            case .profiles: ProfilesView(profiles: profiles)
+            case .profileSettings: SettingsView(browser: browser, profiles: profiles, opensProfiles: true)
+            case .profiles:
+                ProfileSwitcherView(profiles: profiles) {
+                    openProfileSettingsAfterDismissal = true
+                    browser.sheet = nil
+                }
             case .privacy: PrivacyView(browser: browser)
             case .share(let item): ShareSheet(url: item.url)
             case .webDialog(let dialog): WebDialogView(dialog: dialog)
@@ -250,13 +261,6 @@ struct BrowserView: View {
             }
             Section {
                 Button("Site protection", systemImage: "shield.lefthalf.filled") { browser.sheet = .privacy }
-                Button { browser.sheet = .profiles } label: {
-                    Text("Profiles")
-                    Text(browser.profileName)
-                    Image(systemName: profiles.currentProfile?.symbol ?? "person.crop.circle")
-                }
-                .accessibilityLabel("Profiles, \(browser.profileName)")
-                .accessibilityIdentifier("profilesButton")
                 Button("Settings", systemImage: "gearshape") { browser.sheet = .settings }
                     .accessibilityIdentifier("settingsButton")
             }
