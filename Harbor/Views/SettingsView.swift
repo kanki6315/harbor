@@ -8,12 +8,19 @@ struct SettingsView: View {
     @Bindable var browser: BrowserModel
     @Bindable var profiles: ProfileManager
     @State private var confirmClear = false
+    @State private var path: [String]
+
+    init(browser: BrowserModel, profiles: ProfileManager, opensProfiles: Bool = false) {
+        self.browser = browser
+        self.profiles = profiles
+        _path = State(initialValue: opensProfiles ? ["profiles"] : [])
+    }
     @Environment(\.dismiss) private var dismiss
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             Form {
                 Section {
-                    NavigationLink("Profiles") { ProfileList(profiles: profiles) }
+                    NavigationLink("Profiles", value: "profiles")
                     LabeledContent("Current profile", value: browser.profileName)
                 } footer: { Text("Settings apply to this profile.") }
                 Section("Privacy") {
@@ -44,6 +51,9 @@ struct SettingsView: View {
                     LabeledContent("Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Unknown")
                 }
             }.navigationTitle("Settings")
+                .navigationDestination(for: String.self) { _ in
+                    ProfileList(profiles: profiles)
+                }
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
                 .onChange(of: browser.archive.settings) { _, _ in browser.settingsChanged() }
                 .confirmationDialog("Clear browsing data for \(browser.profileName)?", isPresented: $confirmClear, titleVisibility: .visible) {

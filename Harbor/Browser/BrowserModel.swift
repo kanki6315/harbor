@@ -8,7 +8,7 @@ import os
 
 /// All browser sheets share one presentation slot, including website dialogs.
 enum BrowserSheet: Identifiable {
-    case tabs, history, bookmarks, settings, privacy, profiles
+    case tabs, history, bookmarks, settings, privacy, profiles, profileSettings
     case share(ShareItem), webDialog(WebDialog)
 
     var id: String {
@@ -17,6 +17,7 @@ enum BrowserSheet: Identifiable {
         case .history: "history"
         case .bookmarks: "bookmarks"
         case .settings: "settings"
+        case .profileSettings: "profileSettings"
         case .privacy: "privacy"
         case .profiles: "profiles"
         case .share(let item): "share-\(item.id)"

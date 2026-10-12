@@ -4,6 +4,92 @@
 
 import SwiftUI
 
+struct ProfileSwitcherView: View {
+    @Bindable var profiles: ProfileManager
+    var openSettings: () -> Void
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var accent: Color { colorScheme == .dark ? .harborWave : .harborNavy }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    ForEach(profiles.profiles) { profile in
+                        Button {
+                            if profiles.select(profile.id) { dismiss() }
+                        } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: profile.symbol)
+                                    .font(.body.weight(.medium))
+                                    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                                    .foregroundStyle(accent)
+                                    .frame(width: 32, height: 32)
+                                    .background(Color.harborBlue.opacity(colorScheme == .dark ? 0.18 : 0.10), in: Circle())
+                                Text(profile.name)
+                                    .fontWeight(profiles.currentProfile?.id == profile.id ? .semibold : .regular)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                if profile.isProtected {
+                                    Image(systemName: "lock.fill").dynamicTypeSize(...DynamicTypeSize.xxxLarge).accessibilityLabel("Protected")
+                                }
+                                Spacer(minLength: 8)
+                                if profiles.currentProfile?.id == profile.id {
+                                    Image(systemName: "checkmark.circle.fill").font(.body).dynamicTypeSize(...DynamicTypeSize.xxxLarge).foregroundStyle(accent)
+                                }
+                            }
+                            .foregroundStyle(.primary)
+                            .frame(minHeight: 44)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Switch to \(profile.name)")
+                        .accessibilityValue(profiles.currentProfile?.id == profile.id ? "Current profile" : "")
+                    }
+                    Button(action: openSettings) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "gearshape")
+                                .font(.body)
+                                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                                .frame(width: 32)
+                                .foregroundStyle(accent)
+                            Text("Profile settings").fixedSize(horizontal: false, vertical: true)
+                            Spacer(minLength: 8)
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                        .foregroundStyle(.primary)
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("profileSettingsButton")
+                }
+                .listRowInsets(EdgeInsets(top: 4, leading: 24, bottom: 4, trailing: 24))
+                .listRowBackground(Color.clear)
+                .listSectionSeparator(.hidden)
+            }
+            .listStyle(.plain)
+            .contentMargins(.top, 8, for: .scrollContent)
+            .contentMargins(.bottom, 0, for: .scrollContent)
+            .navigationTitle("Switch profile")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+        .tint(accent)
+        .presentationDetents(typeSize.isAccessibilitySize
+            ? [.large]
+            : [.height(CGFloat(min(profiles.profiles.count, 4)) * 52 + 132), .large])
+        .presentationDragIndicator(.visible)
+    }
+}
+
 struct ProfilesView: View {
     @Bindable var profiles: ProfileManager
     @Environment(\.dismiss) private var dismiss
