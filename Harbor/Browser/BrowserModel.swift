@@ -236,12 +236,16 @@ final class BrowserModel {
         // Recency means "last visible", so the tab being left counts as just used.
         activeSession?.lastUsed = Date()
         activeSession?.captureSnapshot()
-        if id != selectedID { dialog = nil }
+        if id != selectedID {
+            activeSession?.suspendMediaRecovery()
+            dialog = nil
+        }
         archive.selectedTabID = id
         if archive.selectedTabGroupID != nil { archive.selectedTabGroupID = archive.tabs[index].groupID }
         archive.tabs[index].lastUsed = Date()
         sessions[id]?.lastUsed = Date()
         ensureSession(id)
+        activeSession?.resumeMediaRecovery()
         saveSoon()
         scheduleTrim()
     }
@@ -378,8 +382,10 @@ final class BrowserModel {
     }
 
     func becameActive() async {
+        guard isActive, !isClearingData else { return }
         // The visible page may have been unloaded after its process ended in the background.
         ensureSession(selectedID)
+        activeSession?.resumeMediaRecovery()
         await refreshMedia()
     }
 

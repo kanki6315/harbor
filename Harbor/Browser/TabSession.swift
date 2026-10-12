@@ -82,6 +82,18 @@ final class TabSession: NSObject, Identifiable {
         mediaState = await webView.requestMediaPlaybackState()
     }
 
+    func suspendMediaRecovery() {
+        guard !isDisposed else { return }
+        webView.evaluateJavaScript("globalThis.harborSuspendMedia?.();", in: nil,
+                                   in: MediaPolicy.recoveryWorld, completionHandler: nil)
+    }
+
+    func resumeMediaRecovery() {
+        guard !isDisposed else { return }
+        webView.evaluateJavaScript("globalThis.harborResumeMedia?.();", in: nil,
+                                   in: MediaPolicy.recoveryWorld, completionHandler: nil)
+    }
+
     func captureSnapshot() {
         guard !fullscreen, webView.bounds.width > 0, !isLoading else { return }
         let capturedURL = webView.url

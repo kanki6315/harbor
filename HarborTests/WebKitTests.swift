@@ -7,6 +7,70 @@ import WebKit
 @testable import Harbor
 
 @MainActor final class WebKitTests: XCTestCase {
+    func testRedditMediaRecoveryPreservesPausedAndAudiblePlayers() async throws {
+        let configuration = WKWebViewConfiguration()
+        MediaPolicy.configure(configuration)
+        let webView = WKWebView(frame: CGRect(x: 0, y: 0, width: 390, height: 800), configuration: configuration)
+        webView.loadSimulatedRequest(URLRequest(url: URL(string: "https://www.reddit.com/r/test")!),
+                                     responseHTML: "<body><div id='host'></div></body>")
+        try await waitUntil { !webView.isLoading && webView.url != nil }
+        let setup = #"""
+        (() => {
+            const root = document.getElementById('host').attachShadow({mode: 'open'});
+            globalThis.players = [];
+            Object.defineProperty(document, 'hidden', {value: false, configurable: true});
+            for (const kind of ['stalled', 'paused', 'audible', 'blob', 'progressing']) {
+                const v = document.createElement('video');
+                root.append(v);
+                v.muted = kind !== 'audible'; v.loop = true;
+                let paused = kind === 'paused';
+                let time = 5;
+                Object.defineProperties(v, {
+                    paused: {get: () => paused},
+                    currentTime: {get: () => time, set: value => time = value},
+                    currentSrc: {get: () => kind === 'blob' ? 'blob:test' : 'https://v.redd.it/test.mp4'}
+                });
+                v.getBoundingClientRect = () => ({width: 100, height: 100, top: 0, left: 0, bottom: 100, right: 100});
+                v.plays = 0; v.loads = 0;
+                v.pause = () => { paused = true; };
+                v.play = () => { paused = false; ++v.plays; return Promise.resolve(); };
+                v.load = () => { ++v.loads; };
+                players.push(v);
+            }
+            harborSuspendMedia();
+            // Simulate WebKit pausing a previously playing video while backgrounded.
+            players[0].pause();
+            harborResumeMedia();
+            players[4].currentTime = 6;
+            return players.map(v => v.plays);
+        })();
+        """#
+        let initial = try await webView.evaluateJavaScript(setup, in: nil, contentWorld: MediaPolicy.recoveryWorld)
+        XCTAssertEqual(initial as? [Int], [1, 0, 0, 1, 1])
+        try await Task.sleep(for: .seconds(2))
+        let loads = try await webView.evaluateJavaScript("players.map(v => v.loads)", in: nil,
+                                                        contentWorld: MediaPolicy.recoveryWorld)
+        XCTAssertEqual(loads as? [Int], [1, 0, 0, 0, 0])
+        // Leaving again cancels any delayed recovery, including when the tab stays resident.
+        _ = try await webView.evaluateJavaScript("harborSuspendMedia(); harborResumeMedia(); harborSuspendMedia();",
+                                                in: nil, contentWorld: MediaPolicy.recoveryWorld)
+        try await Task.sleep(for: .seconds(2))
+        let cancelledLoads = try await webView.evaluateJavaScript("players.map(v => v.loads)", in: nil,
+                                                                 contentWorld: MediaPolicy.recoveryWorld)
+        XCTAssertEqual(cancelledLoads as? [Int], [1, 0, 0, 0, 0])
+    }
+
+    func testMediaRecoveryIsRestrictedToReddit() async throws {
+        let configuration = WKWebViewConfiguration()
+        MediaPolicy.configure(configuration)
+        let webView = WKWebView(frame: .zero, configuration: configuration)
+        webView.loadSimulatedRequest(URLRequest(url: URL(string: "https://notreddit.com")!), responseHTML: "<body></body>")
+        try await waitUntil { !webView.isLoading && webView.url != nil }
+        let result = try await webView.evaluateJavaScript("typeof globalThis.harborResumeMedia", in: nil,
+                                                         contentWorld: MediaPolicy.recoveryWorld)
+        XCTAssertEqual(result as? String, "undefined")
+    }
+
     func testTrackerRulesAreSharedAcrossProfiles() async {
         let first = ContentBlocker()
         let second = ContentBlocker()

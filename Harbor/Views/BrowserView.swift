@@ -76,7 +76,7 @@ struct BrowserView: View {
             switch phase {
             case .active: Task { await browser.becameActive() }
             case .background: browser.saveNow(); Task { await browser.enteredBackground() }
-            default: browser.saveNow()
+            default: browser.activeSession?.suspendMediaRecovery(); browser.saveNow()
             }
         }
         .onAppear { syncAddress() }
