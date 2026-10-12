@@ -25,6 +25,14 @@ final class HarborUITests: XCTestCase {
         capture(app, name: "phone-group")
         app.buttons["tabGroupSelector"].tap()
         app.buttons["All Tabs (2)"].tap()
+        let groupCards = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "tabGroupCard-"))
+        XCTAssertEqual(groupCards.count, 1)
+        XCTAssertEqual(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "tabGroupOptions-")).count, 1)
+        capture(app, name: "phone-group-card")
+        groupCards.firstMatch.tap()
+        XCTAssertTrue(app.navigationBars["Research"].waitForExistence(timeout: 5))
+        app.buttons["tabGroupSelector"].tap()
+        app.buttons["All Tabs (2)"].tap()
         app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "tabGroupOptions-")).firstMatch.tap()
         app.buttons["Move to group"].tap()
         app.buttons["Research"].tap()
@@ -71,6 +79,13 @@ final class HarborUITests: XCTestCase {
         app.buttons["Remove from group"].tap()
         XCTAssertTrue(app.staticTexts["No tabs in this group"].waitForExistence(timeout: 5))
         capture(app, name: "phone-group-empty-dark-large")
+        app.buttons["tabGroupSelector"].tap()
+        app.buttons["All Tabs (2)"].tap()
+        let groupCard = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "tabGroupCard-")).firstMatch
+        XCTAssertTrue(groupCard.exists)
+        capture(app, name: "phone-group-card-dark-large")
+        groupCard.tap()
+        XCTAssertTrue(app.navigationBars["Weekend reading"].waitForExistence(timeout: 5))
     }
 
     @MainActor func testLockDelaySetting() {
