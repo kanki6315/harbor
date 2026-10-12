@@ -84,6 +84,8 @@ struct TabSwitcherView: View {
                     }
                 }
                 .onAppear {
+                    // Keep the breadcrumb visible when larger text makes the header taller.
+                    guard !typeSize.isAccessibilitySize else { return }
                     if filtered.contains(where: { $0.id == browser.selectedID }) {
                         proxy.scrollTo(browser.selectedID, anchor: .center)
                     } else if let groupID = browser.archive.tabs.first(where: { $0.id == browser.selectedID })?.groupID,
@@ -149,34 +151,50 @@ struct TabSwitcherView: View {
 
     private var groupSelector: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Menu {
-                Button("All Tabs (\(browser.archive.tabs.count))", systemImage: "square.on.square") {
-                    browser.selectTabGroup(nil); search = ""
-                }
-                ForEach(browser.archive.tabGroups) { group in
-                    Button {
-                        browser.selectTabGroup(group.id); search = ""
-                    } label: {
-                        Label("\(group.name) (\(browser.archive.tabs.filter { $0.groupID == group.id }.count))",
-                              systemImage: group.id == browser.archive.selectedTabGroupID ? "checkmark" : "rectangle.stack")
+            if let group = browser.selectedTabGroup {
+                HStack(alignment: .top, spacing: 8) {
+                    Button("All Tabs") {
+                        browser.selectTabGroup(nil)
+                        search = ""
                     }
+                    .frame(minHeight: 44)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .accessibilityIdentifier("allTabsBreadcrumb")
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(minHeight: 44)
+                        .accessibilityHidden(true)
+                    if !typeSize.isAccessibilitySize {
+                        Text(group.name)
+                            .font(.headline)
+                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                    } else {
+                        Spacer(minLength: 0)
+                    }
+                    Menu {
+                        Button("New group", systemImage: "plus") { editGroup() }
+                        Button("Rename group", systemImage: "pencil") { editGroup(group) }
+                        Button("Delete group", systemImage: "trash", role: .destructive) { deletingGroup = group }
+                    } label: {
+                        Image(systemName: "ellipsis").frame(width: 44, height: 44)
+                    }
+                    .accessibilityLabel("Group options")
+                    .accessibilityIdentifier("selectedGroupOptions")
                 }
-                Divider()
-                Button("New group", systemImage: "plus") { editGroup() }
-                if let group = browser.selectedTabGroup {
-                    Button("Rename group", systemImage: "pencil") { editGroup(group) }
-                    Button("Delete group", systemImage: "trash", role: .destructive) { deletingGroup = group }
+                if typeSize.isAccessibilitySize {
+                    Text(group.name).font(.headline)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-            } label: {
+            } else {
                 HStack {
-                    Label(browser.selectedTabGroup?.name ?? "All Tabs", systemImage: "rectangle.stack")
-                        .font(.headline).multilineTextAlignment(.leading)
+                    Text("All Tabs").font(.headline)
                     Spacer()
-                    Image(systemName: "chevron.down").font(.caption.weight(.semibold))
-                }.frame(minHeight: 44)
+                    Button("New group", systemImage: "plus") { editGroup() }
+                        .frame(minHeight: 44)
+                        .accessibilityIdentifier("newTabGroup")
+                }
             }
-            .accessibilityLabel("Tab groups, \(browser.selectedTabGroup?.name ?? "All Tabs")")
-            .accessibilityIdentifier("tabGroupSelector")
             if browser.selectedTabGroup != nil {
                 Text("\(browser.groupedTabs.count) in this group · \(browser.archive.tabs.count) total")
                     .font(.caption).foregroundStyle(.secondary)
@@ -192,21 +210,9 @@ struct TabSwitcherView: View {
                 browser.selectTabGroup(group.id)
                 search = ""
             } label: {
-                VStack(alignment: .leading, spacing: 12) {
-                    Image(systemName: "rectangle.stack.fill")
-                        .font(.title).foregroundStyle(.tint)
-                    if !typeSize.isAccessibilitySize {
-                        ForEach(tabs.prefix(3)) { tab in
-                            Text(tab.title).font(.subheadline).lineLimit(1)
-                        }
-                        if tabs.isEmpty {
-                            Text("No tabs yet").font(.subheadline).foregroundStyle(.secondary)
-                        }
-                    }
-                }
-                .padding(16)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-                .frame(height: typeSize.isAccessibilitySize ? 130 : 205)
+                GroupPreview(tabs: Array(tabs.prefix(4)), browser: browser)
+                .padding(10)
+                .frame(height: typeSize.isAccessibilitySize ? 180 : 205)
                 .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18))
                 .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(containsSelected ? Color.accentColor : .clear, lineWidth: 4))
             }
@@ -424,25 +430,14 @@ private struct TabCard: View {
     let selected: Bool
     let largeText: Bool
     let previewURL: URL
-    @State private var savedPreview: UIImage?
     var select: () -> Void
     var close: () -> Void
     var body: some View {
                             VStack(alignment: .leading, spacing: 8) {
                                 ZStack(alignment: .topTrailing) {
                                     Button(action: select) {
-                                        ZStack {
-                                            if let image = session?.snapshot ?? savedPreview {
-                                                Image(uiImage: image).resizable().scaledToFill()
-                                            } else {
-                                                Color.harborNavy
-                                                VStack(spacing: 12) {
-                                                    if tab.url == nil { HarborMark().frame(width: 64, height: 64) }
-                                                    else { Image(systemName: "globe").font(.largeTitle).foregroundStyle(Color.harborWave) }
-                                                    Text(tab.url?.host ?? "Harbor").font(.headline).foregroundStyle(.white).lineLimit(2).padding(.horizontal)
-                                                }
-                                            }
-                                        }.frame(height: largeText ? 130 : 205).frame(maxWidth: .infinity)
+                                        TabPreview(tab: tab, session: session, previewURL: previewURL)
+                                            .frame(height: largeText ? 130 : 205).frame(maxWidth: .infinity)
                                             .clipShape(RoundedRectangle(cornerRadius: 18))
                                             .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(selected ? Color.accentColor : .clear, lineWidth: 4))
                                     }.buttonStyle(.plain).accessibilityLabel("Open \(tab.title)")
@@ -465,13 +460,86 @@ private struct TabCard: View {
                                         .accessibilityLabel("Unloaded. Opens again when selected.")
                                 }
                             }.accessibilityElement(children: .contain)
-                                .task(id: session?.previewRevision ?? -1) {
-                                    let url = previewURL
-                                    let image = await Task.detached(priority: .utility) {
-                                        UIImage(contentsOfFile: url.path)?.preparingForDisplay()
-                                    }.value
-                                    guard !Task.isCancelled else { return }
-                                    savedPreview = image
-                                }
+    }
+}
+
+// Group tiles and full tab cards share snapshots without loading a web view.
+private struct TabPreview: View {
+    let tab: TabRecord
+    let session: TabSession?
+    let previewURL: URL
+    var miniature = false
+    @State private var savedPreview: UIImage?
+
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack {
+                if let image = session?.snapshot ?? savedPreview {
+                    Image(uiImage: image).resizable().scaledToFill()
+                } else {
+                    Color.harborNavy
+                    VStack(spacing: 8) {
+                        if tab.url == nil {
+                            HarborMark().frame(width: miniature ? 28 : 64, height: miniature ? 28 : 64)
+                        } else {
+                            Image(systemName: "globe")
+                                .font(miniature ? .title3 : .largeTitle)
+                                .foregroundStyle(Color.harborWave)
+                        }
+                        if !miniature {
+                            Text(tab.url?.host ?? "Harbor").font(.headline)
+                                .foregroundStyle(.white).lineLimit(2).padding(.horizontal)
+                        }
+                    }
+                }
+            }
+            .frame(width: geometry.size.width, height: geometry.size.height)
+            .clipped()
+        }
+        .task(id: session?.previewRevision ?? -1) {
+            let url = previewURL
+            let image = await Task.detached(priority: .utility) {
+                UIImage(contentsOfFile: url.path)?.preparingForDisplay()
+            }.value
+            guard !Task.isCancelled else { return }
+            savedPreview = image
+        }
+    }
+}
+
+private struct GroupPreview: View {
+    let tabs: [TabRecord]
+    let browser: BrowserModel
+
+    var body: some View {
+        if tabs.isEmpty {
+            VStack(spacing: 8) {
+                Image(systemName: "rectangle.stack").font(.title2)
+                Text("No tabs yet").font(.subheadline)
+            }
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            GeometryReader { geometry in
+                let height = max(0, (geometry.size.height - 8) / 2)
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                    ForEach(0..<4, id: \.self) { index in
+                        if tabs.indices.contains(index) {
+                            let tab = tabs[index]
+                            TabPreview(tab: tab, session: browser.sessions[tab.id],
+                                       previewURL: browser.previewURL(tab.id), miniature: true)
+                                .id(tab.id)
+                                .frame(height: height)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                        } else {
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color(uiColor: .tertiarySystemGroupedBackground))
+                                .frame(height: height)
+                        }
+                    }
+                }
+            }
+            .accessibilityHidden(true)
+        }
     }
 }
