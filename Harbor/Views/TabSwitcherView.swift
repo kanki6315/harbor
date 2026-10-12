@@ -38,77 +38,89 @@ struct TabSwitcherView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                groupSelector.padding(.horizontal, 16).padding(.top, 8)
-                if filtered.isEmpty && filteredGroups.isEmpty {
-                    if search.isEmpty {
-                        ContentUnavailableView("No tabs in this group", systemImage: "rectangle.stack",
-                                               description: Text("Create a tab here, or move one from All Tabs using its menu."))
+            ScrollViewReader { proxy in
+                ScrollView {
+                    groupSelector.padding(.horizontal, 16).padding(.top, 8)
+                    if filtered.isEmpty && filteredGroups.isEmpty {
+                        if search.isEmpty {
+                            ContentUnavailableView("No tabs in this group", systemImage: "rectangle.stack",
+                                                   description: Text("Create a tab here, or move one from All Tabs using its menu."))
+                        } else {
+                            ContentUnavailableView.search(text: search)
+                        }
                     } else {
-                        ContentUnavailableView.search(text: search)
-                    }
-                } else {
-                    LazyVGrid(columns: typeSize.isAccessibilitySize ? [GridItem(.flexible(), alignment: .top)] : [GridItem(.flexible(), alignment: .top), GridItem(.flexible(), alignment: .top)], spacing: 20) {
-                        ForEach(filteredGroups) { group in
-                            groupCard(group)
-                        }
-                        ForEach(filtered) { tab in
-                            TabDragSource(id: tab.id, draggedTab: $draggedTab) {
-                                TabCard(tab: tab, session: browser.sessions[tab.id], selected: tab.id == browser.selectedID,
-                                    largeText: typeSize.isAccessibilitySize, previewURL: browser.previewURL(tab.id),
-                                    select: { browser.selectTab(tab.id); dismiss() }, close: { browser.closeTab(tab.id) })
-                                .contextMenu { tabGroupActions(tab) }
-                                .overlay(alignment: .topLeading) {
-                                    Menu { tabGroupActions(tab) } label: {
-                                        Image(systemName: "ellipsis.circle")
-                                            .frame(width: 44, height: 44)
-                                            .background(.regularMaterial, in: Circle())
+                        LazyVGrid(columns: typeSize.isAccessibilitySize ? [GridItem(.flexible(), alignment: .top)] : [GridItem(.flexible(), alignment: .top), GridItem(.flexible(), alignment: .top)], spacing: 20) {
+                            ForEach(filteredGroups) { group in
+                                groupCard(group).id(group.id)
+                            }
+                            ForEach(filtered) { tab in
+                                TabDragSource(id: tab.id, draggedTab: $draggedTab) {
+                                    TabCard(tab: tab, session: browser.sessions[tab.id], selected: tab.id == browser.selectedID,
+                                        largeText: typeSize.isAccessibilitySize, previewURL: browser.previewURL(tab.id),
+                                        select: { browser.selectTab(tab.id); dismiss() }, close: { browser.closeTab(tab.id) })
+                                    .contextMenu { tabGroupActions(tab) }
+                                    .overlay(alignment: .topLeading) {
+                                        Menu { tabGroupActions(tab) } label: {
+                                            Image(systemName: "ellipsis.circle")
+                                                .frame(width: 44, height: 44)
+                                                .background(.regularMaterial, in: Circle())
+                                        }
+                                        .padding(5)
+                                        .accessibilityLabel("Group options for \(tab.title)")
+                                        .accessibilityIdentifier("tabGroupOptions-\(tab.id)")
                                     }
-                                    .padding(5)
-                                    .accessibilityLabel("Group options for \(tab.title)")
-                                    .accessibilityIdentifier("tabGroupOptions-\(tab.id)")
                                 }
-                            }
-                                // Keep an empty insertion slot while the native preview carries the card.
-                                .opacity(draggedTab == tab.id ? 0 : 1)
+                                    .id(tab.id)
+                                    // Keep an empty insertion slot while the native preview carries the card.
+                                    .opacity(draggedTab == tab.id ? 0 : 1)
 
-                                .onDrop(of: [TabDragProvider.type], delegate: TabReorderDropDelegate(
-                                    target: tab.id, draggedTab: $draggedTab,
-                                    browser: browser, reduceMotion: reduceMotion))
-                                .accessibilityAction(named: "Move earlier") { move(tab, by: -1) }
-                                .accessibilityAction(named: "Move later") { move(tab, by: 1) }
-                        }
-                    }.padding(16)
-                }
-            }.background(Color(uiColor: .systemGroupedBackground))
-                .navigationTitle(browser.selectedTabGroup?.name ?? (browser.archive.tabs.count == 1 ? "1 tab" : "\(browser.archive.tabs.count) tabs"))
-                .searchable(text: $search, placement: .navigationBarDrawer(displayMode: .always), prompt: browser.selectedTabGroup == nil ? "Search all tabs" : "Search this group")
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button("Reorder", systemImage: "arrow.up.arrow.down") { showingReorder = true }
-                            .disabled(browser.archive.tabs.count < 2)
-                            .accessibilityIdentifier("reorderTabs")
-                    }
-                    ToolbarItem(placement: .bottomBar) {
-                        Menu {
-                            Button("Unload background tabs", systemImage: "moon") {
-                                Task { await browser.unloadBackgroundTabs() }
+                                    .onDrop(of: [TabDragProvider.type], delegate: TabReorderDropDelegate(
+                                        target: tab.id, draggedTab: $draggedTab,
+                                        browser: browser, reduceMotion: reduceMotion))
+                                    .accessibilityAction(named: "Move earlier") { move(tab, by: -1) }
+                                    .accessibilityAction(named: "Move later") { move(tab, by: 1) }
                             }
-                            .disabled(!browser.sessions.keys.contains(where: { $0 != browser.selectedID }))
-                            Text("Keeps the current tab and playing media open. Unloaded pages reload when selected.")
-                        } label: {
-                            Label("Tab options", systemImage: "ellipsis.circle")
-                        }
-                        .accessibilityIdentifier("tabOptions")
-                    }
-                    ToolbarItem(placement: .topBarTrailing) { Button("Done") { dismiss() } }
-                    ToolbarItem(placement: .bottomBar) {
-                        Button("New tab", systemImage: "plus") { browser.newTab(); dismiss() }.accessibilityIdentifier("tabSwitcherNewTab")
-                    }
-                    if browser.lastClosed != nil {
-                        ToolbarItem(placement: .bottomBar) { Button("Undo close", systemImage: "arrow.uturn.backward") { browser.undoClose() } }
+                        }.padding(16)
                     }
                 }
+                .onAppear {
+                    if filtered.contains(where: { $0.id == browser.selectedID }) {
+                        proxy.scrollTo(browser.selectedID, anchor: .center)
+                    } else if let groupID = browser.archive.tabs.first(where: { $0.id == browser.selectedID })?.groupID,
+                              filteredGroups.contains(where: { $0.id == groupID }) {
+                        proxy.scrollTo(groupID, anchor: .center)
+                    }
+                }
+                .background(Color(uiColor: .systemGroupedBackground))
+                    .navigationTitle(browser.selectedTabGroup?.name ?? (browser.archive.tabs.count == 1 ? "1 tab" : "\(browser.archive.tabs.count) tabs"))
+                    .searchable(text: $search, placement: .navigationBarDrawer(displayMode: .always), prompt: browser.selectedTabGroup == nil ? "Search all tabs" : "Search this group")
+                    .toolbar {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button("Reorder", systemImage: "arrow.up.arrow.down") { showingReorder = true }
+                                .disabled(browser.archive.tabs.count < 2)
+                                .accessibilityIdentifier("reorderTabs")
+                        }
+                        ToolbarItem(placement: .bottomBar) {
+                            Menu {
+                                Button("Unload background tabs", systemImage: "moon") {
+                                    Task { await browser.unloadBackgroundTabs() }
+                                }
+                                .disabled(!browser.sessions.keys.contains(where: { $0 != browser.selectedID }))
+                                Text("Keeps the current tab and playing media open. Unloaded pages reload when selected.")
+                            } label: {
+                                Label("Tab options", systemImage: "ellipsis.circle")
+                            }
+                            .accessibilityIdentifier("tabOptions")
+                        }
+                        ToolbarItem(placement: .topBarTrailing) { Button("Done") { dismiss() } }
+                        ToolbarItem(placement: .bottomBar) {
+                            Button("New tab", systemImage: "plus") { browser.newTab(); dismiss() }.accessibilityIdentifier("tabSwitcherNewTab")
+                        }
+                        if browser.lastClosed != nil {
+                            ToolbarItem(placement: .bottomBar) { Button("Undo close", systemImage: "arrow.uturn.backward") { browser.undoClose() } }
+                        }
+                    }
+            }
         }
         .sheet(isPresented: $showingReorder) { reorderSheet }
         .sheet(isPresented: $showingGroupEditor) { groupEditor }
