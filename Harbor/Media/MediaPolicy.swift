@@ -9,7 +9,8 @@ enum MediaPolicy {
         configuration.allowsInlineMediaPlayback = true
         configuration.allowsPictureInPictureMediaPlayback = true
         configuration.allowsAirPlayForMediaPlayback = true
-        configuration.mediaTypesRequiringUserActionForPlayback = .all
+        // GIF-style videos need to autoplay; WebKit still gates audible playback on a gesture.
+        configuration.mediaTypesRequiringUserActionForPlayback = .audio
         configuration.preferences.javaScriptCanOpenWindowsAutomatically = false
     }
 }

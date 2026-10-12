@@ -110,8 +110,55 @@ import WebKit
         XCTAssertTrue(configuration.allowsInlineMediaPlayback)
         XCTAssertTrue(configuration.allowsAirPlayForMediaPlayback)
         XCTAssertTrue(configuration.allowsPictureInPictureMediaPlayback)
-        XCTAssertEqual(configuration.mediaTypesRequiringUserActionForPlayback, .all)
+        XCTAssertEqual(configuration.mediaTypesRequiringUserActionForPlayback, .audio)
         XCTAssertFalse(configuration.preferences.javaScriptCanOpenWindowsAutomatically)
+    }
+
+    func testMutedVideoAutoplaysButAudibleMediaRequiresInteraction() async throws {
+        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+        let window = UIWindow(windowScene: scene)
+        window.rootViewController = UIViewController()
+        window.isHidden = false
+        let configuration = WKWebViewConfiguration()
+        MediaPolicy.configure(configuration)
+        let webView = WKWebView(frame: window.bounds, configuration: configuration)
+        window.rootViewController!.view.addSubview(webView)
+        defer {
+            webView.pauseAllMediaPlayback(completionHandler: nil)
+            webView.removeFromSuperview()
+            window.isHidden = true
+        }
+        let fixture = try XCTUnwrap(Bundle.main.url(forResource: "media-fixture", withExtension: "mp4"))
+        let source = "data:video/mp4;base64," + (try Data(contentsOf: fixture)).base64EncodedString()
+        // Run play() from the page itself, without a native evaluation supplying a user gesture.
+        webView.loadHTMLString("""
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <video id="muted" muted autoplay playsinline loop src="\(source)"></video>
+        <video id="audible" playsinline src="\(source)"></video>
+        <audio id="audio" src="\(source)"></audio>
+        <script>
+        window.results = {};
+        for (const id of ['audible', 'audio']) {
+            document.getElementById(id).play().then(
+                () => results[id] = 'playing', error => results[id] = error.name);
+        }
+        </script>
+        """, baseURL: nil)
+        var state: [String: Any] = [:]
+        let deadline = ContinuousClock.now + .seconds(15)
+        repeat {
+            try await Task.sleep(for: .milliseconds(100))
+            state = (try? await webView.evaluateJavaScript("""
+            ({time: document.getElementById('muted')?.currentTime || 0,
+              audible: window.results?.audible || '', audio: window.results?.audio || ''})
+            """)) as? [String: Any] ?? [:]
+            if (state["time"] as? Double ?? 0) > 0,
+               state["audible"] as? String == "NotAllowedError",
+               state["audio"] as? String == "NotAllowedError" { break }
+        } while ContinuousClock.now < deadline
+        XCTAssertGreaterThan(state["time"] as? Double ?? 0, 0, "Muted inline video should autoplay")
+        XCTAssertEqual(state["audible"] as? String, "NotAllowedError")
+        XCTAssertEqual(state["audio"] as? String, "NotAllowedError")
     }
 
     func testTabRestoreCloseUndoAndMemoryBudget() async throws {
