@@ -189,18 +189,9 @@ struct BrowserView: View {
         HStack(spacing: 0) {
             if !editingAddress {
                 Button { browser.sheet = .profiles } label: {
-                    VStack(spacing: 2) {
-                        Image(systemName: profiles.currentProfile?.symbol ?? "person.crop.circle")
-                            .font(.body)
-                        Text(browser.profileName)
-                            .font(.caption2.weight(.medium))
-                            .lineLimit(1).truncationMode(.tail)
-                    }
-                    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-                    .padding(.horizontal, 4)
-                    .frame(width: 72)
-                    .frame(minHeight: 48)
-                    .contentShape(Rectangle())
+                    chromeIcon(profiles.currentProfile?.symbol ?? "person.crop.circle")
+                        .font(.body)
+                        .contentShape(Rectangle())
                 }
                 .accessibilityLabel("Profiles, \(browser.profileName)")
                 .accessibilityHint("Switch or manage profiles")
