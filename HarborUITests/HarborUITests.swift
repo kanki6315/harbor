@@ -518,7 +518,7 @@ final class HarborUITests: XCTestCase {
         link.press(forDuration: 1)
         XCTAssertTrue(app.buttons["Open in New Tab"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Open Link"].exists)
-        XCTAssertTrue(app.buttons["Open in Default Browser"].exists)
+        XCTAssertTrue(app.buttons["Open in Another App"].exists)
         XCTAssertTrue(app.buttons["Copy Link"].exists)
         app.buttons["Open in New Tab"].tap()
         XCTAssertTrue(app.buttons["tabsButton"].waitForExistence(timeout: 5))

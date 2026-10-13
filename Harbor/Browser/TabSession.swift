@@ -271,10 +271,10 @@ extension TabSession: WKUIDelegate {
                 })
             }
             if ["http", "https"].contains(url.scheme?.lowercased() ?? "") {
-                actions.append(UIAction(title: "Open in Default Browser", image: UIImage(systemName: "safari")) { [weak self] _ in
-                    UIApplication.shared.open(url) { [weak self] success in
-                        if !success { self?.browser?.errorMessage = "This link could not be opened in the default browser." }
-                    }
+                // The share sheet works whether or not Harbor is the default browser;
+                // opening the URL directly would route back to Harbor when it is.
+                actions.append(UIAction(title: "Open in Another App", image: UIImage(systemName: "square.and.arrow.up")) { [weak self] _ in
+                    self?.browser?.sheet = .share(ShareItem(url: url))
                 })
             }
             actions.append(UIAction(title: "Copy Link", image: UIImage(systemName: "doc.on.doc")) { _ in

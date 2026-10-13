@@ -290,6 +290,38 @@ import WebKit
         XCTAssertLessThanOrEqual(restored.sessions.count, 1, "Restoration must be lazy")
     }
 
+    func testClearedSiteStaysPausedUntilReloaded() async throws {
+        let folder = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let browser = BrowserModel(store: BrowserStore(fileURL: folder.appending(path: "state.json")), isTesting: true)
+        defer { browser.deactivate() }
+        try await waitUntil { browser.blocker.ready }
+        let cleared = browser.selectedID
+        browser.navigate(try XCTUnwrap(URL(string: "https://paused.example/page")))
+        let sameSite = browser.newTab(url: try XCTUnwrap(URL(string: "https://paused.example/other")))
+        let other = browser.newTab(url: try XCTUnwrap(URL(string: "https://other.example")))
+        browser.selectTab(cleared)
+        XCTAssertNotNil(browser.activeSession)
+
+        await browser.clearWebsiteData(site: "paused.example")
+        XCTAssertNil(browser.activeSession)
+        // Returning to Harbor or switching tabs must not reconnect a cleared website.
+        await browser.becameActive()
+        XCTAssertNil(browser.activeSession)
+        browser.selectTab(sameSite)
+        XCTAssertNil(browser.activeSession)
+        browser.selectTab(other)
+        XCTAssertNotNil(browser.activeSession)
+
+        browser.selectTab(cleared)
+        browser.reload()
+        XCTAssertNotNil(browser.activeSession)
+        browser.selectTab(sameSite)
+        browser.navigate(try XCTUnwrap(URL(string: "https://paused.example/next")))
+        XCTAssertNotNil(browser.activeSession)
+        XCTAssertTrue(browser.pausedTabIDs.isEmpty)
+    }
+
     func testUnloadedTabsRestoreHistoryAndReleaseEndedProcesses() async throws {
         let folder = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: folder) }
