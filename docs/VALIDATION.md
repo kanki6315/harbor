@@ -1,5 +1,11 @@
 # Validation — 2026-10-07
 
+## Privacy policy modal — October 12, 2026
+
+Settings now presents the hosted privacy policy in a native Safari sheet. Dismissing the sheet returns to Settings without creating a Harbor tab. This supersedes the new-tab behavior recorded below.
+
+The targeted `testPrivacyPolicyOpensInSettingsSheet` passed on iPhone 17 Pro / iOS 26.5 Simulator, verifying policy text loads, Done returns to Settings, and the tab count is unchanged. Result: `/tmp/harbor-policy-loaded.xcresult`. The initial run on a shared iOS 27 simulator was interrupted by another app before reaching Settings. Swipe dismissal and physical-device behavior were not tested.
+
 ## Public release fixes — October 12, 2026
 
 The final full suites are green on both simulator versions. These results supersede the earlier October 12 runs with bookmark-menu, profile-deletion, and timed-return failures.

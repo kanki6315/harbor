@@ -4,12 +4,14 @@
 
 import SwiftUI
 import UIKit
+import SafariServices
 
 struct SettingsView: View {
     @Bindable var browser: BrowserModel
     @Bindable var profiles: ProfileManager
     @Environment(\.openURL) private var openURL
     @State private var showDefaultBrowserHelp = false
+    @State private var showPrivacyPolicy = false
     @State private var confirmClear = false
     @State private var path: [String]
 
@@ -52,8 +54,7 @@ struct SettingsView: View {
                 }
                 Section("About Harbor") {
                     Button("Privacy Policy") {
-                        browser.newTab(url: URL(string: "https://harbor.arjunakankipati.com/privacy/")!)
-                        dismiss()
+                        showPrivacyPolicy = true
                     }
                     LabeledContent("Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Unknown")
                 }
@@ -86,6 +87,10 @@ struct SettingsView: View {
                 }
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
                 .onChange(of: browser.archive.settings) { _, _ in browser.settingsChanged() }
+                .sheet(isPresented: $showPrivacyPolicy) {
+                    PrivacyPolicySheet(isPresented: $showPrivacyPolicy)
+                        .ignoresSafeArea()
+                }
                 .alert("Open iOS Settings", isPresented: $showDefaultBrowserHelp) {
                     Button("OK", role: .cancel) { }
                 } message: {
@@ -96,6 +101,34 @@ struct SettingsView: View {
                 } message: {
                     Text("Closes this profile’s tabs and deletes its history and website data, signing you out of websites. Keeps bookmarks, settings and website exceptions.")
                 }
+        }
+    }
+}
+
+private struct PrivacyPolicySheet: UIViewControllerRepresentable {
+    @Binding var isPresented: Bool
+
+    func makeUIViewController(context: Context) -> SFSafariViewController {
+        let controller = SFSafariViewController(url: URL(string: "https://harbor.arjunakankipati.com/privacy/")!)
+        controller.delegate = context.coordinator
+        return controller
+    }
+
+    func updateUIViewController(_ controller: SFSafariViewController, context: Context) { }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(isPresented: $isPresented)
+    }
+
+    final class Coordinator: NSObject, SFSafariViewControllerDelegate {
+        @Binding var isPresented: Bool
+
+        init(isPresented: Binding<Bool>) {
+            _isPresented = isPresented
+        }
+
+        func safariViewControllerDidFinish(_ controller: SFSafariViewController) {
+            isPresented = false
         }
     }
 }

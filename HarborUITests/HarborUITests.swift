@@ -10,17 +10,23 @@ final class HarborUITests: XCTestCase {
         continueAfterFailure = false
     }
 
-    @MainActor func testPrivacyPolicyOpensInHarbor() {
+    @MainActor func testPrivacyPolicyOpensInSettingsSheet() {
         let app = XCUIApplication()
         app.launchArguments = ["--uitesting", "--reset"]
         app.launch()
         XCTAssertTrue(app.textFields["addressField"].waitForExistence(timeout: 10))
+        let originalTabCount = app.buttons["tabsButton"].label
         openBrowserDestination(app, "settingsButton")
         app.buttons["Privacy Policy"].tap()
+        XCTAssertTrue(app.buttons["Done"].firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.webViews.staticTexts["Harbor Privacy Policy"].firstMatch.waitForExistence(timeout: 30))
+        capture(app, name: "privacy-policy-sheet")
+        app.buttons["Done"].firstMatch.tap()
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Privacy Policy"].exists)
+        app.navigationBars["Settings"].buttons["Done"].tap()
         XCTAssertTrue(app.textFields["addressField"].waitForExistence(timeout: 5))
-        app.textFields["addressField"].tap()
-        XCTAssertEqual(app.textFields["addressField"].value as? String,
-                       "https://harbor.arjunakankipati.com/privacy/")
+        XCTAssertEqual(app.buttons["tabsButton"].label, originalTabCount)
     }
 
     @MainActor func testTabGroupLifecycle() {

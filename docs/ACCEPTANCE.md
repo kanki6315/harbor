@@ -96,7 +96,7 @@ Run core checks on physical iPhones covering the oldest and latest supported iOS
 
 ## Privacy and clearing
 
-- [ ] Settings opens https://harbor.arjunakankipati.com/privacy/ correctly.
+- [ ] Privacy Policy opens https://harbor.arjunakankipati.com/privacy/ in a modal over Settings; Done or swipe-to-dismiss returns to Settings without adding a browser tab.
 - [ ] Blocking and parameter cleaning preferences persist per profile.
 - [ ] Representative sites work with protection; exceptions plus reload provide a compatibility escape hatch.
 - [ ] Exceptions apply to exact hostnames, not every subdomain.
