@@ -10,7 +10,7 @@ From the repository root:
 python3 -m http.server 8080 --directory site/public
 ```
 
-Open http://localhost:8080. The policy is at `/privacy/`.
+Open http://localhost:8080. The support page is at `/support/` and the policy is at `/privacy/`.
 
 ## Deploy to Cloudflare Pages
 
@@ -31,7 +31,9 @@ Cloudflare references: [Static HTML](https://developers.cloudflare.com/pages/fra
 
 The supplied policy uses Arjuna Kankipati and harbor@arjunakankipati.com. The confirmed effective date is October 7, 2026. Downloaded Apple crash reports are retained for 7 days after download. Google Workspace processes support email, and support correspondence (including attachments) is deleted every 30 days. Confirm the support mailbox receives mail. No App Store download link is shown because one has not been supplied.
 
-Check `/`, `/privacy/`, an unknown path (404), and the Contact link on the deployed custom domain. Cloudflare applies `_headers` at deployment; Python's preview server does not.
+Use `https://harbor.arjunakankipati.com/support/` as the App Store Connect Support URL. Its how-to answers quote the app's labels and navigation as of 0.1.18; update them when Settings or menu wording changes.
+
+Check `/`, `/support/`, `/privacy/`, an unknown path (404), and the Contact link on the deployed custom domain. Cloudflare applies `_headers` at deployment; Python's preview server does not.
 
 ## Verification
 
