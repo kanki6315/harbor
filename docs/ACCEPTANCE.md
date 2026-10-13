@@ -33,10 +33,11 @@ Run core checks on physical iPhones covering the oldest and latest supported iOS
 - [ ] Retry a failed form submission; method and body are preserved without silent conversion to GET.
 - [ ] Offline recovery and Wi-Fi/cellular transitions preserve tabs.
 - [ ] Invalid TLS certificates are not silently accepted.
+- [ ] HTTP pages show the not-secure warning in the expanded and collapsed address bar; HTTPS pages do not.
 - [ ] Ordinary and popup/redirect-based sign-in work; logins survive relaunch where permitted.
 - [ ] Password AutoFill, copy/paste, text selection, file uploads, and forms work.
 - [ ] JavaScript alert, confirm, and prompt accept/cancel correctly; closing or switching tabs does not hang.
-- [ ] Long-press open, new tab, copy, and default-browser actions match their labels.
+- [ ] Long-press open, new tab, copy, and Open in Another App actions match their labels; Open in Another App shows the share sheet.
 - [ ] External app links ask for confirmation; cancellation stays in Harbor.
 
 ## Default browser
@@ -103,6 +104,7 @@ Run core checks on physical iPhones covering the oldest and latest supported iOS
 - [ ] Known tracking parameters are removed on supported paths; functional parameters/fragments survive.
 - [ ] Signed links, login redirects, and submitted forms still work.
 - [ ] Per-site clearing removes login/storage and pauses affected pages; check related subdomains.
+- [ ] Paused pages stay paused after backgrounding Harbor and switching tabs, until Reload or a new address.
 - [ ] All-data clearing removes that profile's tabs, groups, history, website data, previews, and temporary downloads.
 - [ ] Bookmarks, settings, and exceptions remain; other profiles are unaffected.
 - [ ] Relaunch and undo-close do not resurrect cleared browsing data.

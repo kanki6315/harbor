@@ -62,6 +62,9 @@ final class BrowserModel {
     }
     var lastClosed: TabRecord?
     var isClearingData = false
+    /// Tabs for a website whose data was just cleared. They stay unloaded until the user
+    /// reloads or navigates, so returning to Harbor or switching tabs cannot reconnect them.
+    private(set) var pausedTabIDs: Set<UUID> = []
     private let store: BrowserStore
     private let writer: BrowserArchiveWriter
     private var persistTask: Task<Void, Never>?
@@ -193,7 +196,7 @@ final class BrowserModel {
     }
 
     func ensureSession(_ id: UUID) {
-        guard isActive, !isClearingData, blocker.ready, sessions[id] == nil,
+        guard isActive, !isClearingData, blocker.ready, sessions[id] == nil, !pausedTabIDs.contains(id),
               let record = archive.tabs.first(where: { $0.id == id }), let url = record.url else { return }
         let session = TabSession(id: id, browser: self)
         sessions[id] = session
@@ -218,6 +221,7 @@ final class BrowserModel {
         guard let index = archive.tabs.firstIndex(where: { $0.id == selectedID }) else { return }
         archive.tabs[index].url = url
         archive.tabs[index].title = url.host ?? "Page"
+        pausedTabIDs.remove(selectedID)
         if let session = activeSession {
             session.loadError = nil
             blocker.apply(to: session.webView, url: url, settings: archive.settings)
@@ -559,7 +563,7 @@ final class BrowserModel {
         saveNow()
     }
     func reload() {
-        guard let session = activeSession else { ensureSession(selectedID); return }
+        guard let session = activeSession else { pausedTabIDs.remove(selectedID); ensureSession(selectedID); return }
         let retry = session.loadError == nil ? nil : session.failedRequest
         session.loadError = nil
         if let retry { session.webView.load(retry) }
@@ -664,6 +668,13 @@ final class BrowserModel {
                 return domains.contains { host == $0 || host.hasSuffix("." + $0) }
             }
             for session in related { sessions.removeValue(forKey: session.id)?.dispose() }
+            // Tabs for the site, loaded or not, would otherwise reconnect when shown again.
+            let pausedTabs = (archive.tabs + [lastClosed].compactMap { $0 }).filter { tab in
+                guard let host = ContentBlocker.siteKey(tab.url) else { return false }
+                return host == site || domains.contains { host == $0 || host.hasSuffix("." + $0) }
+            }
+            for tab in pausedTabs { sessions.removeValue(forKey: tab.id)?.dispose() }
+            pausedTabIDs.formUnion((affected + related).map(\.id) + pausedTabs.map(\.id))
             await dataStore.removeData(ofTypes: types, for: matching)
             let cookies = await dataStore.httpCookieStore.allCookies()
             for cookie in cookies {
@@ -678,6 +689,7 @@ final class BrowserModel {
             archive.selectedTabGroupID = nil
             archive.selectedTabID = archive.tabs[0].id
             lastClosed = nil
+            pausedTabIDs.removeAll()
             downloads.clearTemporaryFiles()
         }
         // Preserve the save guard after a failed load; the fallback archive is incomplete.

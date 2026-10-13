@@ -107,7 +107,7 @@ extension BrowserStore {
         var values = URLResourceValues()
         values.isExcludedFromBackup = true
         try directory.setResourceValues(values)
-        try data.write(to: previewURL(id), options: [.atomic, .completeFileProtection])
+        try data.write(to: previewURL(id), options: [.atomic, .completeFileProtectionUnlessOpen])
     }
 
     func removePreview(_ id: UUID) { try? FileManager.default.removeItem(at: previewURL(id)) }
@@ -123,6 +123,8 @@ extension BrowserStore {
 
 // Saved WebKit interaction state (back/forward list, scroll, form contents) for unloaded tabs.
 // It can hold page and form data, so it shares the previews' protection and lifetime.
+// Unless-open protection lets Harbor write while the device is locked, as when iOS ends a
+// background page; the files still cannot be read until the device is unlocked.
 extension BrowserStore {
     private var statesURL: URL { fileURL.deletingLastPathComponent().appending(path: "TabStates") }
     private func stateURL(_ id: UUID) -> URL { statesURL.appending(path: "\(id.uuidString).state") }
@@ -133,7 +135,7 @@ extension BrowserStore {
         var values = URLResourceValues()
         values.isExcludedFromBackup = true
         try directory.setResourceValues(values)
-        try data.write(to: stateURL(id), options: [.atomic, .completeFileProtection])
+        try data.write(to: stateURL(id), options: [.atomic, .completeFileProtectionUnlessOpen])
     }
 
     func loadTabState(_ id: UUID) -> Data? { try? Data(contentsOf: stateURL(id)) }

@@ -128,7 +128,10 @@ struct BrowserView: View {
             Group {
                 if chromeCollapsed && !editingAddress {
                     Button { setChromeCollapsed(false) } label: {
-                        Text(compactAddress)
+                        HStack(spacing: 3) {
+                            if isInsecure { insecureIcon }
+                            Text(compactAddress)
+                        }
                             .font(.caption2.weight(.medium))
                             .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                             .lineLimit(1).truncationMode(.middle)
@@ -139,7 +142,7 @@ struct BrowserView: View {
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("Show browser controls for \(compactAddress), \(browser.profileName) profile")
+                    .accessibilityLabel("Show browser controls for \(isInsecure ? "not secure " : "")\(compactAddress), \(browser.profileName) profile")
                     .accessibilityIdentifier("expandBrowserControls")
                     .frame(maxWidth: .infinity)
                     .transition(.opacity)
@@ -207,6 +210,7 @@ struct BrowserView: View {
                 .accessibilityLabel("Profiles, \(browser.profileName)")
                 .accessibilityHint("Switch or manage profiles")
                 .accessibilityIdentifier("addressProfileButton")
+                if isInsecure { insecureIcon.font(.subheadline).padding(.trailing, 4) }
             }
             TextField("Address", text: $address,
                       prompt: Text("Search or address").foregroundStyle(Color.primary.opacity(0.72)))
@@ -293,6 +297,16 @@ struct BrowserView: View {
         let animation: Animation = reduceMotion ? .easeOut(duration: 0.12) :
             .spring(response: collapsed ? 0.34 : 0.42, dampingFraction: 0.86)
         withAnimation(animation) { chromeCollapsed = collapsed }
+    }
+
+    /// Unencrypted pages are allowed, so mark them wherever the address is shown.
+    private var isInsecure: Bool { browser.selectedTab.url?.scheme?.lowercased() == "http" }
+
+    private var insecureIcon: some View {
+        Image(systemName: "exclamationmark.triangle.fill")
+            .foregroundStyle(.orange)
+            .accessibilityLabel("Not secure")
+            .accessibilityIdentifier("insecureConnection")
     }
 
     private var compactAddress: String {
