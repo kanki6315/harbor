@@ -264,16 +264,17 @@ struct BrowserView: View {
                 Button("Settings", systemImage: "gearshape") { browser.sheet = .settings }
                     .accessibilityIdentifier("settingsButton")
             }
-            if browser.activeSession?.mediaState == .playing || browser.downloads.completed != nil || browser.downloads.activeCount > 0 {
-                Section {
-                    if browser.activeSession?.mediaState == .playing {
-                        Button("Pause media", systemImage: "pause.fill") { browser.activeSession?.webView.pauseAllMediaPlayback(completionHandler: nil) }
-                    }
-                    if let download = browser.downloads.completed {
-                        Button("Save or share download", systemImage: "arrow.down.doc") { browser.sheet = .share(download) }
+            // Keep these rows in place while the native menu is open. Media polling
+            // and finishing downloads must not move another action beneath a tap.
+            Section {
+                Button("Pause media", systemImage: "pause.fill") { browser.activeSession?.webView.pauseAllMediaPlayback(completionHandler: nil) }
+                Menu("Downloads", systemImage: "arrow.down.doc") {
+                    ForEach(browser.downloads.completedItems) { download in
+                        Button(download.url.lastPathComponent) { browser.sheet = .share(download) }
                     }
                     if browser.downloads.activeCount > 0 { Text("Downloading \(browser.downloads.activeCount) file(s)…") }
                 }
+                .disabled(browser.downloads.completedItems.isEmpty && browser.downloads.activeCount == 0)
             }
         } label: { chromeIcon("ellipsis") }
             .menuOrder(.fixed)

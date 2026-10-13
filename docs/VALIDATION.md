@@ -1,5 +1,45 @@
 # Validation — 2026-10-07
 
+## Public release fixes — October 12, 2026
+
+The final full suites are green on both simulator versions. These results supersede the earlier October 12 runs with bookmark-menu, profile-deletion, and timed-return failures.
+
+| Full suite | Unit / profile / WebKit | UI | Total |
+| --- | --- | --- | --- |
+| iPhone 17 Pro, iOS 26.5 | 64 passed | 32 passed, 1 skipped | **96 passed, 1 skipped, 0 failures** |
+| iPhone 18 Pro, iOS 27.0 | 64 passed | 32 passed, 1 skipped | **96 passed, 1 skipped, 0 failures** |
+
+Both `xcodebuild test` processes exited **0** with **TEST SUCCEEDED**. The existing `testYouTubeCompatibilityAttempt` skipped because YouTube did not expose a playable embed in either simulator session; this is not a YouTube playback signoff. No tests were excluded or marked as expected failures.
+
+### Fixes and regression evidence
+
+- **Privacy policy:** Settings opens `https://harbor.arjunakankipati.com/privacy/` in a new Harbor tab and dismisses Settings. The UI test passed on both versions.
+- **Download retention:** Completed files remain individually accessible through More → Downloads until the profile's temporary files are cleared or the app process ends. Three concurrent real loopback downloads passed content, distinct-path, retention, and cleanup assertions while Settings was selected, including identical suggested filenames.
+- **Navigation retry:** Failed provisional navigation retains the request in memory. Explicit retry preserves its URL, method, headers, and body. The regression failed against the old implementation, which reloaded the previous committed page; GET and POST checks pass with the fix.
+- **Bookmark suggestions and folders:** Media polling could refresh the native browser menu during selection. The menu now keeps its action rows stable, always offers Pause media, and no longer polls visible playback solely to update that action. Explicit media sampling for tab unloading remains. Normal and large-text suggestions, acceptance/rejection, draft cancellation/save, folders, and menu-navigation tests passed on both versions. The initial stable-row change alone still failed intermittently; the final runs include removal of the polling dependency.
+- **Profile deletion:** A retained outgoing `BrowserModel` kept its named WebKit data store/network session alive after its views were disposed. Deletion now releases that reference before removing the store. A regression that deliberately retains the model reproduced the original failure and passes with the fix; actual retained-web-view failure/retry coverage also passes. Deleting the active profile with a live page passed on both simulators.
+- **Timed return:** The old UI test's single slider drag left the duration at 30 minutes. It now traverses the slider range and asserts “5 minutes” before saving. The full tests verify early relaunch stays in Work, then wait 301 seconds in the background and verify return to the default profile. Both passed (335.7 seconds on iOS 26.5; 337.5 seconds on iOS 27). No production timer change was needed.
+- **Autosave test isolation:** The persistence test previously loaded example.com, allowing a real page-title callback to replace the test metadata. It now tests debounce/flush ordering with start-page metadata and no live navigation. All assertions remain; both suites pass.
+
+### Reproduction and results
+
+Run the complete suite with either destination below, using a fresh result-bundle path:
+
+```sh
+xcodebuild test -project Harbor.xcodeproj -scheme Harbor \
+  -destination 'platform=iOS Simulator,id=47309308-6FE0-4749-AC87-088B2BEC807D' \
+  -derivedDataPath /tmp/harbor-failure-fixes-build \
+  -resultBundlePath /tmp/harbor-release-final26.xcresult \
+  -collect-test-diagnostics never -parallel-testing-enabled NO \
+  CODE_SIGNING_ALLOWED=NO
+```
+
+For the iOS 27 run, use destination ID `2172888E-B011-46F3-A292-9D64543ACAC7`, derived data `/tmp/harbor-store-test-build`, and result bundle `/tmp/harbor-release-final27.xcresult`.
+
+Final result bundles: `/tmp/harbor-release-final26.xcresult` and `/tmp/harbor-release-final27.xcresult`. Logs: `/tmp/harbor-release-final26.log` and `/tmp/harbor-release-final27.log`. These are local temporary artifacts, not committed fixtures. Optional simulator diagnostic collection was disabled; both runs completed normally. Xcode still reports UIKit/SwiftUI hosting runtime warnings, with no failed tests.
+
+No archive, upload, or physical-device signoff was performed. Work through [the public release acceptance checklist](ACCEPTANCE.md) on the exact release candidate, including live-profile deletion and verified timeout settings.
+
 ## Tab groups — October 8, 2026
 
 Added named groups within each profile, an All Tabs scope, group-scoped search, create/rename forms, move/remove actions and deletion that keeps member tabs open. Group definitions, membership and the selected scope persist in the profile's device-only session. Older archives decode without groups; undo-close handles deleted groups. All-site data clearing removes groups with the tabs.

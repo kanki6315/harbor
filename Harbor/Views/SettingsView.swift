@@ -51,6 +51,10 @@ struct SettingsView: View {
                     Toggle("Restore tabs on launch", isOn: $browser.archive.settings.restoreTabs)
                 }
                 Section("About Harbor") {
+                    Button("Privacy Policy") {
+                        browser.newTab(url: URL(string: "https://harbor.arjunakankipati.com/privacy/")!)
+                        dismiss()
+                    }
                     LabeledContent("Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Unknown")
                 }
                 Section {

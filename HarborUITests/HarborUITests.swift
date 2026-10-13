@@ -5,6 +5,24 @@
 import XCTest
 
 final class HarborUITests: XCTestCase {
+    override func setUp() {
+        super.setUp()
+        continueAfterFailure = false
+    }
+
+    @MainActor func testPrivacyPolicyOpensInHarbor() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--uitesting", "--reset"]
+        app.launch()
+        XCTAssertTrue(app.textFields["addressField"].waitForExistence(timeout: 10))
+        openBrowserDestination(app, "settingsButton")
+        app.buttons["Privacy Policy"].tap()
+        XCTAssertTrue(app.textFields["addressField"].waitForExistence(timeout: 5))
+        app.textFields["addressField"].tap()
+        XCTAssertEqual(app.textFields["addressField"].value as? String,
+                       "https://harbor.arjunakankipati.com/privacy/")
+    }
+
     @MainActor func testTabGroupLifecycle() {
         let app = XCUIApplication()
         app.launchArguments = ["--uitesting", "--reset", "-AppleInterfaceStyle", "Light"]
@@ -774,7 +792,11 @@ final class HarborUITests: XCTestCase {
         let minutes = app.sliders["returnMinutes"]
         if !minutes.waitForExistence(timeout: 5) { print(app.debugDescription) }
         XCTAssertTrue(minutes.exists)
+        // The initial 30-minute thumb is too close to the lower endpoint for
+        // XCTest's normalized drag to move reliably. Traverse the full range.
+        minutes.adjust(toNormalizedSliderPosition: 1)
         minutes.adjust(toNormalizedSliderPosition: 0)
+        XCTAssertEqual(app.staticTexts["returnDuration"].label, "5 minutes")
         app.buttons["saveReturnPolicy"].tap()
         capture(app, name: "phone-profile-timeout")
         app.buttons["Switch to Work"].tap()

@@ -26,7 +26,8 @@ final class DownloadManager: NSObject, WKDownloadDelegate {
         let directory = directory(profileID: profileID)
         if FileManager.default.fileExists(atPath: directory.path) { try FileManager.default.removeItem(at: directory) }
     }
-    var completed: ShareItem?
+    private(set) var completedItems: [ShareItem] = []
+    var completed: ShareItem? { completedItems.last }
     var errorMessage: String?
     private(set) var activeCount = 0
     private var downloads: [ObjectIdentifier: (WKDownload, URL?)] = [:]
@@ -34,7 +35,7 @@ final class DownloadManager: NSObject, WKDownloadDelegate {
         for (download, _) in downloads.values { download.delegate = nil; download.cancel { _ in } }
         downloads.removeAll()
         activeCount = 0
-        completed = nil
+        completedItems.removeAll()
         try? FileManager.default.removeItem(at: directory)
     }
     func accept(_ download: WKDownload) {
@@ -54,7 +55,7 @@ final class DownloadManager: NSObject, WKDownloadDelegate {
         } catch { errorMessage = error.localizedDescription; completionHandler(nil) }
     }
     func downloadDidFinish(_ download: WKDownload) {
-        if let url = downloads.removeValue(forKey: ObjectIdentifier(download))?.1 { completed = ShareItem(url: url) }
+        if let url = downloads.removeValue(forKey: ObjectIdentifier(download))?.1 { completedItems.append(ShareItem(url: url)) }
         activeCount = downloads.count
     }
     func download(_ download: WKDownload, didFailWithError error: Error, resumeData: Data?) {

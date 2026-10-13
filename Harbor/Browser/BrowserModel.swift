@@ -34,7 +34,7 @@ final class BrowserModel {
     let downloads: DownloadManager
     let profileID: UUID
     var profileName: String
-    let websiteDataStore: WKWebsiteDataStore
+    private(set) var websiteDataStore: WKWebsiteDataStore
     private(set) var isActive = true
     var errorMessage: String?
     var externalURL: URL?
@@ -72,7 +72,6 @@ final class BrowserModel {
     }
     private(set) var bookmarkNameStates: [UUID: BookmarkNameState] = [:]
     private var bookmarkNameTasks: [UUID: Task<Void, Never>] = [:]
-    private var mediaTask: Task<Void, Never>?
     private var trimRetryTask: Task<Void, Never>?
     private var memoryObserver: NSObjectProtocol?
     private(set) var isTesting = false
@@ -134,19 +133,10 @@ final class BrowserModel {
             }
             #endif
         }
-        // Only the browser menu's Pause action reads the visible tab's media state between
-        // explicit refreshes. Unloading samples background tabs itself when it needs to.
-        mediaTask = Task { [weak self] in
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(5))
-                guard !Task.isCancelled else { break }
-                await self?.refreshVisibleMedia()
-            }
-        }
     }
 
     isolated deinit {
-        persistTask?.cancel(); mediaTask?.cancel(); trimRetryTask?.cancel()
+        persistTask?.cancel(); trimRetryTask?.cancel()
         for task in bookmarkNameTasks.values { task.cancel() }
         if let memoryObserver { NotificationCenter.default.removeObserver(memoryObserver) }
     }
@@ -191,6 +181,14 @@ final class BrowserModel {
         trimRetryTask = nil
         for session in sessions.values { session.dispose() }
         sessions.removeAll()
+    }
+
+    func prepareForDeletion() {
+        deactivate()
+        downloads.clearTemporaryFiles()
+        // SwiftUI can retain the outgoing model while dismissing its sheets.
+        // Release its named store now so WebKit can remove the network session.
+        websiteDataStore = .nonPersistent()
     }
 
     func ensureSession(_ id: UUID) {
@@ -561,16 +559,14 @@ final class BrowserModel {
     }
     func reload() {
         guard let session = activeSession else { ensureSession(selectedID); return }
+        let retry = session.loadError == nil ? nil : session.failedRequest
         session.loadError = nil
-        if session.webView.url == nil, let url = selectedTab.url { session.webView.load(URLRequest(url: url)) }
+        if let retry { session.webView.load(retry) }
+        else if session.webView.url == nil, let url = selectedTab.url { session.webView.load(URLRequest(url: url)) }
         else { session.webView.reload() }
     }
     func refreshMedia() async {
         for session in Array(sessions.values) { await session.refreshMediaState() }
-    }
-    private func refreshVisibleMedia() async {
-        guard isActive, UIApplication.shared.applicationState == .active else { return }
-        await activeSession?.refreshMediaState()
     }
 
     /// Live pages kept before the least recently used background tab is unloaded.

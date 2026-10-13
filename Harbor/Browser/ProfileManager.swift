@@ -322,8 +322,7 @@ final class ProfileManager {
         candidate.profiles[index].isDeleting = true
         guard commit(candidate) else { return }
         let profile = candidate.profiles[index]
-        browsers[id]?.deactivate()
-        browsers[id]?.downloads.clearTemporaryFiles()
+        browsers[id]?.prepareForDeletion()
         browsers.removeValue(forKey: id)
         pendingIncomingURLs.removeValue(forKey: id)
         // Let SwiftUI detach outgoing web views before WebKit removes their data store.

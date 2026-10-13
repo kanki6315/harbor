@@ -574,6 +574,22 @@ import Network
         XCTAssertTrue(manager.browser!.archive.history.isEmpty)
     }
 
+    func testDeletingProfileReleasesStoreEvenWhenBrowserModelIsRetained() async throws {
+        let manager = ProfileManager(store: store)
+        let outgoing = try XCTUnwrap(manager.browser)
+        let cookie = try XCTUnwrap(HTTPCookie(properties: [
+            .domain: "example.com", .path: "/", .name: "session", .value: "personal"
+        ]))
+        await outgoing.websiteDataStore.httpCookieStore.setCookie(cookie)
+        XCTAssertTrue(manager.create(name: "Work", symbol: "briefcase"))
+        await manager.delete(outgoing.profileID)
+        XCTAssertFalse(outgoing.isActive)
+        XCTAssertNil(manager.errorMessage)
+        XCTAssertTrue(manager.pendingDeletions.isEmpty)
+        let identifiers = await WKWebsiteDataStore.allDataStoreIdentifiers
+        XCTAssertFalse(identifiers.contains(outgoing.profileID))
+    }
+
     func testDeletionFailureCanBeRetriedWithoutTouchingAnotherProfile() async throws {
         let manager = ProfileManager(store: store)
         let personal = try XCTUnwrap(manager.currentProfile?.id)
@@ -616,6 +632,36 @@ import Network
         XCTAssertEqual(manager.browser?.downloads.activeCount, 0)
         XCTAssertTrue(manager.select(personal.profileID))
         XCTAssertEqual(manager.browser?.downloads.completed?.url, file)
+    }
+
+    func testMultipleDownloadsRemainAvailableUntilCleared() async throws {
+        let server = try DownloadFixtureServer()
+        let port = try await server.start()
+        defer { server.stop() }
+        let manager = ProfileManager(store: store)
+        let browser = try XCTUnwrap(manager.browser)
+        browser.sheet = .settings
+        let session = TabSession(id: UUID(), browser: browser)
+        defer { session.dispose(); browser.downloads.clearTemporaryFiles() }
+        for index in 0..<3 {
+            let download = await session.webView.startDownload(using: URLRequest(url: URL(string: "http://127.0.0.1:\(port)/file\(index)")!))
+            browser.downloads.accept(download)
+        }
+        for _ in 0..<200 where browser.downloads.completedItems.count < 3 && browser.downloads.errorMessage == nil {
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        XCTAssertNil(browser.downloads.errorMessage)
+        let items = browser.downloads.completedItems
+        XCTAssertEqual(items.count, 3)
+        XCTAssertEqual(Set(items.map(\.url)).count, 3)
+        XCTAssertEqual(browser.downloads.activeCount, 0)
+        for item in items {
+            XCTAssertEqual(try String(contentsOf: item.url, encoding: .utf8), "profile-owned download")
+        }
+        browser.downloads.clearTemporaryFiles()
+        XCTAssertTrue(browser.downloads.completedItems.isEmpty)
+        XCTAssertNil(browser.downloads.completed)
+        for item in items { XCTAssertFalse(FileManager.default.fileExists(atPath: item.url.path)) }
     }
 
     func testDownloadFilesClearOnlyTheirOwnerAndDeletionFallsBack() async throws {

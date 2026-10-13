@@ -7,6 +7,45 @@ import WebKit
 @testable import Harbor
 
 @MainActor final class WebKitTests: XCTestCase {
+    func testRetryTargetsFailedNavigationInsteadOfPreviousPage() async throws {
+        try await assertRetryPreservesRequest(method: "GET")
+    }
+
+    func testRetryPreservesPostRequest() async throws {
+        try await assertRetryPreservesRequest(method: "POST")
+    }
+
+    private func assertRetryPreservesRequest(method: String) async throws {
+        let folder = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let browser = BrowserModel(store: BrowserStore(fileURL: folder.appending(path: "browser.json")))
+        defer { browser.deactivate() }
+        await browser.blocker.prepare()
+        let configuration = WKWebViewConfiguration()
+        configuration.websiteDataStore = browser.websiteDataStore
+        _ = browser.createPopup(configuration: configuration, url: nil)
+        let session = try XCTUnwrap(browser.activeSession)
+        let previous = URL(string: "https://example.com/previous")!
+        session.webView.loadSimulatedRequest(URLRequest(url: previous), responseHTML: "<p>Previous page</p>")
+        try await waitUntil { session.hasCommitted && session.webView.url == previous && !session.isLoading }
+        let destination = URL(string: "http://127.0.0.1:54321/unreachable")!
+        var request = URLRequest(url: destination)
+        request.httpMethod = method
+        request.setValue("release-test", forHTTPHeaderField: "X-Harbor-Test")
+        if method == "POST" { request.httpBody = Data("field=value".utf8) }
+        session.webView.load(request)
+        try await waitUntil { session.loadError != nil }
+        XCTAssertNotNil(session.failedRequest, "Failed request should be retained")
+        let recorder = RetryNavigationRecorder()
+        session.webView.navigationDelegate = recorder
+        browser.reload()
+        try await waitUntil { recorder.request != nil }
+        XCTAssertEqual(recorder.request?.url, destination)
+        XCTAssertEqual(recorder.request?.httpMethod, method)
+        XCTAssertEqual(recorder.request?.value(forHTTPHeaderField: "X-Harbor-Test"), "release-test")
+        XCTAssertEqual(recorder.request?.httpBody, request.httpBody)
+    }
+
     func testRedditMediaRecoveryPreservesPausedAndAudiblePlayers() async throws {
         let configuration = WKWebViewConfiguration()
         MediaPolicy.configure(configuration)
@@ -86,13 +125,18 @@ import WebKit
         let store = BrowserStore(fileURL: folder.appending(path: "state.json"))
         let browser = BrowserModel(store: store)
         defer { browser.deactivate() }
-        browser.updateTab(browser.selectedID, url: URL(string: "https://example.com/old")!, title: "Old")
+        // Exercise persistence without loading a live page whose title callbacks
+        // could legitimately replace the metadata while the debounce is pending.
+        browser.archive.tabs[0].title = "Old"
+        browser.saveSoon()
         try await Task.sleep(for: .milliseconds(300))
-        browser.updateTab(browser.selectedID, url: URL(string: "https://example.com/new")!, title: "New")
+        browser.archive.tabs[0].title = "New"
+        browser.saveSoon()
         XCTAssertTrue(browser.saveNow())
         try await Task.sleep(for: .milliseconds(300))
         XCTAssertEqual(try store.load().tabs.first?.title, "New")
-        browser.updateTab(browser.selectedID, url: URL(string: "https://example.com/latest")!, title: "Latest")
+        browser.archive.tabs[0].title = "Latest"
+        browser.saveSoon()
         try await Task.sleep(for: .milliseconds(500))
         browser.deactivate()
         XCTAssertEqual(try store.load().tabs.first?.title, "Latest")
@@ -499,5 +543,14 @@ extension WebKitTests {
         browser.dialog = WebDialog(title: "example.com", message: "Dismiss", kind: .alert) { _ in replies += 1 }
         browser.sheet = nil
         XCTAssertEqual(replies, 3)
+    }
+}
+
+@MainActor private final class RetryNavigationRecorder: NSObject, WKNavigationDelegate {
+    var request: URLRequest?
+    func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
+                 decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+        request = navigationAction.request
+        decisionHandler(.cancel)
     }
 }

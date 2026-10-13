@@ -18,6 +18,10 @@ final class TabSession: NSObject, Identifiable {
     var mediaState: WKMediaPlaybackState = .none
     var fullscreen = false
     var loadError: String?
+    // WebKit may still expose the previous committed URL after a provisional failure.
+    // Keep the request in memory so explicit retry preserves its destination and method.
+    private var pendingMainFrameRequest: URLRequest?
+    private(set) var failedRequest: URLRequest?
     /// Held only when the preview could not be saved; otherwise the switcher reads it from disk.
     var snapshot: UIImage?
     /// Bumped when a new preview is saved so the switcher reloads it.
@@ -168,6 +172,10 @@ extension TabSession: WKNavigationDelegate {
             }
             browser.blocker.apply(to: webView, url: url, settings: browser.archive.settings)
         }
+        if navigationAction.targetFrame?.isMainFrame == true {
+            pendingMainFrameRequest = navigationAction.request
+            failedRequest = nil
+        }
         decisionHandler(.allow)
     }
 
@@ -211,6 +219,8 @@ extension TabSession: WKNavigationDelegate {
     }
     func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
         hasCommitted = true
+        pendingMainFrameRequest = nil
+        failedRequest = nil
         loadError = nil
         updateMetadata()
     }
@@ -222,14 +232,15 @@ extension TabSession: WKNavigationDelegate {
         browser?.scheduleTrim()
     }
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-        failed(error)
+        if failed(error) { failedRequest = pendingMainFrameRequest }
     }
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) { failed(error) }
-    private func failed(_ error: Error) {
+    @discardableResult private func failed(_ error: Error) -> Bool {
         let error = error as NSError
-        guard error.code != NSURLErrorCancelled, !(error.domain == "WebKitErrorDomain" && error.code == 102) else { return }
+        guard error.code != NSURLErrorCancelled, !(error.domain == "WebKitErrorDomain" && error.code == 102) else { return false }
         loadError = error.localizedDescription
         isLoading = false
+        return true
     }
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
         mediaState = .none

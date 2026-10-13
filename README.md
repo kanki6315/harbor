@@ -112,9 +112,11 @@ No custom player, audio session override, user-agent spoof or background-audio e
 
 DRM support, codecs, HLS, embedding permissions, signed media, provider policy and user-agent checks vary by site/device. A website working in Safari does not establish that it works identically inside WKWebView. Some services may reject embedded browsers or require their own app. Harbor does not bypass those restrictions.
 
-Downloads use native `WKDownload`, including attachment headers and `download` links. Normal playable media remains inline unless the website requests a download. Temporary files are not a durable download library; use Save to Files. Resume, background downloads and a full download history are future improvements.
+Downloads use native `WKDownload`, including attachment headers and `download` links. Normal playable media remains inline unless the website requests a download. Completed downloads remain individually available under **More → Downloads** during the current app session, including when several finish while a sheet is open. Temporary files are not a durable download library; use Save to Files. Resume, background downloads and a full download history are future improvements.
 
 ## Validation and manual media checklist
+
+Use the [public release acceptance checklist](docs/ACCEPTANCE.md) for a complete physical-device and release signoff.
 
 See [validation results](docs/VALIDATION.md) for the actual run evidence. Automated tests cover logic, WebKit configuration and rules, shared persistent cookies, tab metadata, and selected UI flows. The local test page and synthetic H.264/AAC sample make basic playback checks reproducible without a network. Debug launch flags `--uitesting --reset --fixture` use separate test metadata and open that fixture; they are inactive in Release. They use dedicated named WebKit profiles as well as separate metadata, so they do not share the user’s website sessions.
 
