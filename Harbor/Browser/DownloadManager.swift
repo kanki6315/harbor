@@ -19,8 +19,13 @@ final class DownloadManager: NSObject, WKDownloadDelegate {
         // No downloads survive process termination; remove leftovers before this profile starts any.
         try? FileManager.default.removeItem(at: directory)
     }
+    static let rootDirectory = FileManager.default.temporaryDirectory.appending(path: "HarborDownloads")
     static func directory(profileID: UUID) -> URL {
-        FileManager.default.temporaryDirectory.appending(path: "HarborDownloads/Profiles/\(profileID.uuidString)")
+        rootDirectory.appending(path: "Profiles/\(profileID.uuidString)")
+    }
+    /// Removes leftovers for every profile, including profiles not opened this launch.
+    static func removeAllFiles() {
+        try? FileManager.default.removeItem(at: rootDirectory)
     }
     static func removeFiles(profileID: UUID) throws {
         let directory = directory(profileID: profileID)

@@ -173,7 +173,8 @@ final class BrowserModel {
         for task in bookmarkNameTasks.values { task.cancel() }
         bookmarkNameTasks.removeAll()
         bookmarkNameStates.removeAll()
-        persistTask?.cancel()
+        // Write any pending debounced change rather than dropping it.
+        saveNow()
         writer.flush()
         sheet = nil
         externalURL = nil

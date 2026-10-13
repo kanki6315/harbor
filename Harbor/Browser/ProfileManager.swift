@@ -112,6 +112,8 @@ final class ProfileManager {
         testing = false
         #endif
         self.store = store ?? (testing ? ProfileStore(root: FileManager.default.temporaryDirectory.appending(path: "HarborUITests")) : ProfileStore())
+        // No downloads survive process termination; this runs before any profile can start one.
+        if store == nil { DownloadManager.removeAllFiles() }
         do {
             #if DEBUG
             if testing && ProcessInfo.processInfo.arguments.contains("--reset") {

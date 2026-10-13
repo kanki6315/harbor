@@ -31,6 +31,7 @@
 		948DE1C2D45A84F2C96590CA /* BrowserStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1406ACD438D69502DF2477D9 /* BrowserStore.swift */; };
 		9CB7C083AC9180B532A03549 /* InterVariable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 972E653A7AA6FC8D8ACC2D7A /* InterVariable.ttf */; };
 		9D90C803E6DD9A9A2A9FA2EF /* WebKitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02DC065BCECE9277F46E29CA /* WebKitTests.swift */; };
+		9F70492EE99D75B6984A0014 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 2BEF5509FEE84D5858EF0033 /* PrivacyInfo.xcprivacy */; };
 		A841BD0DA056BC35DC174995 /* BrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0928CBCE6B2B8CF9A1C8E101 /* BrowserView.swift */; };
 		B58E4BC93C3CC89EB7F1450C /* tlds-alpha-by-domain.txt in Resources */ = {isa = PBXBuildFile; fileRef = 54453BE16705C190D63B28F6 /* tlds-alpha-by-domain.txt */; };
 		B6D68FBA64C5330947E1DC3B /* CoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AADA16BCB66DBB857A8CFA9C /* CoreTests.swift */; };
@@ -69,6 +70,7 @@
 		184640849705AB4AC6A00104 /* TabSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabSession.swift; sourceTree = "<group>"; };
 		1C02BFC1BBBA23DDCB63F733 /* Harbor.icon */ = {isa = PBXFileReference; lastKnownFileType = wrapper.icon; path = Harbor.icon; sourceTree = "<group>"; };
 		1C2F48FD8A25BDA443619403 /* ProfileManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileManager.swift; sourceTree = "<group>"; };
+		2BEF5509FEE84D5858EF0033 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		38799E22E8C2BA260619954C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		45AA0FFDCD1A6FA52AB31421 /* media-fixture.mp4 */ = {isa = PBXFileReference; path = "media-fixture.mp4"; sourceTree = "<group>"; };
 		460B5BEE1267E94874C9C1D1 /* ASSET-PROVENANCE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "ASSET-PROVENANCE.md"; sourceTree = "<group>"; };
@@ -185,6 +187,7 @@
 			children = (
 				9056FE4E7096E4BF7EAE89C1 /* Harbor.entitlements */,
 				38799E22E8C2BA260619954C /* Info.plist */,
+				2BEF5509FEE84D5858EF0033 /* PrivacyInfo.xcprivacy */,
 				0A8A8C27CE4FDFE40DBABF50 /* App */,
 				7FC3AAF4688BBA276A8530BA /* Browser */,
 				B08CF369C7887AF95A886C7D /* Media */,
@@ -364,6 +367,7 @@
 				5F6E92046E672238F0CDEFB8 /* Harbor.icon in Resources */,
 				132DFB10345760E06C6EF0A2 /* Inter-LICENSE.txt in Resources */,
 				9CB7C083AC9180B532A03549 /* InterVariable.ttf in Resources */,
+				9F70492EE99D75B6984A0014 /* PrivacyInfo.xcprivacy in Resources */,
 				27D61E0450E6E5112C3E9F4C /* browser-fixture.html in Resources */,
 				8CC8F1E36E6EB8A482C225C9 /* media-fixture.mp4 in Resources */,
 				B58E4BC93C3CC89EB7F1450C /* tlds-alpha-by-domain.txt in Resources */,
@@ -605,6 +609,7 @@
 				CODE_SIGN_ENTITLEMENTS = Harbor/Harbor.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
+				EXCLUDED_SOURCE_FILE_NAMES = "browser-fixture.html media-fixture.mp4 ASSET-PROVENANCE.md";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Harbor/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Harbor;
@@ -612,18 +617,21 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Websites can request camera access for calls or capturing photos.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Unlock your protected Harbor profiles with Face ID.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Websites on your local network, such as router or printer pages, can be opened in Harbor.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Websites can request your location to show nearby places or directions.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Websites can request microphone access for calls or recording audio.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save images and videos from websites to your photo library.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1.16;
+				MARKETING_VERSION = 0.1.17;
 				PRODUCT_BUNDLE_IDENTIFIER = com.arjunakankipati.harbor;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};
@@ -675,18 +683,21 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Websites can request camera access for calls or capturing photos.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Unlock your protected Harbor profiles with Face ID.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Websites on your local network, such as router or printer pages, can be opened in Harbor.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Websites can request your location to show nearby places or directions.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Websites can request microphone access for calls or recording audio.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save images and videos from websites to your photo library.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1.16;
+				MARKETING_VERSION = 0.1.17;
 				PRODUCT_BUNDLE_IDENTIFIER = com.arjunakankipati.harbor;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
