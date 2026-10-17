@@ -1,6 +1,6 @@
 # Harbor website
 
-Scope: a small public app overview and readable privacy policy, hosted on Cloudflare Pages at harbor.arjunakankipati.com. Modes: Persuade and Read. User pinned the existing app identity and supplied the policy; developer is Arjuna Kankipati, contact harbor@arjunakankipati.com. No App Store URL has been supplied.
+Scope: a small public app overview and readable privacy policy, hosted on Cloudflare Pages at harbor.arjunakankipati.com. Modes: Persuade and Read. User pinned the existing app identity and supplied the policy; developer is Arjuna Kankipati, contact harbor@arjunakankipati.com. App Store listing: https://apps.apple.com/us/app/harbor-browser/id6819943453.
 
 ## Direction contract
 
@@ -26,4 +26,4 @@ The bundled Inter variable font supplies the brand and editorial headings, with 
 
 Compared with the incumbent native system, the site preserves the supplied mark geometry, maritime palette, Inter branding, rounded content transition, and stable readable surfaces. Editorial Inter headings extend the brand to a public reading surface; native working controls continue to use system type. The site is flat, with no simulated Liquid Glass or decorative shadows. It uses underlined links, explicit focus outlines, themed text selection, and reduced-motion support for anchor scrolling. The original SVG layers and bundled font are the asset sources; no generated raster ships.
 
-`DESIGN.md` and `.impeccable/design.json` remain the native app authority and are unchanged by this web extension. Deployment instructions and outstanding publication checks are in `site/README.md`; no App Store destination is invented.
+`DESIGN.md` and `.impeccable/design.json` remain the native app authority and are unchanged by this web extension. Deployment instructions and outstanding publication checks are in `site/README.md`. The hero pairs Apple's unmodified black "Download on the App Store" badge (48px tall) with the policy pill, below the main message, as the page's only App Store badge.

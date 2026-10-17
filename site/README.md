@@ -29,7 +29,7 @@ Cloudflare references: [Static HTML](https://developers.cloudflare.com/pages/fra
 
 ## Publication checklist
 
-The supplied policy uses Arjuna Kankipati and harbor@arjunakankipati.com. The confirmed effective date is October 7, 2026. Downloaded Apple crash reports are retained for 7 days after download. Google Workspace processes support email, and support correspondence (including attachments) is deleted every 30 days. Confirm the support mailbox receives mail. No App Store download link is shown because one has not been supplied.
+The supplied policy uses Arjuna Kankipati and harbor@arjunakankipati.com. The confirmed effective date is October 7, 2026. Downloaded Apple crash reports are retained for 7 days after download. Google Workspace processes support email, and support correspondence (including attachments) is deleted every 30 days. Confirm the support mailbox receives mail. The home page hero links to the App Store listing at https://apps.apple.com/us/app/harbor-browser/id6819943453, and every page carries an `apple-itunes-app` Smart App Banner tag for app ID 6819943453.
 
 Use `https://harbor.arjunakankipati.com/support/` as the App Store Connect Support URL. Its how-to answers quote the app's labels and navigation as of 0.1.18; update them when Settings or menu wording changes.
 
@@ -42,6 +42,8 @@ Checked both pages in Chrome at desktop (1440px) and mobile (390px) widths, in l
 ## Brand assets
 
 The SVG mark combines the original Harbor Arch, Sun, and Water SVG layers from `assets/HarborIcon/Harbor.icon/Assets` without changing their path geometry. The favicon adds a navy background. InterVariable and its license are copied from `Harbor/Resources`. No generated imagery is used.
+
+`assets/app-store-badge.svg` is Apple's official US-English black "Download on the App Store" badge, downloaded unmodified from App Store Marketing Tools (toolbox.marketingtools.apple.com). Per Apple's [marketing guidelines](https://developer.apple.com/app-store/marketing/guidelines/): use the preferred black badge, show one badge per layout in a position subordinate to the main message, never modify, recolor, angle, or animate it, keep it at least 40px tall on screen, and leave clear space of at least one-quarter of its height. It is self-hosted because the Content Security Policy allows same-origin images only.
 
 ## Cloudflare email handling
 
