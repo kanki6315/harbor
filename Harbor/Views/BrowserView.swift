@@ -246,6 +246,10 @@ struct BrowserView: View {
                             browserMenu.transition(controlTransition)
                         }
                     }
+                    // On wide screens (iPhone Duo unfolded, landscape) keep the bar a
+                    // comfortable reading width instead of spanning the display.
+                    .frame(maxWidth: typeSize.isAccessibilitySize ? 760 : 600)
+                    .frame(maxWidth: .infinity)
                 }
             }
             .padding(.horizontal, typeSize.isAccessibilitySize ? 8 : 12)
