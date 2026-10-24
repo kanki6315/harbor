@@ -12,6 +12,7 @@ struct BrowserView: View {
     @State private var openProfileSettingsAfterDismissal = false
     @State private var chromeCollapsed = false
     @State private var chromeHeight: CGFloat = 56
+    @State private var keyboardVisible = false
     @Namespace private var chromeNamespace
     @FocusState private var editingAddress: Bool
     @Environment(\.scenePhase) private var scenePhase
@@ -78,6 +79,10 @@ struct BrowserView: View {
         .overlay {
             if let column { rail(in: column, floating: !fitsColumn) }
         }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+            keyboardVisible = true; setChromeCollapsed(false)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in keyboardVisible = false }
         .onChange(of: browser.selectedID) { _, _ in editingAddress = false; chromeCollapsed = false; syncAddress() }
         .onChange(of: browser.selectedTab.url) { _, _ in if !editingAddress { syncAddress() } }
         .onChange(of: editingAddress) { _, value in if value { chromeCollapsed = false }; syncAddress() }
@@ -132,27 +137,48 @@ struct BrowserView: View {
     }
 
     /// Back, tabs and the menu move beside the status bar when it runs down the side
-    /// of the screen, leaving the full width below for the address bar.
+    /// of the screen, stacked up from the address bar and rising with the keyboard.
     private func rail(in column: StatusColumn, floating: Bool) -> some View {
         HStack(spacing: 0) {
             if column.edge == .trailing { Spacer(minLength: 0) }
             GlassEffectContainer(spacing: 8) {
                 VStack(spacing: 10) {
-                    backButton
-                    tabsButton
-                    browserMenu
+                    if keyboardVisible {
+                        keyboardDismissButton.transition(controlTransition)
+                    } else {
+                        backButton
+                        tabsButton
+                        browserMenu
+                    }
                 }
             }
             .tint(.primary)
             .frame(width: column.width)
             .padding(.top, column.statusHeight + 8)
-            .frame(maxHeight: .infinity, alignment: .top)
+            .padding(.bottom, 4)
+            .frame(maxHeight: .infinity, alignment: .bottom)
             .opacity(floating && chromeCollapsed && !editingAddress ? 0 : 1)
             .allowsHitTesting(!(floating && chromeCollapsed && !editingAddress))
             if column.edge == .leading { Spacer(minLength: 0) }
         }
-        .ignoresSafeArea(.container, edges: [.horizontal, .vertical])
+        // The bottom edge stays in the safe area so the stack lines up with the address bar.
+        .ignoresSafeArea(.container, edges: [.horizontal, .top])
         .animation(reduceMotion ? .easeOut(duration: 0.12) : .spring(response: 0.38, dampingFraction: 0.86), value: chromeCollapsed)
+        .animation(reduceMotion ? .easeOut(duration: 0.12) : .spring(response: 0.38, dampingFraction: 0.86), value: keyboardVisible)
+    }
+
+    /// Shown whenever the keyboard is up, for the address bar or a field on the page.
+    private var keyboardDismissButton: some View {
+        Button(action: dismissKeyboard) { chromeIcon("keyboard.chevron.compact.down") }
+            .accessibilityLabel("Hide keyboard")
+            .accessibilityIdentifier("hideKeyboardButton")
+            .harborGlass()
+    }
+
+    private func dismissKeyboard() {
+        editingAddress = false
+        // Also resigns a focused field inside the web page.
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 
     private var backButton: some View {
@@ -209,11 +235,13 @@ struct BrowserView: View {
                     .transition(.opacity)
                 } else {
                     HStack(spacing: 6) {
-                        if !editingAddress && !inRail {
+                        if !editingAddress && !keyboardVisible && !inRail {
                             backButton.transition(controlTransition)
                         }
                         addressControl
-                        if !editingAddress && !inRail {
+                        if keyboardVisible && !inRail {
+                            keyboardDismissButton.transition(controlTransition)
+                        } else if !editingAddress && !inRail {
                             tabsButton.transition(controlTransition)
                             browserMenu.transition(controlTransition)
                         }
@@ -228,6 +256,7 @@ struct BrowserView: View {
         // its own appearance, including the user's Liquid Glass preference.
         .tint(.primary)
         .animation(reduceMotion ? .easeOut(duration: 0.12) : .spring(response: 0.38, dampingFraction: 0.86), value: editingAddress)
+        .animation(reduceMotion ? .easeOut(duration: 0.12) : .spring(response: 0.38, dampingFraction: 0.86), value: keyboardVisible)
     }
 
     private var controlTransition: AnyTransition {
@@ -259,6 +288,7 @@ struct BrowserView: View {
                 .textInputAutocapitalization(.never).autocorrectionDisabled()
                 .keyboardType(.webSearch).submitLabel(.go)
                 .focused($editingAddress).onSubmit(submit)
+                .onKeyPress(.escape) { dismissKeyboard(); return .handled }
                 .accessibilityLabel("Search or enter address")
                 .accessibilityIdentifier("addressField")
                 .frame(minWidth: 30, minHeight: 48)
