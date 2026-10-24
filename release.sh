@@ -118,10 +118,12 @@ log "xcodegen generate"
 xcodegen generate --quiet
 
 if [ "$run_tests" = 1 ]; then
+    log "Prepare test simulator"
+    test_destination="$(python3 scripts/prepare_test_simulator.py ${TEST_DESTINATION:+--destination "$TEST_DESTINATION"})"
     log "Unit and UI tests (simulator)"
     xcodebuild test \
         -project Harbor.xcodeproj -scheme Harbor \
-        -destination "${TEST_DESTINATION:-platform=iOS Simulator,name=iPhone 17}" \
+        -destination "$test_destination" \
         -derivedDataPath build/tests \
         CODE_SIGNING_ALLOWED=NO \
         | pretty

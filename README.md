@@ -163,7 +163,7 @@ The initial Harbor release includes persistent tabs and website storage, tracker
 
 To archive and upload to TestFlight, configure the git-ignored `.release.env` using `.release.env.example`, then run `./release.sh` from a clean checkout. The script regenerates the Xcode project, runs tests, archives, uploads, and creates a build-specific Git tag after a successful upload. Use `./release.sh --no-upload` to export locally. The local `v0.1.0` tag identifies the source release; TestFlight availability requires a successful upload and App Store Connect processing.
 
-If simulator tests fail before launching with `Unknown application display identifier` or `No such process`, select another installed simulator using `TEST_DESTINATION='platform=iOS Simulator,id=<UDID>'` in `.release.env`. List available IDs with `xcrun simctl list devices available`. An interrupted test run may leave an incomplete result bundle; it does not imply that an archive or upload succeeded.
+If simulator tests fail before launching with `Unknown application display identifier` or `No such process`, select another simulator using `TEST_DESTINATION='platform=iOS Simulator,name=<device>'` (or `id=<UDID>`) in `.release.env`. `release.sh` creates and boots a named simulator if needed, and falls back to iPhone 18 Pro when a configured ID no longer exists. An interrupted test run may leave an incomplete result bundle; it does not imply that an archive or upload succeeded.
 
 ## License
 
