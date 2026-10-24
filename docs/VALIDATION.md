@@ -29,18 +29,25 @@ Both `xcodebuild test` processes exited **0** with **TEST SUCCEEDED**. The exist
 
 ### Reproduction and results
 
-Run the complete suite with either destination below, using a fresh result-bundle path:
+Run the complete suite on a dedicated simulator per OS, so other apps cannot interrupt the run. Create them once (the iOS 27.1 simulator runtime only supports iPhone Duo, so the iOS 27 run uses 27.0):
+
+```sh
+xcrun simctl create "Harbor Tests 26.5" com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro com.apple.CoreSimulator.SimRuntime.iOS-26-5
+xcrun simctl create "Harbor Tests 27.0" com.apple.CoreSimulator.SimDeviceType.iPhone-18-Pro com.apple.CoreSimulator.SimRuntime.iOS-27-0
+```
+
+Then run each, using a fresh result-bundle path. The `OS` is required; without it Xcode looks for the newest iOS:
 
 ```sh
 xcodebuild test -project Harbor.xcodeproj -scheme Harbor \
-  -destination 'platform=iOS Simulator,id=47309308-6FE0-4749-AC87-088B2BEC807D' \
-  -derivedDataPath /tmp/harbor-failure-fixes-build \
+  -destination 'platform=iOS Simulator,name=Harbor Tests 26.5,OS=26.5' \
+  -derivedDataPath /tmp/harbor-test-build \
   -resultBundlePath /tmp/harbor-release-final26.xcresult \
   -collect-test-diagnostics never -parallel-testing-enabled NO \
   CODE_SIGNING_ALLOWED=NO
 ```
 
-For the iOS 27 run, use destination ID `2172888E-B011-46F3-A292-9D64543ACAC7`, derived data `/tmp/harbor-store-test-build`, and result bundle `/tmp/harbor-release-final27.xcresult`.
+For the iOS 27 run, use destination `platform=iOS Simulator,name=Harbor Tests 27.0,OS=27.0` and result bundle `/tmp/harbor-release-final27.xcresult`.
 
 Final result bundles: `/tmp/harbor-release-final26.xcresult` and `/tmp/harbor-release-final27.xcresult`. Logs: `/tmp/harbor-release-final26.log` and `/tmp/harbor-release-final27.log`. These are local temporary artifacts, not committed fixtures. Optional simulator diagnostic collection was disabled; both runs completed normally. Xcode still reports UIKit/SwiftUI hosting runtime warnings, with no failed tests.
 
