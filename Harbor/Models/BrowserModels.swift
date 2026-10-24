@@ -68,6 +68,24 @@ struct BrowserSettings: Codable, Equatable {
     var stripTrackingParameters = true
     var restoreTabs = true
     var siteExceptions: Set<String> = []
+    /// Keeps pages clear of the side status bar on iPhone Duo in landscape.
+    var fitBesideStatusBar = false
+
+    init() {}
+
+    private enum CodingKeys: String, CodingKey {
+        case searchEngine, trackerBlocking, stripTrackingParameters, restoreTabs, siteExceptions, fitBesideStatusBar
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        searchEngine = try values.decode(SearchEngine.self, forKey: .searchEngine)
+        trackerBlocking = try values.decode(Bool.self, forKey: .trackerBlocking)
+        stripTrackingParameters = try values.decode(Bool.self, forKey: .stripTrackingParameters)
+        restoreTabs = try values.decode(Bool.self, forKey: .restoreTabs)
+        siteExceptions = try values.decode(Set<String>.self, forKey: .siteExceptions)
+        fitBesideStatusBar = try values.decodeIfPresent(Bool.self, forKey: .fitBesideStatusBar) ?? false
+    }
 }
 
 struct BrowserArchive: Codable {

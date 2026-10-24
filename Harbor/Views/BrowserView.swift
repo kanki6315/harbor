@@ -23,8 +23,11 @@ struct BrowserView: View {
     }
 
     private func content(in geometry: GeometryProxy) -> some View {
-        ZStack {
-            Color(uiColor: .systemBackground)
+        let column = browser.activeSession?.fullscreen == true ? nil : StatusColumn(in: geometry)
+        let fitsColumn = column != nil && browser.archive.settings.fitBesideStatusBar
+        return ZStack {
+            Color(uiColor: .systemBackground).ignoresSafeArea()
+            if fitsColumn, let column { StatusColumnReflection(column: column, tint: pageTint) }
             // Resident views stay attached to preserve WebKit's media and native full-screen UI.
             ForEach(browser.archive.tabs) { tab in
                 if let session = browser.sessions[tab.id] {
@@ -41,7 +44,9 @@ struct BrowserView: View {
                             })
                         // Extend the viewport under the status bar; the scroll inset keeps
                         // the first page controls clear while allowing content to scroll behind it.
-                        .ignoresSafeArea(.container, edges: .vertical)
+                        .ignoresSafeArea(.container, edges: column != nil && !fitsColumn ? .all : .vertical)
+                        // When pages fit beside the status bar, reflect their edge into its column.
+                        .backgroundExtensionEffect(isEnabled: fitsColumn && tab.id == browser.selectedID)
                         .opacity(tab.id == browser.selectedID ? 1 : 0)
                         .allowsHitTesting(tab.id == browser.selectedID)
                         .accessibilityHidden(tab.id != browser.selectedID)
@@ -67,8 +72,11 @@ struct BrowserView: View {
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if browser.activeSession?.fullscreen != true {
-                chrome(bottomInset: geometry.safeAreaInsets.bottom).onGeometryChange(for: CGFloat.self) { $0.size.height } action: { chromeHeight = $0 }
+                chrome(bottomInset: geometry.safeAreaInsets.bottom, inRail: column != nil).onGeometryChange(for: CGFloat.self) { $0.size.height } action: { chromeHeight = $0 }
             }
+        }
+        .overlay {
+            if let column { rail(in: column, floating: !fitsColumn) }
         }
         .onChange(of: browser.selectedID) { _, _ in editingAddress = false; chromeCollapsed = false; syncAddress() }
         .onChange(of: browser.selectedTab.url) { _, _ in if !editingAddress { syncAddress() } }
@@ -123,7 +131,60 @@ struct BrowserView: View {
         } message: { Text(browser.errorMessage ?? browser.downloads.errorMessage ?? profiles.errorMessage ?? "") }
     }
 
-    private func chrome(bottomInset: CGFloat) -> some View {
+    /// Back, tabs and the menu move beside the status bar when it runs down the side
+    /// of the screen, leaving the full width below for the address bar.
+    private func rail(in column: StatusColumn, floating: Bool) -> some View {
+        HStack(spacing: 0) {
+            if column.edge == .trailing { Spacer(minLength: 0) }
+            GlassEffectContainer(spacing: 8) {
+                VStack(spacing: 10) {
+                    backButton
+                    tabsButton
+                    browserMenu
+                }
+            }
+            .tint(.primary)
+            .frame(width: column.width)
+            .padding(.top, column.statusHeight + 8)
+            .frame(maxHeight: .infinity, alignment: .top)
+            .opacity(floating && chromeCollapsed && !editingAddress ? 0 : 1)
+            .allowsHitTesting(!(floating && chromeCollapsed && !editingAddress))
+            if column.edge == .leading { Spacer(minLength: 0) }
+        }
+        .ignoresSafeArea(.container, edges: [.horizontal, .vertical])
+        .animation(reduceMotion ? .easeOut(duration: 0.12) : .spring(response: 0.38, dampingFraction: 0.86), value: chromeCollapsed)
+    }
+
+    private var backButton: some View {
+        Button { browser.activeSession?.webView.goBack() } label: {
+            chromeIcon("chevron.left")
+        }
+        .disabled(browser.activeSession?.canGoBack != true)
+        .accessibilityLabel("Back")
+        .harborGlass()
+    }
+
+    private var tabsButton: some View {
+        Button { browser.activeSession?.captureSnapshot(); browser.sheet = .tabs } label: {
+            ZStack {
+                RoundedRectangle(cornerRadius: 5).strokeBorder(lineWidth: 1.8)
+                Text("\(browser.archive.tabs.count)")
+                    .font(.caption2.bold()).monospacedDigit()
+                    .lineLimit(1).minimumScaleFactor(0.5)
+                    .padding(.horizontal, 3)
+            }.frame(width: 24, height: 24)
+                .frame(width: 44, height: 48)
+        }
+        .accessibilityLabel("Tabs, \(browser.archive.tabs.count) open")
+        .accessibilityIdentifier("tabsButton")
+        .harborGlass()
+    }
+
+    private var pageTint: Color {
+        browser.selectedTab.url == nil ? .harborNavy : Color(uiColor: browser.activeSession?.pageColor ?? .systemBackground)
+    }
+
+    private func chrome(bottomInset: CGFloat, inRail: Bool) -> some View {
         GlassEffectContainer(spacing: 8) {
             Group {
                 if chromeCollapsed && !editingAddress {
@@ -148,33 +209,13 @@ struct BrowserView: View {
                     .transition(.opacity)
                 } else {
                     HStack(spacing: 6) {
-                        if !editingAddress {
-                            Button { browser.activeSession?.webView.goBack() } label: {
-                                chromeIcon("chevron.left")
-                            }
-                            .disabled(browser.activeSession?.canGoBack != true)
-                            .accessibilityLabel("Back")
-                            .harborGlass()
-                            .transition(controlTransition)
+                        if !editingAddress && !inRail {
+                            backButton.transition(controlTransition)
                         }
                         addressControl
-                        if !editingAddress {
-                            Button { browser.activeSession?.captureSnapshot(); browser.sheet = .tabs } label: {
-                                ZStack {
-                                    RoundedRectangle(cornerRadius: 5).strokeBorder(lineWidth: 1.8)
-                                    Text("\(browser.archive.tabs.count)")
-                                        .font(.caption2.bold()).monospacedDigit()
-                                        .lineLimit(1).minimumScaleFactor(0.5)
-                                        .padding(.horizontal, 3)
-                                }.frame(width: 24, height: 24)
-                                    .frame(width: 44, height: 48)
-                            }
-                            .accessibilityLabel("Tabs, \(browser.archive.tabs.count) open")
-                            .accessibilityIdentifier("tabsButton")
-                            .harborGlass()
-                            .transition(controlTransition)
-                            browserMenu
-                                .transition(controlTransition)
+                        if !editingAddress && !inRail {
+                            tabsButton.transition(controlTransition)
+                            browserMenu.transition(controlTransition)
                         }
                     }
                 }
@@ -316,6 +357,58 @@ struct BrowserView: View {
 
     private func submit() { browser.navigate(address); editingAddress = false; syncAddress() }
     private func syncAddress() { address = editingAddress ? (browser.selectedTab.url?.absoluteString ?? "") : (browser.selectedTab.url == nil ? "" : compactAddress) }
+}
+
+/// The side column iPhone Duo's status bar occupies in landscape, on either edge.
+struct StatusColumn: Equatable {
+    var edge: HorizontalEdge
+    var width: CGFloat
+    /// Distance from the top of the screen to the bottom of the status items.
+    var statusHeight: CGFloat
+
+    init?(in geometry: GeometryProxy) {
+        guard #available(iOS 27.1, *) else { return nil }
+        let size = geometry.size, insets = geometry.safeAreaInsets
+        // The status bar starts at the top; a landscape Dynamic Island elsewhere doesn't count.
+        for region in geometry.reservedRegions(kind: .occlusion) where region.frame.minY <= 1 {
+            if insets.trailing > 0, region.frame.minX >= size.width - 1 {
+                self.init(edge: .trailing, width: insets.trailing, statusHeight: insets.top + region.frame.maxY)
+                return
+            }
+            if insets.leading > 0, region.frame.maxX <= 1 {
+                self.init(edge: .leading, width: insets.leading, statusHeight: insets.top + region.frame.maxY)
+                return
+            }
+        }
+        return nil
+    }
+
+    init(edge: HorizontalEdge, width: CGFloat, statusHeight: CGFloat) {
+        self.edge = edge; self.width = width; self.statusHeight = statusHeight
+    }
+}
+
+/// A soft wash of the page's color behind the status column, so the
+/// reflected page edge fades in rather than meeting a hard black bar.
+struct StatusColumnReflection: View {
+    let column: StatusColumn
+    let tint: Color
+
+    var body: some View {
+        HStack(spacing: 0) {
+            if column.edge == .trailing { Spacer(minLength: 0) }
+            ZStack {
+                tint
+                // Keeps the status text readable over bright pages.
+                LinearGradient(colors: [.black.opacity(0.18), .clear, .black.opacity(0.1)],
+                               startPoint: .top, endPoint: .bottom)
+            }
+            .frame(width: column.width)
+            if column.edge == .leading { Spacer(minLength: 0) }
+        }
+        .ignoresSafeArea()
+        .accessibilityHidden(true)
+    }
 }
 
 private struct BrowserAddressGlass: ViewModifier {

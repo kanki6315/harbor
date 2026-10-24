@@ -18,6 +18,8 @@ final class TabSession: NSObject, Identifiable {
     var mediaState: WKMediaPlaybackState = .none
     var fullscreen = false
     var loadError: String?
+    /// The page's declared theme color, or the color WebKit shows beyond its edges.
+    var pageColor: UIColor?
     // WebKit may still expose the previous committed URL after a provisional failure.
     // Keep the request in memory so explicit retry preserves its destination and method.
     private var pendingMainFrameRequest: URLRequest?
@@ -65,6 +67,12 @@ final class TabSession: NSObject, Identifiable {
             webView.observe(\.url, options: [.new]) { [weak self] _, _ in
                 Task { @MainActor in self?.updateMetadata() }
             },
+            webView.observe(\.themeColor, options: [.new]) { [weak self] _, _ in
+                Task { @MainActor in self?.updatePageColor() }
+            },
+            webView.observe(\.underPageBackgroundColor, options: [.new]) { [weak self] _, _ in
+                Task { @MainActor in self?.updatePageColor() }
+            },
             webView.observe(\.fullscreenState, options: [.new]) { [weak self] view, _ in
                 Task { @MainActor in
                     guard let self else { return }
@@ -76,6 +84,8 @@ final class TabSession: NSObject, Identifiable {
             }
         ]
     }
+
+    private func updatePageColor() { pageColor = webView.themeColor ?? webView.underPageBackgroundColor }
 
     func updateMetadata() {
         guard !isDisposed, hasCommitted, let url = webView.url else { return }

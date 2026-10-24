@@ -17,6 +17,8 @@ final class HarborUITests: XCTestCase {
         XCTAssertTrue(app.textFields["addressField"].waitForExistence(timeout: 10))
         let originalTabCount = app.buttons["tabsButton"].label
         openBrowserDestination(app, "settingsButton")
+        // Settings rows below the fold load as the form scrolls.
+        for _ in 0..<3 where !app.buttons["Privacy Policy"].isHittable { app.collectionViews.firstMatch.swipeUp() }
         app.buttons["Privacy Policy"].tap()
         XCTAssertTrue(app.buttons["Done"].firstMatch.waitForExistence(timeout: 5))
         XCTAssertTrue(app.webViews.staticTexts["Harbor Privacy Policy"].firstMatch.waitForExistence(timeout: 30))

@@ -75,6 +75,18 @@ final class CoreTests: XCTestCase {
         XCTAssertNil(restored.tabs.first?.groupID)
     }
 
+    func testSettingsFromBeforeStatusBarFitStillDecode() throws {
+        var settings = BrowserSettings()
+        settings.searchEngine = .bing
+        settings.fitBesideStatusBar = true
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(settings)) as? [String: Any])
+        XCTAssertEqual(try JSONDecoder().decode(BrowserSettings.self, from: JSONSerialization.data(withJSONObject: json)), settings)
+        json.removeValue(forKey: "fitBesideStatusBar")
+        let restored = try JSONDecoder().decode(BrowserSettings.self, from: JSONSerialization.data(withJSONObject: json))
+        XCTAssertEqual(restored.searchEngine, .bing)
+        XCTAssertFalse(restored.fitBesideStatusBar)
+    }
+
     func testAddressResolution() {
         XCTAssertEqual(AddressResolver.resolve("example.com/path", engine: .duckDuckGo)?.absoluteString, "https://example.com/path")
         XCTAssertEqual(AddressResolver.resolve("a search & more", engine: .google)?.host, "www.google.com")
