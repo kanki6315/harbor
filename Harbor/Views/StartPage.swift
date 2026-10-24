@@ -27,7 +27,8 @@ struct StartPage: View {
                     }.padding(24).padding(.bottom, 16).frame(maxWidth: .infinity, alignment: .leading).background(Color.harborNavy)
                 } else {
                 ZStack(alignment: .top) {
-                    HorizonArtwork()
+                    // The artwork runs behind a side status bar (iPhone Duo in landscape).
+                    HorizonArtwork().ignoresSafeArea(.container, edges: .horizontal)
                     VStack(spacing: 4) {
                         HarborMark().frame(width: 94, height: 94)
                         Text("Harbor").font(.custom("InterVariable", size: 34, relativeTo: .largeTitle).bold()).foregroundStyle(.white)
@@ -95,7 +96,11 @@ struct StartPage: View {
                         }
                     }
                 }.padding(24).frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color(uiColor: .systemGroupedBackground), in: UnevenRoundedRectangle(topLeadingRadius: 26, topTrailingRadius: 26))
+                    .background {
+                        UnevenRoundedRectangle(topLeadingRadius: 26, topTrailingRadius: 26)
+                            .fill(Color(uiColor: .systemGroupedBackground))
+                            .ignoresSafeArea(.container, edges: .horizontal)
+                    }
                     .padding(.top, -16)
             }
         }
@@ -104,7 +109,7 @@ struct StartPage: View {
             VStack(spacing: 0) {
                 Color.harborNavy.frame(height: 350)
                 Color(uiColor: .systemGroupedBackground)
-            }.ignoresSafeArea(.container, edges: .vertical)
+            }.ignoresSafeArea()
         }
         .accessibilityIdentifier("startPage")
     }

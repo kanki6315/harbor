@@ -49,8 +49,12 @@ struct SettingsView: View {
                         ForEach(SearchEngine.allCases) { engine in Text(engine.rawValue).tag(engine) }
                     }
                 }
-                Section("Browsing") {
+                Section {
                     Toggle("Restore tabs on launch", isOn: $browser.archive.settings.restoreTabs)
+                    Toggle("Fit pages beside status bar", isOn: $browser.archive.settings.fitBesideStatusBar)
+                        .accessibilityIdentifier("fitBesideStatusBar")
+                } header: { Text("Browsing") } footer: {
+                    Text("On iPhone Duo in landscape, keeps websites clear of the status bar instead of extending behind it.")
                 }
                 Section("About Harbor") {
                     Button("Privacy Policy") {
