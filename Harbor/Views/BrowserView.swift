@@ -71,6 +71,17 @@ struct BrowserView: View {
                 ProgressView("Preparing browser…")
             }
         }
+        // Floats over the page just above the bar, so the page's bottom inset doesn't change while typing.
+        .overlay(alignment: .bottom) {
+            if case let matches = suggestions, !matches.isEmpty {
+                suggestionList(matches)
+                    .frame(maxWidth: typeSize.isAccessibilitySize ? 760 : 600)
+                    .padding(.horizontal, typeSize.isAccessibilitySize ? 8 : 12)
+                    .padding(.bottom, 4)
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeOut(duration: 0.15), value: suggestions)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if browser.activeSession?.fullscreen != true {
                 chrome(bottomInset: geometry.safeAreaInsets.bottom, inRail: column != nil).onGeometryChange(for: CGFloat.self) { $0.size.height } action: { chromeHeight = $0 }
@@ -263,6 +274,61 @@ struct BrowserView: View {
         .animation(reduceMotion ? .easeOut(duration: 0.12) : .spring(response: 0.38, dampingFraction: 0.86), value: keyboardVisible)
     }
 
+    /// Local matches only appear once the user changes the address being edited.
+    private var suggestions: [AddressSuggestion] {
+        guard editingAddress, address != (browser.selectedTab.url?.absoluteString ?? "") else { return [] }
+        return browser.addressSuggestions(for: address)
+    }
+
+    private func suggestionList(_ suggestions: [AddressSuggestion]) -> some View {
+        VStack(spacing: 0) {
+            ForEach(suggestions) { suggestion in
+                if suggestion.id != suggestions.first?.id { Divider().padding(.leading, 50) }
+                Button { open(suggestion) } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: suggestionSymbol(suggestion.kind))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 24)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(suggestion.title).font(.subheadline).lineLimit(typeSize.isAccessibilitySize ? 2 : 1)
+                            Text(AddressSuggestions.key(suggestion.url))
+                                .font(.caption).foregroundStyle(.secondary)
+                                .lineLimit(1).truncationMode(.middle)
+                        }
+                        Spacer(minLength: 0)
+                        if case .tab = suggestion.kind {
+                            Text("Switch to tab").font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(.horizontal, 14).padding(.vertical, 8)
+                    .frame(minHeight: 48)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(suggestionAccessibilityLabel(suggestion))
+                .accessibilityIdentifier("addressSuggestion")
+            }
+        }
+        .modifier(SuggestionGlass())
+    }
+
+    private func suggestionSymbol(_ kind: AddressSuggestion.Kind) -> String {
+        switch kind {
+        case .tab: "square.on.square"
+        case .bookmark: "book"
+        case .history: "clock"
+        }
+    }
+
+    private func suggestionAccessibilityLabel(_ suggestion: AddressSuggestion) -> String {
+        let host = suggestion.url.host ?? AddressSuggestions.key(suggestion.url)
+        switch suggestion.kind {
+        case .tab: return "Switch to tab, \(suggestion.title), \(host)"
+        case .bookmark: return "Bookmark, \(suggestion.title), \(host)"
+        case .history: return "History, \(suggestion.title), \(host)"
+        }
+    }
+
     private var controlTransition: AnyTransition {
         reduceMotion ? .opacity : .scale(scale: 0.7, anchor: .bottom).combined(with: .opacity)
     }
@@ -390,6 +456,7 @@ struct BrowserView: View {
     }
 
     private func submit() { browser.navigate(address); editingAddress = false; syncAddress() }
+    private func open(_ suggestion: AddressSuggestion) { browser.open(suggestion); editingAddress = false; syncAddress() }
     private func syncAddress() { address = editingAddress ? (browser.selectedTab.url?.absoluteString ?? "") : (browser.selectedTab.url == nil ? "" : compactAddress) }
 }
 
@@ -464,6 +531,18 @@ private struct BrowserAddressGlass: ViewModifier {
             glass(content)
         } else {
             glass(content).glassEffectID("browserAddress", in: namespace)
+        }
+    }
+}
+
+private struct SuggestionGlass: ViewModifier {
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    func body(content: Content) -> some View {
+        if reduceTransparency {
+            content.background(Color(uiColor: .secondarySystemBackground), in: .rect(cornerRadius: 24))
+        } else {
+            content.glassEffect(.regular, in: .rect(cornerRadius: 24))
         }
     }
 }

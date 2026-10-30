@@ -229,6 +229,15 @@ final class BrowserModel {
         } else { ensureSession(selectedID) }
         saveSoon()
     }
+    /// Matches for the address bar; the tab being edited is left out.
+    func addressSuggestions(for input: String) -> [AddressSuggestion] {
+        AddressSuggestions.rank(input, tabs: archive.tabs.filter { $0.id != selectedID },
+                                bookmarks: archive.bookmarks, history: archive.history)
+    }
+    func open(_ suggestion: AddressSuggestion) {
+        if case .tab(let id) = suggestion.kind, archive.tabs.contains(where: { $0.id == id }) { selectTab(id) }
+        else { navigate(suggestion.url) }
+    }
     @discardableResult func newTab(url: URL? = nil) -> UUID {
         let tab = TabRecord(url: url, groupID: archive.selectedTabGroupID)
         archive.tabs.append(tab)

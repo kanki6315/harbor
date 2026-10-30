@@ -42,3 +42,60 @@ enum AddressResolver {
         return engine.searchURL(value)
     }
 }
+
+struct AddressSuggestion: Identifiable, Equatable {
+    enum Kind: Equatable { case tab(UUID), bookmark, history }
+    var url: URL
+    var title: String
+    var kind: Kind
+    var id: String { AddressSuggestions.key(url) }
+}
+
+/// Completions drawn only from this profile's tabs, bookmarks and history.
+/// Typed text never leaves the device for a suggestion service.
+enum AddressSuggestions {
+    /// Matches one page however it was reached: scheme, "www." and a trailing slash are ignored.
+    static func key(_ url: URL) -> String {
+        var text = url.absoluteString.lowercased()
+        for prefix in ["https://", "http://"] where text.hasPrefix(prefix) { text.removeFirst(prefix.count) }
+        if text.hasPrefix("www.") { text.removeFirst(4) }
+        if text.hasSuffix("/") { text.removeLast() }
+        return text
+    }
+
+    static func rank(_ input: String, tabs: [TabRecord], bookmarks: [Bookmark],
+                     history: [HistoryEntry], limit: Int = 4) -> [AddressSuggestion] {
+        let query = input.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !query.isEmpty else { return [] }
+        var bareQuery = query
+        for prefix in ["https://", "http://", "www."] where bareQuery.hasPrefix(prefix) { bareQuery.removeFirst(prefix.count) }
+        let terms = bareQuery.split(whereSeparator: \.isWhitespace).map(String.init)
+        guard !terms.isEmpty else { return [] }
+
+        var visits: [String: Int] = [:]
+        for entry in history { visits[key(entry.url), default: 0] += 1 }
+
+        var best: [String: (suggestion: AddressSuggestion, score: Int)] = [:]
+        func consider(_ url: URL, _ title: String, _ kind: AddressSuggestion.Kind, bonus: Int) {
+            guard ["http", "https"].contains(url.scheme?.lowercased() ?? "") else { return }
+            let address = key(url), name = title.lowercased()
+            guard terms.allSatisfy({ address.contains($0) || name.contains($0) }) else { return }
+            var score: Int
+            if address.hasPrefix(bareQuery) { score = 100 }
+            else if address.split(separator: ".").contains(where: { $0.hasPrefix(bareQuery) }) { score = 80 }
+            else if name.split(whereSeparator: { !$0.isLetter && !$0.isNumber }).contains(where: { $0.hasPrefix(terms[0]) }) { score = 60 }
+            else { score = 30 }
+            score += bonus + min(20, 2 * (visits[address] ?? 0))
+            // Shorter addresses first among equals, so a site's home page beats its deep links.
+            score -= min(10, address.count / 20)
+            if let existing = best[address], existing.score >= score { return }
+            let label = title.isEmpty || title == "New Tab" ? (url.host ?? address) : title
+            best[address] = (AddressSuggestion(url: url, title: label, kind: kind), score)
+        }
+        for entry in history { consider(entry.url, entry.title, .history, bonus: 0) }
+        for bookmark in bookmarks { consider(bookmark.url, bookmark.title, .bookmark, bonus: 20) }
+        for tab in tabs { if let url = tab.url { consider(url, tab.title, .tab(tab.id), bonus: 30) } }
+        return best.values.sorted { $0.score != $1.score ? $0.score > $1.score : $0.suggestion.id < $1.suggestion.id }
+            .prefix(limit).map(\.suggestion)
+    }
+}
