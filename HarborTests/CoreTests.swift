@@ -92,6 +92,26 @@ final class CoreTests: XCTestCase {
         XCTAssertEqual(AddressResolver.resolve("a search & more", engine: .google)?.host, "www.google.com")
         XCTAssertNil(AddressResolver.resolve("  ", engine: .bing))
     }
+    func testAddressSuggestionsRankLocalPages() throws {
+        let tab = TabRecord(url: URL(string: "https://github.com/apple/swift"), title: "apple/swift")
+        let history = [
+            HistoryEntry(url: URL(string: "https://www.apple.com/")!, title: "Apple"),
+            HistoryEntry(url: URL(string: "https://apple.com")!, title: "Apple"),
+            HistoryEntry(url: URL(string: "https://example.com/pineapple-recipes")!, title: "Pineapple recipes"),
+            HistoryEntry(url: URL(string: "mailto:apple@example.com")!, title: "Mail")
+        ]
+        let bookmarks = [Bookmark(url: URL(string: "https://developer.apple.com/documentation")!, title: "Apple Developer Documentation")]
+        let results = AddressSuggestions.rank("app", tabs: [tab], bookmarks: bookmarks, history: history)
+        // One row per page however it was visited, and only web addresses.
+        XCTAssertEqual(results.map(\.id), ["apple.com", "developer.apple.com/documentation", "github.com/apple/swift", "example.com/pineapple-recipes"])
+        XCTAssertEqual(results[1].kind, .bookmark)
+        XCTAssertEqual(results[2].kind, .tab(tab.id))
+        XCTAssertEqual(AddressSuggestions.rank("https://www.apple", tabs: [], bookmarks: [], history: history).first?.id, "apple.com")
+        XCTAssertEqual(AddressSuggestions.rank("pineapple recipes", tabs: [], bookmarks: [], history: history).map(\.id), ["example.com/pineapple-recipes"])
+        XCTAssertTrue(AddressSuggestions.rank("  ", tabs: [tab], bookmarks: bookmarks, history: history).isEmpty)
+        XCTAssertTrue(AddressSuggestions.rank("zzz", tabs: [tab], bookmarks: bookmarks, history: history).isEmpty)
+    }
+
     func testDottedSearchTermsAndExplicitAddresses() {
         for term in ["node.js", "3.14", "v1.2", "999.999.999.999", "notlan", "router.internalish", "corp"] {
             XCTAssertEqual(AddressResolver.resolve(term, engine: .google), SearchEngine.google.searchURL(term))
